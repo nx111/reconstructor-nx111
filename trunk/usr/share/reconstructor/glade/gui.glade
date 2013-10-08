@@ -565,69 +565,7 @@ and use a Live CD instead.</property>
                             <property name="border_width">4</property>
                             <property name="n_rows">7</property>
                             <property name="n_columns">4</property>
-                            <child>
-                              <widget class="GtkLabel" id="labelLiveCdSplash">
-                                <property name="visible">True</property>
-                                <property name="xalign">0</property>
-                                <property name="label" translatable="yes">Live CD Splash:</property>
-                              </widget>
-                              <packing>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options"></property>
-                              </packing>
-                            </child>
-                            <child>
-                              <widget class="GtkButton" id="buttonBrowseLiveCdSplashFilename">
-                                <property name="label">...</property>
-                                <property name="width_request">32</property>
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="receives_default">False</property>
-                                <property name="use_underline">True</property>
-                                <signal name="clicked" handler="on_buttonBrowseLiveCdSplashFilename_clicked"/>
-                              </widget>
-                              <packing>
-                                <property name="left_attach">2</property>
-                                <property name="right_attach">3</property>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options"></property>
-                                <property name="x_padding">5</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <widget class="GtkLabel" id="labelUsplashFilename">
-                                <property name="visible">True</property>
-                                <property name="xalign">0</property>
-                                <property name="label" translatable="yes">Usplash Filename:</property>
-                              </widget>
-                              <packing>
-                                <property name="top_attach">2</property>
-                                <property name="bottom_attach">3</property>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options"></property>
-                              </packing>
-                            </child>
-                            <child>
-                              <widget class="GtkButton" id="buttonBrowseUsplashFilename">
-                                <property name="label">...</property>
-                                <property name="width_request">32</property>
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="receives_default">False</property>
-                                <property name="use_underline">True</property>
-                                <signal name="clicked" handler="on_buttonBrowseUsplashFilename_clicked"/>
-                              </widget>
-                              <packing>
-                                <property name="left_attach">2</property>
-                                <property name="right_attach">3</property>
-                                <property name="top_attach">2</property>
-                                <property name="bottom_attach">3</property>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options"></property>
-                                <property name="x_padding">5</property>
-                              </packing>
-                            </child>
-                            <child>
+                             <child>
                               <widget class="GtkLabel" id="labelLiveCdTextColor">
                                 <property name="visible">True</property>
                                 <property name="xalign">0</property>
@@ -669,117 +607,6 @@ and use a Live CD instead.</property>
                                 <property name="bottom_attach">2</property>
                                 <property name="x_options">GTK_FILL</property>
                                 <property name="y_options">GTK_FILL</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <widget class="GtkEntry" id="entryLiveCdSplashImage">
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="tooltip" translatable="yes">Live CD splash image (.pcx)</property>
-                              </widget>
-                              <packing>
-                                <property name="left_attach">1</property>
-                                <property name="right_attach">2</property>
-                                <property name="x_options">GTK_EXPAND | GTK_SHRINK | GTK_FILL</property>
-                                <property name="y_options"></property>
-                              </packing>
-                            </child>
-                            <child>
-                              <widget class="GtkEntry" id="entryUsplashFilename">
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="tooltip" translatable="yes">Usplash .so file for boot splash</property>
-                              </widget>
-                              <packing>
-                                <property name="left_attach">1</property>
-                                <property name="right_attach">2</property>
-                                <property name="top_attach">2</property>
-                                <property name="bottom_attach">3</property>
-                                <property name="x_options">GTK_EXPAND | GTK_SHRINK | GTK_FILL</property>
-                                <property name="y_options"></property>
-                              </packing>
-                            </child>
-                            <child>
-                              <widget class="GtkLabel" id="labelUsplashInfo">
-                                <property name="visible">True</property>
-                                <property name="xalign">0</property>
-                                <property name="label" translatable="yes">&lt;b&gt;Note:&lt;/b&gt; This will replace &lt;b&gt;both&lt;/b&gt; the Live CD
-splash and the installed usplash image.</property>
-                                <property name="use_markup">True</property>
-                                <property name="wrap">True</property>
-                              </widget>
-                              <packing>
-                                <property name="left_attach">1</property>
-                                <property name="right_attach">2</property>
-                                <property name="top_attach">3</property>
-                                <property name="bottom_attach">4</property>
-                                <property name="x_options">GTK_SHRINK | GTK_FILL</property>
-                                <property name="y_options"></property>
-                                <property name="x_padding">2</property>
-                                <property name="y_padding">2</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <widget class="GtkHBox" id="hbox15">
-                                <property name="visible">True</property>
-                                <child>
-                                  <widget class="GtkButton" id="buttonUsplashGenerate">
-                                    <property name="label" translatable="yes">Generate</property>
-                                    <property name="visible">True</property>
-                                    <property name="can_focus">True</property>
-                                    <property name="receives_default">False</property>
-                                    <property name="tooltip" translatable="yes">Generate Usplash Library (.so) from .png</property>
-                                    <property name="use_underline">True</property>
-                                    <signal name="clicked" handler="on_buttonUsplashGenerate_clicked"/>
-                                  </widget>
-                                  <packing>
-                                    <property name="expand">False</property>
-                                    <property name="fill">False</property>
-                                    <property name="position">0</property>
-                                  </packing>
-                                </child>
-                                <child>
-                                  <placeholder/>
-                                </child>
-                              </widget>
-                              <packing>
-                                <property name="left_attach">1</property>
-                                <property name="right_attach">2</property>
-                                <property name="top_attach">6</property>
-                                <property name="bottom_attach">7</property>
-                                <property name="x_options">GTK_FILL</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <widget class="GtkLabel" id="labelUsplashGeneration">
-                                <property name="visible">True</property>
-                                <property name="xalign">0</property>
-                                <property name="label" translatable="yes">Usplash Generation</property>
-                              </widget>
-                              <packing>
-                                <property name="top_attach">4</property>
-                                <property name="bottom_attach">5</property>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options"></property>
-                                <property name="y_padding">5</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <widget class="GtkLabel" id="labelUsplashGenerationInfo">
-                                <property name="visible">True</property>
-                                <property name="xalign">0</property>
-                                <property name="label" translatable="yes">&lt;b&gt;Note:&lt;/b&gt; &lt;b&gt;Dapper&lt;/b&gt;: The image must be a .png and must be 640x400 and 16 colors (indexed). &lt;b&gt;Edgy&lt;/b&gt;: The image must be a .png and no more than 256 colors (indexed). Otherwise, the bootsplash will be black.</property>
-                                <property name="use_markup">True</property>
-                                <property name="wrap">True</property>
-                              </widget>
-                              <packing>
-                                <property name="left_attach">1</property>
-                                <property name="right_attach">2</property>
-                                <property name="top_attach">5</property>
-                                <property name="bottom_attach">6</property>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options"></property>
-                                <property name="y_padding">5</property>
                               </packing>
                             </child>
                             <child>
@@ -907,39 +734,6 @@ splash and the installed usplash image.</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <widget class="GtkLabel" id="labelGnomeSplashScreen">
-                                                <property name="visible">True</property>
-                                                <property name="xalign">0</property>
-                                                <property name="label" translatable="yes">Splash Screen:</property>
-                                              </widget>
-                                              <packing>
-                                                <property name="top_attach">2</property>
-                                                <property name="bottom_attach">3</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"></property>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <widget class="GtkButton" id="buttonBrowseGnomeSplashScreen">
-                                                <property name="label">...</property>
-                                                <property name="width_request">32</property>
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">True</property>
-                                                <property name="receives_default">False</property>
-                                                <property name="use_underline">True</property>
-                                                <signal name="clicked" handler="on_buttonBrowseGnomeSplashScreen_clicked"/>
-                                              </widget>
-                                              <packing>
-                                                <property name="left_attach">2</property>
-                                                <property name="right_attach">3</property>
-                                                <property name="top_attach">2</property>
-                                                <property name="bottom_attach">3</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"></property>
-                                                <property name="x_padding">5</property>
-                                              </packing>
-                                            </child>
-                                            <child>
                                               <widget class="GtkComboBoxEntry" id="comboboxentryGnomeGdmTheme">
                                                 <property name="width_request">150</property>
                                                 <property name="visible">True</property>
@@ -951,21 +745,6 @@ splash and the installed usplash image.</property>
                                                 <property name="y_options">GTK_FILL</property>
                                                 <property name="x_padding">10</property>
                                                 <property name="y_padding">5</property>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <widget class="GtkEntry" id="entryGnomeSplashScreenFilename">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">True</property>
-                                              </widget>
-                                              <packing>
-                                                <property name="left_attach">1</property>
-                                                <property name="right_attach">2</property>
-                                                <property name="top_attach">2</property>
-                                                <property name="bottom_attach">3</property>
-                                                <property name="x_options">GTK_EXPAND | GTK_SHRINK | GTK_FILL</property>
-                                                <property name="y_options"></property>
-                                                <property name="x_padding">10</property>
                                               </packing>
                                             </child>
                                             <child>

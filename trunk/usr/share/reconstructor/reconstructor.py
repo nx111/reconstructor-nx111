@@ -27,6 +27,7 @@ import locale
 import gettext
 import re
 import apt
+import apt_pkg
 import commands
 import urllib
 import ConfigParser
@@ -61,7 +62,7 @@ def find_newest_kernel_version(base):
                 full_path = os.path.join(base, item)        
                 if re_file.match(item) and os.path.isfile(full_path):
                         ver1=re_file.sub('',item)
-                        if apt.VersionCompare(ver,ver1)<0:
+                        if apt_pkg.version_compare(ver,ver1)<0:
                              ver=ver1
                 else:
                         continue
@@ -100,6 +101,7 @@ class Reconstructor:
         self.intrepidVersion = '8.10'
         self.jauntyVersion = '9.04'
         self.karmicVersion = '9.10'
+	self.saucyVersion = '13.10'
         self.moduleDir = os.getcwd() + '/modules/'
         self.mountDir = '/media/cdrom'
         self.tmpDir = "tmp"
@@ -235,8 +237,7 @@ class Reconstructor:
             "on_buttonBrowseIsoFilename_clicked" : self.on_buttonBrowseIsoFilename_clicked,
             "on_checkbuttonBuildIso_toggled" : self.on_checkbuttonBuildIso_toggled,
             "on_buttonBrowseLiveCdFilename_clicked" : self.on_buttonBrowseLiveCdFilename_clicked,
-            "on_buttonBrowseUsplashFilename_clicked" : self.on_buttonBrowseUsplashFilename_clicked,
-            "on_buttonBrowseGnomeDesktopWallpaper_clicked" : self.on_buttonBrowseGnomeDesktopWallpaper_clicked,
+             "on_buttonBrowseGnomeDesktopWallpaper_clicked" : self.on_buttonBrowseGnomeDesktopWallpaper_clicked,
             "on_buttonBrowseGnomeFont_clicked" : self.on_buttonBrowseGnomeFont_clicked,
             "on_buttonBrowseGnomeDocumentFont_clicked" : self.on_buttonBrowseGnomeDocumentFont_clicked,
             "on_buttonBrowseGnomeDesktopFont_clicked": self.on_buttonBrowseGnomeDesktopFont_clicked,
@@ -245,13 +246,10 @@ class Reconstructor:
             "on_buttonImportGnomeTheme_clicked" : self.on_buttonImportGnomeTheme_clicked,
             "on_buttonImportGnomeThemeIcons_clicked" : self.on_buttonImportGnomeThemeIcons_clicked,
             "on_buttonImportGdmTheme_clicked" : self.on_buttonImportGdmTheme_clicked,
-            "on_buttonBrowseGnomeSplashScreen_clicked" : self.on_buttonBrowseGnomeSplashScreen_clicked,
-            "on_buttonBrowseLiveCdSplashFilename_clicked" : self.on_buttonBrowseLiveCdSplashFilename_clicked,
             "on_buttonSoftwareCalculateIsoSize_clicked" : self.on_buttonSoftwareCalculateIsoSize_clicked,
             "on_buttonSoftwareApply_clicked" : self.on_buttonSoftwareApply_clicked,
             "on_buttonInteractiveEditLaunch_clicked" : self.on_buttonInteractiveEditLaunch_clicked,
             "on_buttonInteractiveClear_clicked" : self.on_buttonInteractiveClear_clicked,
-            "on_buttonUsplashGenerate_clicked" : self.on_buttonUsplashGenerate_clicked,
             "on_buttonOptimizeShutdownRestore_clicked" : self.on_buttonOptimizeShutdownRestore_clicked,
             "on_checkbuttonOptimizationStartupEnable_toggled" : self.on_checkbuttonOptimizationStartupEnable_toggled,
             "on_buttonCustomizeLaunchTerminal_clicked" : self.on_buttonCustomizeLaunchTerminal_clicked,
@@ -432,7 +430,7 @@ class Reconstructor:
             print _('mkisofs NOT FOUND (needed for ISO generation)')
             dependList += 'mkisofs\n'
         if commands.getoutput('which gcc') == '':
-            print _('gcc NOT FOUND (needed for Usplash generation and VMWare/Qemu installation)')
+            print _('gcc NOT FOUND (needed for VMWare/Qemu installation)')
             dependList += 'gcc\n'
         if commands.getoutput('which make') == '':
             print _('make NOT FOUND (needed for VMWare/Qemu installation)')
@@ -443,15 +441,7 @@ class Reconstructor:
         if commands.getoutput('which Xephyr') == '':
             print _('Xephyr NOT Found (needed for ChrootX)')
             dependList += 'xserver-xephyr\n'
-        # dapper usplash dependency
-        if os.path.exists('/usr/include/bogl') == False:
-            print _('libbogl-dev NOT FOUND (needed for Dapper Usplash Generation)')
-            dependList += 'libbogl-dev\n'
-        # edgy usplash dependency
-        if commands.getoutput('which pngtousplash') == '':
-            print _('libusplash-dev NOT FOUND (needed for Usplash Generation)')
-            dependList += 'libusplash-dev\n'
-        # gpg
+         # gpg
         if commands.getoutput('which gpg') == '':
             print _('gpg NOT FOUND (needed for Alternate Key Signing)')
             dependList += 'gpg\n'
@@ -2182,55 +2172,6 @@ class Reconstructor:
             print errText, detail
             pass
 
-    # Usplash Generation
-    def generateUsplash(self, pngFilename, outputFilename):
-        try:
-            print _('Generating Usplash library...')
-            if self.cdUbuntuVersion == self.dapperVersion:
-                # create tmp working dir
-                os.popen('mkdir /tmp/usplash')
-                # copy png to tmp dir
-                os.popen('cp ' + pngFilename + ' /tmp/usplash/usplash-artwork.png')
-                # generate usplash
-                os.popen('cd /tmp/usplash ; pngtobogl usplash-artwork.png > usplash-artwork.c')
-                os.popen('cd /tmp/usplash ; gcc -Os -g -I/usr/include/bogl -fPIC -c usplash-artwork.c -o usplash-artwork.o')
-                os.popen('cd /tmp/usplash ; gcc -shared -Wl,-soname,usplash-artwork.so usplash-artwork.o -o ' + outputFilename)
-                # cleanup
-                os.popen('rm -Rf /tmp/usplash')
-            else:
-                # create tmp working dir
-                if os.path.exists("/tmp/usplash") != True:
-                    os.makedirs("/tmp/usplash")
-                # copy user's .png
-                os.popen('cp -f \"' + pngFilename + '\" ' + '/tmp/usplash/usplash.png')
-                # copy needed libraries and .png's
-                os.popen('cp -f \"' + os.getcwd() + '/lib/usplash-theme.c\" ' + '/tmp/usplash/')
-                os.popen('cp -f \"' + os.getcwd() + '/lib/throbber_back.png\" ' + '/tmp/usplash/')
-                os.popen('cp -f \"' + os.getcwd() + '/lib/throbber_fore.png\" ' + '/tmp/usplash/')
-                # generate .c source
-                print _("Generating .c source files...")
-                os.popen('cd /tmp/usplash ; pngtousplash usplash.png > usplash.c')
-                os.popen('cd /tmp/usplash ; pngtousplash throbber_back.png > throbber_back.c')
-                os.popen('cd /tmp/usplash ; pngtousplash throbber_fore.png > throbber_fore.c')
-                # compile .c to .o
-                print _("Compiling .c source files...")
-                os.popen('cd /tmp/usplash ; gcc -g -Wall -fPIC -o usplash.o -c usplash.c')
-                os.popen('cd /tmp/usplash ; gcc -g -Wall -fPIC -o throbber_back.o -c throbber_back.c')
-                os.popen('cd /tmp/usplash ; gcc -g -Wall -fPIC -o throbber_fore.o -c throbber_fore.c')
-                os.popen('cd /tmp/usplash ; gcc -g -Wall -fPIC -o usplash-theme.o -c usplash-theme.c')
-                # compile to shared library
-                print _("Compiling to .so...")
-                #os.popen('gcc -g -Wall -fPIC -shared -o \"' + outputFilename + '\" ' + '/tmp/usplash/usplash_artwork.o /tmp/usplash/throbber_back.o /tmp/usplash/throbber_fore.o /tmp/usplash/usplash-theme.o')
-                os.popen('cd /tmp/usplash ; gcc -g -Wall -fPIC -shared -o \"' + outputFilename + '\" ' + '*.o')
-                # cleanup
-                os.popen('rm -Rf /tmp/usplash')
-
-        except Exception, detail:
-            # cleanup
-            os.popen('rm -Rf /tmp/usplash')
-            errText = _('Error generating Usplash library: ')
-            print errText, detail
-            pass
 
     # launch chroot terminal
     def launchTerminal(self):
@@ -3431,40 +3372,6 @@ class Reconstructor:
             # hide filename entry
             self.wTree.get_widget("tableAltCd").hide()
 
-    def on_buttonBrowseUsplashFilename_clicked(self, widget):
-        # filter only so files
-        soFilter = gtk.FileFilter()
-        soFilter.set_name("Usplash Library Files (.so)")
-        soFilter.add_pattern("*.so")
-        # create dialog
-        dlgTitle = _('Select Usplash')
-        soDlg = gtk.FileChooserDialog(title=dlgTitle, parent=self.wTree.get_widget("windowMain"), action=gtk.FILE_CHOOSER_ACTION_OPEN, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK), backend=None)
-        soDlg.add_filter(soFilter)
-        soDlg.set_select_multiple(False)
-        response = soDlg.run()
-        if response == gtk.RESPONSE_OK :
-            self.wTree.get_widget("entryUsplashFilename").set_text(soDlg.get_filename())
-            soDlg.hide()
-        elif response == gtk.RESPONSE_CANCEL :
-            soDlg.destroy()
-
-    def on_buttonBrowseLiveCdSplashFilename_clicked(self, widget):
-        # filter only pcx files
-        pcxFilter = gtk.FileFilter()
-        pcxFilter.set_name("PCX Images (.pcx)")
-        pcxFilter.add_pattern("*.pcx")
-        # create dialog
-        dlgTitle = _('Select Live CD Splash Image')
-        pxcDlg = gtk.FileChooserDialog(title=dlgTitle, parent=self.wTree.get_widget("windowMain"), action=gtk.FILE_CHOOSER_ACTION_OPEN, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK), backend=None)
-        pxcDlg.add_filter(pcxFilter)
-        pxcDlg.set_select_multiple(False)
-        response = pxcDlg.run()
-        if response == gtk.RESPONSE_OK:
-            self.wTree.get_widget("entryLiveCdSplashImage").set_text(pxcDlg.get_filename())
-            pxcDlg.hide()
-        elif response == gtk.RESPONSE_CANCEL:
-            pxcDlg.destroy()
-
 
     def on_buttonBrowseGnomeDesktopWallpaper_clicked(self, widget):
         # filter only image files
@@ -3486,25 +3393,6 @@ class Reconstructor:
         elif response == gtk.RESPONSE_CANCEL :
             imgDlg.destroy()
 
-    def on_buttonBrowseGnomeSplashScreen_clicked(self, widget):
-        # filter only image files
-        imgFilter = gtk.FileFilter()
-        imgFilter.set_name("Images (.jpg, .png, .bmp)")
-        imgFilter.add_pattern("*jpeg")
-        imgFilter.add_pattern("*.jpg")
-        imgFilter.add_pattern("*.png")
-        imgFilter.add_pattern("*.bmp")
-        # create dialog
-        dlgTitle = _('Select Splash Screen')
-        imgDlg = gtk.FileChooserDialog(title=dlgTitle, parent=self.wTree.get_widget("windowMain"), action=gtk.FILE_CHOOSER_ACTION_OPEN, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK), backend=None)
-        imgDlg.add_filter(imgFilter)
-        imgDlg.set_select_multiple(False)
-        response = imgDlg.run()
-        if response == gtk.RESPONSE_OK :
-            self.wTree.get_widget("entryGnomeSplashScreenFilename").set_text(imgDlg.get_filename())
-            imgDlg.hide()
-        elif response == gtk.RESPONSE_CANCEL :
-            imgDlg.destroy()
 
     def on_buttonBrowseGnomeFont_clicked(self, widget):
         # font selection dialog
@@ -3712,52 +3600,6 @@ class Reconstructor:
         else:
             warnDlg.destroy()
 
-    def on_buttonUsplashGenerate_clicked(self,widget):
-        pngFile = None
-        outputFile = None
-        # filter only tar.gz files
-        dlgFilter = gtk.FileFilter()
-        dlgFilter.set_name("PNG Images (.png)")
-        dlgFilter.add_pattern("*.png")
-        # create dialog
-        dlgTitle = _('Select PNG Image')
-        dlg = gtk.FileChooserDialog(title=dlgTitle, parent=self.wTree.get_widget("windowMain"), action=gtk.FILE_CHOOSER_ACTION_OPEN, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK), backend=None)
-        dlg.add_filter(dlgFilter)
-        dlg.set_select_multiple(False)
-        dlg.set_current_folder(os.environ['HOME'])
-        response = dlg.run()
-        if response == gtk.RESPONSE_OK :
-            # set var
-            pngFile = dlg.get_filename()
-            dlg.destroy()
-        elif response == gtk.RESPONSE_CANCEL :
-            dlg.destroy()
-
-        # if pngFile is selected, launch dialog for output file
-        if pngFile != None:
-            # filter only iso files
-            soFilter = gtk.FileFilter()
-            soFilter.set_name("Usplash Library Files")
-            soFilter.add_pattern("*.so")
-            # create dialog
-            dlgTitle = _('Save Usplash As...')
-            soDlg = gtk.FileChooserDialog(title=dlgTitle, parent=self.wTree.get_widget("windowMain"), action=gtk.FILE_CHOOSER_ACTION_SAVE, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_SAVE, gtk.RESPONSE_OK), backend=None)
-            soDlg.add_filter(soFilter)
-            soDlg.set_select_multiple(False)
-            soDlg.set_current_folder(os.environ['HOME'])
-            response = soDlg.run()
-            if response == gtk.RESPONSE_OK :
-                outputFile = soDlg.get_filename()
-                soDlg.destroy()
-            elif response == gtk.RESPONSE_CANCEL :
-                soDlg.destroy()
-
-        if pngFile != None and outputFile != None:
-            # generate .so
-            self.generateUsplash(pngFile, outputFile)
-            # check for file and assign .so splash image field
-            if os.path.exists(outputFile):
-                self.wTree.get_widget("entryUsplashFilename").set_text(outputFile)
 
     def on_buttonOptimizeShutdownRestore_clicked(self, widget):
         self.setBusyCursor()
@@ -4149,7 +3991,11 @@ class Reconstructor:
 
             # extract initrd
             print _("Extracting Initial Ram Disk (initrd)...")
-            os.popen('cd \"' + os.path.join(self.customDir, "initrd/") + '\"; cat ' + self.mountDir + '/casper/initrd.lz | lzma -d | cpio -i')
+            if apt_pkg.version_compare(self.cdUbuntuVersion,"9.10") >= 0:
+                os.popen('cd \"' + os.path.join(self.customDir, "initrd/") + '\"; cat ' + self.mountDir + '/casper/initrd.lz | lzma -d | cpio -i')
+            else:
+                os.popen('cd \"' + os.path.join(self.customDir, "initrd/") + '\"; cat ' + self.mountDir + '/casper/initrd | gzip -d | cpio -i')
+
 
             # umount cdrom
             os.popen("umount " + self.mountDir)
@@ -4309,11 +4155,18 @@ class Reconstructor:
 
     def liveCDKernel(self):
         os.popen('cd \"' + self.customDir + '\"; ' + 'rm -Rf initrd/*')
-        os.popen('cp -f \"' + os.path.join(self.customDir, "root/initrd.img") + '\" \"' + os.path.join(self.customDir, "initrd/initrd.lz") + '\"')
+        if apt_pkg.version_compare(self.cdUbuntuVersion, "9.10") >= 0:
+            os.popen('cp -f \"' + os.path.join(self.customDir, "root/initrd.img") + '\" \"' + os.path.join(self.customDir, "initrd/initrd.lz") + '\"')
+        else:
+            os.popen('cp -f \"' + os.path.join(self.customDir, "root/initrd.img") + '\" \"' + os.path.join(self.customDir, "initrd/initrd") + '\"')
+
         os.popen('cd \"' + os.path.join(self.customDir, "initrd/") + '\"; cat ' + 'initrd.lz | lzma -d | cpio -i')
         os.popen('rm -Rf \"' + os.path.join(self.customDir, "initrd/initrd") + '\"')
-        os.popen('rm -Rf \"' + os.path.join(self.customDir, "remaster/casper/vmlinuz") + '\"')
-        os.popen('cp -f \"' + os.path.join(self.customDir, "root/vmlinuz") + '\" \"' + os.path.join(self.customDir, "remaster/casper/vmlinuz") + '\"')
+        os.popen('rm -Rf \"' + os.path.join(self.customDir, "remaster/casper/vmlinuz*") + '\"')
+	if apt_pkg.version_compare(self.cdUbuntuVersion,"13.10") >= 0: 
+           os.popen('cp -f \"' + os.path.join(self.customDir, "root/vmlinuz") + '\" \"' + os.path.join(self.customDir, "remaster/casper/vmlinuz.efi") + '\"')
+        else:
+           os.popen('cp -f \"' + os.path.join(self.customDir, "root/vmlinuz") + '\" \"' + os.path.join(self.customDir, "remaster/casper/vmlinuz") + '\"')
 
 # ---------- Customize Live ---------- #
     def customize(self):
@@ -4349,10 +4202,6 @@ class Reconstructor:
             return
 
         # boot customization
-        # live cd splash
-        if self.wTree.get_widget("entryLiveCdSplashImage").get_text() != "":
-            print _("Customizing Live CD Splash Image...")
-            os.popen('cp -f \"' + self.wTree.get_widget("entryLiveCdSplashImage").get_text() + '\" \"' + os.path.join(self.customDir, "remaster/isolinux/splash.pcx") + '\"')
         # live cd text color
         if os.path.exists(os.path.join(self.customDir, "remaster/isolinux/isolinux.cfg")):
             print _("Setting Live CD Text color...")
@@ -4376,14 +4225,6 @@ class Reconstructor:
             f.writelines(lines)
             f.close()
 
-        # usplash image
-        if self.wTree.get_widget("entryUsplashFilename").get_text() != "":
-            print _("Customizing boot usplash...")
-            os.popen('cp -f \"' + self.wTree.get_widget("entryUsplashFilename").get_text() + '\" \"' + os.path.join(self.customDir, "root/usr/lib/usplash/usplash-theme-reconstructor.so") + '\"')
-            os.popen('cp -f \"' + self.wTree.get_widget("entryUsplashFilename").get_text() + '\" \"' + os.path.join(self.customDir, "initrd/usr/lib/usplash/usplash-artwork.so") + '\"')
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' update-alternatives --install /etc/alternatives/usplash-artwork.so usplash-artwork.so /usr/lib/usplash/usplash-theme-reconstructor.so 10 ')
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' update-alternatives --set usplash-artwork.so /usr/lib/usplash/usplash-theme-reconstructor.so ')
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' ln -sf /etc/alternatives/usplash-artwork.so /usr/lib/usplash/usplash-artwork.so ')
             # regenerate initrd for root
             os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' update-initramfs -uk `uname -r` ')
         # LiveCD kernel
@@ -4479,16 +4320,6 @@ class Reconstructor:
             f=open(os.path.join(self.customDir, "root/etc/gdm/gdm.conf-custom"), 'w')
             f.write(conf)
             f.close()
-
-
-        # splash screen
-        if self.wTree.get_widget("entryGnomeSplashScreenFilename").get_text() != "":
-            print _("Customizing Gnome Splash Screen...")
-            path, filename = os.path.split(self.wTree.get_widget("entryGnomeSplashScreenFilename").get_text())
-            os.popen('cp -f \"' + self.wTree.get_widget("entryGnomeSplashScreenFilename").get_text() + '\" \"' + os.path.join(self.customDir, "root/usr/share/pixmaps/splash/") + filename + '\"')
-            os.popen('chmod 777 \"' + os.path.join(self.customDir, "root/usr/share/pixmaps/splash/") + filename + '\"')
-            # set splash screen in gconf
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' gconftool-2 --direct --config-source xml:readwrite:/etc/gconf/gconf.xml.defaults --type string --set /apps/gnome-session/options/splash_image \"splash/' + filename + '\"')
 
 
         # set up apt repos
@@ -5183,7 +5014,6 @@ class Reconstructor:
             if os.path.exists(os.path.join(self.customDir, "initrd")):
                 print _("Creating Initrd...")
                 kver=find_newest_kernel_version(os.path.join(self.customDir, "root/boot"))
-                #os.popen('cd \"' + os.path.join(self.customDir, "initrd/") + '\"; find | cpio -H newc -o | lzma > ../initrd.lz' + '; mv -f ../initrd.lz \"' + os.path.join(self.customDir, "remaster/casper/initrd.lz") + '\"')
 	        scr = '#!/bin/sh\n#\n cd /boot\n if grep COMPRESS= /etc/initramfs-tools/initramfs.conf>/dev/null ; then \n\t/usr/sbin/mkinitramfs -c lzma -o initrd.img-'+kver + ' '+kver+'\n else\n\t cat /usr/sbin/mkinitramfs | sed -e \"s/gzip/lzma/g\" >/tmp/mkinitramfs-lzma \n\t chmod +x /tmp/mkinitramfs-lzma\n\t /tmp/mkinitramfs-lzma -o initrd.img-'+kver + ' '+kver+' \n\t rm -f /tmp/mkinitramfs-lzma\n fi\n\trm -f /vmlinuz /initrd.img\n\tcd /\n\tln -s boot/vmlinuz-'+kver+' vmlinuz\n\tln -s boot/initrd.img-'+kver+' initrd.img\n'
 	        f=open(os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"), 'w')
 	        f.write(scr)
@@ -5191,8 +5021,15 @@ class Reconstructor:
 	        os.popen('chmod a+x ' + os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"))
                 os.popen('chroot '+os.path.join(self.customDir, "root/")+' /tmp/lmkinitrafs.sh >/dev/null 2>&1')
 	        os.popen('rm -f ' + os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"))
-		os.popen('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd.lz"))		
-		os.popen('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz"))		
+                if apt_pkg.version_compare(self.cdUbuntuVersion,"9.10") >= 0:
+		    os.popen('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd.lz"))
+                else:
+		    os.popen('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd"))
+                if apt_pkg.version_compare(self.cdUbuntuVersion,"13.10") >= 0:
+                    os.popen('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz.efi"))		
+                else:
+                    os.popen('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz"))		
+
         # build squash root
         if self.buildSquashRoot == True:
             # create squashfs root
@@ -5220,7 +5057,7 @@ class Reconstructor:
                 print _("Building SquashFS root...")
                 # check for alternate mksquashfs
                 compStr=''
-                if apt.VersionCompare(self.cdUbuntuVersion,'10.04')>0:
+                if apt_pkg.version_compare(self.cdUbuntuVersion,'10.04')>0:
                         compStr="-comp xz"
                 if mksquashfs == '':
                     os.popen(self.timeCmd + ' mksquashfs \"' + os.path.join(self.customDir, "root/") + '\"' + ' \"' + os.path.join(self.customDir, "remaster/casper/filesystem.squashfs") + '\" ' + compStr)
@@ -5314,7 +5151,6 @@ class Reconstructor:
             if os.path.exists(os.path.join(self.customDir, "initrd_alt")):
                 print _("Creating Initrd...")
                 kver=find_newest_kernel_version(os.path.join(self.customDir, "root/boot"))
-                #os.popen('cd \"' + os.path.join(self.customDir, "initrd_alt/") + '\"; find | cpio -H newc -o | lzma > ../initrd.lz' + '; mv -f ../initrd.lz \"' + os.path.join(self.customDir, "remaster_alt/install/initrd.lz") + '\"')
 	        scr = '#!/bin/sh\n#\n  cat /usr/sbin/mkinitramfs | sed -e \"s/gzip/lzma/g\" >/tmp/mkinitramfs-lzma ;chmod +x /tmp/mkinitramfs-lzma;cd /boot; /tmp/mkinitramfs-lzma -o initrd.img-'+kver+' '+kver+';rm -f /tmp/mkinitramfs-lzma\n'
 	        f=open(os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"), 'w')
 	        f.write(scr)
@@ -5322,8 +5158,15 @@ class Reconstructor:
 	        os.popen('chmod a+x ' + os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"))
                 os.popen('chroot \"'+os.path.join(self.customDir, "root/")+'\" /tmp/lmkinitrafs.sh >/dev/null 2>&1')
 	        os.popen('rm -f ' + os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"))
-		os.popen('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd.lz"))		
-		os.popen('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz"))		
+                if apt_pkg.version_compare(self.cdUbuntuVersion,"9.10") >= 0:
+		    os.popen('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd.lz"))		
+                else:
+		    os.popen('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd"))		
+                if apt_pkg.version_compare(self.cdUbuntuVersion,"13.10") >= 0:
+		    os.popen('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz.efi"))
+                else:
+		    os.popen('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz"))
+		
         # build iso
         if self.buildAltIso == True:
             # create iso
@@ -5444,8 +5287,8 @@ class AltPackageHelper:
                                     'ssh-askpass-gnome', 'synaptic', 'tangerine-icon-theme', 'tango-icon-theme',
                                     'tango-icon-theme-common', 'tomboy', 'totem', 'totem-mozilla', 'tsclient',
                                     'ttf-bitstream-vera', 'ttf-dejavu', 'ttf-freefont', 'ubuntu-artwork',
-                                    'ubuntu-docs', 'ubuntu-sounds', 'unzip', 'update-notifier', 'usplash',
-                                    'usplash-theme-ubuntu', 'vino', 'wvdial', 'x-ttcidfont-conf',
+                                    'ubuntu-docs', 'ubuntu-sounds', 'unzip', 'update-notifier',  'vino', 
+				    'wvdial', 'x-ttcidfont-conf',
                                     'xkeyboard-config', 'xorg', 'xsane', 'xscreensaver-data', 'xscreensaver-gl',
                                     'xterm', 'xvncviewer', 'yelp', 'zenity', 'zip')
 
