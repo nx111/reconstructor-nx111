@@ -1,0 +1,139 @@
+#!/bin/sh
+#
+# Reconstructor Module - Install Lightscribe Software
+#	Copyright (c) 2008  Reconstructor Team <http://reconstructor.aperantis.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+RMOD_ENGINE=1.0
+RMOD_CATEGORY='Software'
+RMOD_SUBCATEGORY='Multimedia'
+RMOD_NAME='Lightscribe'
+RMOD_AUTHOR='Reconstructor Team'
+RMOD_VERSION=0.2
+RMOD_DESCRIPTION='Installs Lightscribe and Labeler'
+RMOD_RUN_IN_CHROOT=True
+RMOD_UPDATE_URL='http://reconstructor.aperantis.com/update/modules/'
+
+# Color Codes
+red='\e[0;31m'
+blue='\e[0;34m'
+endColor='\e[0m'
+
+COUNT=1
+
+echo Running $RMOD_NAME...
+
+mkdir /tmp/lightscribe
+cd /tmp/lightscribe
+
+# Download the 32-bit .deb files and an icon for Lightscribe
+
+wget http://download.lightscribe.com/ls/lightscribe-1.18.4.1-linux-2.6-intel.deb
+# Check the deb was downloaded, else keep trying to download it...
+while [ ! -e /tmp/lightscribe/lightscribe-1.18.4.1-linux-2.6-intel.deb ]
+do
+    echo -e "${red}Lightscribe System Software installer Download Failed. Attempt #"$COUNT" Retrying...${endColor}"
+    wget http://download.lightscribe.com/ls/lightscribe-1.18.4.1-linux-2.6-intel.deb
+    let COUNT=COUNT+1
+done
+echo -e "${blue}Lightscribe System Software installer was successfully downloaded.${endColor}"
+COUNT=1
+
+wget http://uploads.mitechie.com/lightscribe/4l_1.0-r6_i386.deb
+# Check the deb was downloaded, else keep trying to download it...
+while [ ! -e /tmp/lightscribe/4l_1.0-r6_i386.deb ]
+do
+    echo -e "${red}Lacie Lightscribe Labeler installer Download Failed. Attempt #"$COUNT" Retrying...${endColor}"
+    wget http://uploads.mitechie.com/lightscribe/4l_1.0-r6_i386.deb
+    let COUNT=COUNT+1
+done
+echo -e "${blue}Lacie Lightscribe Labeler installer was successfully downloaded.${endColor}"
+COUNT=1
+
+wget http://www.debianhelp.org/files/images/10052-BlackBeast-Lightscribe.png
+# Check the deb was downloaded, else keep trying to download it...
+while [ ! -e /tmp/lightscribe/10052-BlackBeast-Lightscribe.png ]
+do
+    echo -e "${red}Lightscribe Graphic Download Failed. Attempt #"$COUNT" Retrying...${endColor}"
+    #wget http://lawrencecomputing.dyn-o-saur.com/lightscribe/lightscribe.png
+    wget http://www.debianhelp.org/files/images/10052-BlackBeast-Lightscribe.png
+    let COUNT=COUNT+1
+done
+echo -e "${blue}Lightscribe Graphic was successfully downloaded.${endColor}"
+COUNT=1
+
+# if x86_64, install ia32-libs so lib32 dir will exist.
+ARCH=`uname -m`
+if [ $ARCH = "x86_64" ]; then
+apt-get install -y ia32-libs
+fi
+
+# Install LightScribe Host Software and LightScribe Labeling Software in that order
+# --force-architecture is used in case your LiveCD is 64-bit
+dpkg --force-architecture -i lightscribe-1.18.4.1-linux-2.6-intel.deb
+dpkg --force-architecture -i 4l_1.0-r6_i386.deb
+
+ln -s /usr/lib/liblightscribe.so.1 /usr/lib32/
+ln -s /usr/lib/liblightscribe.so /usr/lib32/
+ldconfig
+
+# Copy the icon file into Ubuntu's shared icon directory
+cp 10052-BlackBeast-Lightscribe.png /usr/share/pixmaps/4L-gui.png
+
+# Remove the old Menu entries in case someone runs this module more than once
+rm -rf /usr/share/applications/4L-gui-kde.desktop
+rm -rf /usr/share/applications/4L-gui-gnome.desktop
+
+# Create a KDE menu item
+echo "[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=Lacie Lightscribe Labeler
+GenericName=Lightscribe Labeler
+Comment=Label a disc with Lightscribe
+Exec=/usr/bin/4L-gui
+Terminal=false
+Type=Application
+Icon=/usr/share/pixmaps/4L-gui.png
+Categories=Application;AudioVideo;DiscBurning;
+Name[en_US]=Lacie Lightscribe Labeler
+GenericName[en_US]=Lightscribe Labeler
+OnlyShowIn=KDE;
+X-KDE-SubstituteUID=true" > /usr/share/applications/4L-gui-kde.desktop
+
+# Create a Gnome menu item
+echo "[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=Lacie Lightscribe Labeler
+GenericName=Lightscribe Labeler
+Comment=Label a disc with Lightscribe
+Exec=gksudo /usr/bin/4L-gui
+Terminal=false
+Type=Application
+Icon=/usr/share/pixmaps/4L-gui.png
+Categories=Application;AudioVideo;DiscBurning;
+Name[en_US]=Lacie Lightscribe Labeler
+GenericName[en_US]=Lightscribe Labeler
+NotShowIn=KDE;
+X-KDE-SubstituteUID=true" > /usr/share/applications/4L-gui-gnome.desktop
+
+# remove debs and other data
+cd ..
+rm -rf /tmp/lightscribe
+
+echo $RMOD_NAME Finished...
+exit 0

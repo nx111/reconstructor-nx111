@@ -1,0 +1,104 @@
+#!/bin/sh
+#
+# Reconstructor Module - Install VMWare Player
+#	Copyright (c) 2006  Reconstructor Team <http://reconstructor.aperantis.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+RMOD_ENGINE=1.0
+RMOD_CATEGORY='Software'
+RMOD_SUBCATEGORY='Virtualization'
+RMOD_NAME='VMWare Player'
+RMOD_AUTHOR='Reconstructor Team'
+RMOD_VERSION=0.2
+RMOD_DESCRIPTION='Installs VMWare Player'
+RMOD_RUN_IN_CHROOT=True
+RMOD_UPDATE_URL='http://reconstructor.aperantis.com/update/modules/'
+
+
+# FUNCTIONS
+function selectKernel 
+{
+	cd /lib/modules/
+	echo 'Kernels Found:'
+
+	for d in $( ls ); do
+		echo $d
+	done
+
+	echo 'Please enter the kernel version to use for building the drivers:'
+	
+	read KERNEL_VER
+
+	VALID=False
+	for k in $( ls ); do
+		if [ "$k" = "$KERNEL_VER" ]; then
+			VALID=True
+		fi
+	done
+	
+	if [ "$VALID" = "True" ]; then
+		echo "Using kernel $KERNEL_VER..."
+	else
+		echo 'Invalid version entered.  Please enter one of the following kernels:'
+		selectKernel
+	fi
+
+}
+
+# install
+echo Running $RMOD_NAME...
+
+# update for whichever is the vmware player gzip
+VMFILE='VMware-player-1.0.1-19317.tar.gz'
+
+cd /tmp
+# download file if it doesn't exist
+if [ ! -e $VMFILE ]; then
+	echo "Downloading $VMFILE..." 
+	wget http://download3.vmware.com/software/vmplayer/$VMFILE
+else
+	echo "Found existing $VMFILE..."
+fi
+
+# extract
+echo 'Extracting...'
+tar zxf $VMFILE
+
+# get kernel version
+selectKernel
+
+# install gcc, make, and header files for kernel
+sudo apt-get install -y gcc make linux-headers-$KERNEL_VER
+# create symbolic for the vmware-config.pl script
+sudo ln -sf /usr/src/linux-headers-$KERNEL_VER /usr/src/linux
+
+cd '/tmp/vmware-player-distrib'
+# run the vmware player installation script
+sudo ./vmware-install.pl
+
+cd ../
+# cleanup
+sudo rm -Rf /tmp/vmware-player-distrib
+sudo rm -Rf /tmp/$VMFILE
+
+echo
+echo "Finished..."
+echo
+
+sleep 3
+
+echo $RMOD_NAME Finished...
+exit 0

@@ -1,0 +1,39 @@
+#!/bin/sh
+#
+# Reconstructor Module - Uninstall Novell applications
+#	Copyright (c) 2006  Reconstructor Team <http://reconstructor.aperantis.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+RMOD_ENGINE=1.0
+RMOD_CATEGORY='Software'
+RMOD_SUBCATEGORY='Administration'
+RMOD_NAME='Novell Software Removal'
+RMOD_AUTHOR='Reconstructor Team'
+RMOD_VERSION=0.1
+RMOD_DESCRIPTION='Uninstalls Novell Software (evolution, mono, etc.)'
+RMOD_RUN_IN_CHROOT=True
+RMOD_UPDATE_URL='http://reconstructor.aperantis.com/update/modules/'
+
+# uninstall
+echo Running $RMOD_NAME...
+apt-get remove -y -f --purge evolution mono-runtime mono-gac mono-jit tomboy f-spot libdbus-1-cil libmono0 libmono1.0-cil libmono-cairo1.0-cil libmono-corlib1.0-cil libmono-data-tds1.0-cil libmono-security1.0-cil libmono-sharpzip0.84-cil libmono-sqlite1.0-cil libmono-system1.0-cil libmono-system-data1.0-cil libmono-system-web1.0-cil mono-common
+# clean any remaining unneeded packages
+apt-get -y autoremove
+# clean cache
+apt-get clean
+apt-get autoclean
+echo $RMOD_NAME Finished...
+exit 0

@@ -1,0 +1,4 @@
+#!/bin/bash
+cd /usr/share/reconstructor
+
+sudo python reconstructor.py

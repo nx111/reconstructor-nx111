@@ -1,0 +1,38 @@
+#!/bin/sh
+#
+# Reconstructor Module - Install Mencoder
+#	Copyright (c) 2006  Reconstructor Team <http://reconstructor.aperantis.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+RMOD_ENGINE=1.0
+RMOD_CATEGORY='Software'
+RMOD_SUBCATEGORY='Multimedia'
+RMOD_NAME='Mencoder'
+RMOD_AUTHOR='Reconstructor Team'
+RMOD_VERSION=0.2
+RMOD_DESCRIPTION='Installs MPlayer Movie Encoder'
+RMOD_RUN_IN_CHROOT=True
+RMOD_UPDATE_URL='http://reconstructor.aperantis.com/update/modules/'
+
+# install
+echo Running $RMOD_NAME...
+apt-get update
+apt-get install -y mencoder
+# clean cache
+apt-get clean
+apt-get autoclean
+echo $RMOD_NAME Finished...
+exit 0

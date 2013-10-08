@@ -1,0 +1,75 @@
+#!/bin/sh
+#
+# Reconstructor Module - Install Beryl
+#	Copyright (c) 2006  Reconstructor Team <http://reconstructor.aperantis.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+RMOD_ENGINE=1.0
+RMOD_CATEGORY='Software'
+RMOD_SUBCATEGORY='Graphics'
+RMOD_NAME='Beryl & Emerald'
+RMOD_AUTHOR='Reconstructor Team'
+RMOD_VERSION=0.5
+RMOD_DESCRIPTION='Installs Beryl accelerated window manager (compiz) and emerald theme engine.'
+RMOD_RUN_IN_CHROOT=True
+
+#BERYL_REPO="deb http://ehazlett.dyndns.org/debian ./"
+BERYL_REPO="deb http://reconstructor.aperantis.com/debian ./"
+BERYL_PACKAGES="beryl emerald-themes"
+
+# install
+echo Running $RMOD_NAME...
+# backup apt sources & cache
+cp /etc/apt/sources.list /etc/apt/sources.list_bkup
+cp -R /var/cache/apt /var/cache/apt_bkup
+
+# add beryl repo
+echo $BERYL_REPO > /etc/apt/sources.list
+
+apt-get update
+apt-get install -y --allow-unauthenticated $BERYL_PACKAGES
+
+# make sure directory exists for shortcut
+
+# make sure directory exists for shortcut
+if [ ! -d /etc/skel/Desktop ]
+	then mkdir -p /etc/skel/Desktop
+fi
+
+echo "Creating Beryl shortcut..."
+
+# create desktop shortcut for beryl
+echo "[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=Beryl
+Type=Application
+Exec=/usr/bin/beryl-manager
+Icon=/usr/share/pixmaps/beryl-manager.png
+Terminal=False
+Categories=GNOME;GTK;Application;System;" > /etc/skel/Desktop/beryl.desktop
+
+# chmod shortcut
+chmod a+x /etc/skel/Desktop/beryl.desktop
+
+echo "Restoring original apt/sources.list and apt cache..."
+# restore apt sources and cache
+mv /etc/apt/sources.list_bkup /etc/apt/sources.list
+rm -Rf /var/cache/apt
+mv /var/cache/apt_bkup /var/cache/apt
+
+echo $RMOD_NAME Finished...
+exit 0

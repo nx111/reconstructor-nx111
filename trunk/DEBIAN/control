@@ -1,0 +1,13 @@
+Package: reconstructor
+Version: 2.9-20
+Section: Utilities
+Priority: optional
+Architecture: all
+Maintainer: Evan Hazlett <ejhazlett@gmail.com>
+Installed-Size: 1600
+Depends: python-gtk2, python-glade2, python(>=2.3), squashfs-tools, coreutils, mkisofs, gcc, make, rsync, libbogl-dev, libusplash-dev, gnupg, dpkg-dev, fakeroot, apt-utils, xserver-xephyr,lzma,sed
+Description: Reconstructor Ubuntu CD Creator
+ Reconstructor Ubuntu CD Creator.
+ .
+ This package contains Reconstructor. Create custom Ubuntu cd's with 
+ optional additional software, custom Gnome themes, and much more.

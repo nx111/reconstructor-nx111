@@ -1,0 +1,12 @@
+Reconstructor
+
+Known Issues:
+
+-usplash generation does not yet work for Ubuntu 6.10 (Edgy) to current
+
+2.8.1 Known Issues:
+
+-Logging out from chrooted X in Ubuntu Hardy 8.04 causes the display to hang.
+ Instead of logging out open up a terminal and type: reboot or chvt 7
+ If your display doesn't hang, reboot anyway as it is most likely that important
+ system directories are still bound to the chroot.

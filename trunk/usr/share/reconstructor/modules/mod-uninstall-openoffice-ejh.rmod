@@ -1,0 +1,37 @@
+#!/bin/sh
+#
+# Reconstructor Module - Uninstall OpenOffice.org
+#	Copyright (c) 2006  Reconstructor Team <http://reconstructor.aperantis.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+RMOD_ENGINE=1.0
+RMOD_CATEGORY='Software'
+RMOD_SUBCATEGORY='Productivity'
+RMOD_NAME='OpenOffice.org (uninstall)'
+RMOD_AUTHOR='Reconstructor Team'
+RMOD_VERSION=0.2
+RMOD_DESCRIPTION='Uninstalls OpenOffice.org'
+RMOD_RUN_IN_CHROOT=True
+RMOD_UPDATE_URL='http://reconstructor.aperantis.com/update/modules/'
+
+# uninstall
+echo Running $RMOD_NAME...
+apt-get remove -y openoffice.org-base openoffice.org-calc openoffice.org-common  openoffice.org-draw openoffice.org-evolution openoffice.org-gnome openoffice.org-gtk openoffice.org-impress openoffice.org-java-common openoffice.org-math openoffice.org-writer python-uno openoffice.org openoffice.org-core openoffice.org-l10n-common
+# clean cache
+apt-get clean
+apt-get autoclean
+echo $RMOD_NAME Finished...
+exit 0

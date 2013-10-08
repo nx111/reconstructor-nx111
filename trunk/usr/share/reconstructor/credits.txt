@@ -1,0 +1,23 @@
+Reconstructor - Ubuntu CD creator
+	(c) Reconstructor Team, 2006-2008
+	http://reconstructor.aperantis.com
+
+CREDITS:
+
+	evan hazlett - development
+	jonathan greig - development
+	markus may - development/translation
+	john reese - development
+	harun hurma - graphics/translation
+
+	Many, many thanks to the translators both on and off Rosetta:
+		denis devedjian, nicolas pontoizeau, matheus pacheco de andrade,
+		asier zorrilla, timo elbert, piero lenzo, youri trioreau, henrik vinther,
+		merlinsvk, festor, mahdi, kilik, bossieman, dagaz, nimes
+
+if i have forgotten anyone, please let me know...
+
+
+
+Thanks to the above for helping create the Reconstructor Project...
+

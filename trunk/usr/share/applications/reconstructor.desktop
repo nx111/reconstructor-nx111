@@ -1,0 +1,16 @@
+[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=Reconstructor
+Type=Application
+Exec=sudo /usr/bin/reconstructor
+Icon=/usr/share/pixmaps/reconstructor.png
+X-GNOME-DocPath=
+Terminal=true
+Categories=GNOME;GTK;Application;System;
+Name[en]=Reconstructor
+GenericName[en]=Reconstructor
+Comment[en]=Ubuntu CD Creator
+GenericName=Reconstructor
+Comment=Ubuntu CD Creator
+GenericName[en_US]=Reconstructor
