@@ -5021,14 +5021,15 @@ class Reconstructor:
 	        os.popen('chmod a+x ' + os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"))
                 os.popen('chroot '+os.path.join(self.customDir, "root/")+' /tmp/lmkinitrafs.sh >/dev/null 2>&1')
 	        os.popen('rm -f ' + os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"))
-                if apt_pkg.version_compare(self.cdUbuntuVersion,"9.10") >= 0:
-		    os.popen('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd.lz"))
-                else:
-		    os.popen('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd"))
-                if apt_pkg.version_compare(self.cdUbuntuVersion,"13.10") >= 0:
-                    os.popen('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz.efi"))		
-                else:
-                    os.popen('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz"))		
+                if os.path.exists(os.path.join(self.customDir, "root/boot/initrd.img-"+kver)) and os.path.exists(os.path.join(self.customDir, "root/boot/vmlinuz-"+kver)):
+                    if apt_pkg.version_compare(self.cdUbuntuVersion,"9.10") >= 0:
+		        os.popen('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd.lz"))
+                    else:
+		        os.popen('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd"))
+                    if apt_pkg.version_compare(self.cdUbuntuVersion,"13.10") >= 0:
+                        os.popen('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz.efi"))		
+                    else:
+                        os.popen('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz"))		
 
         # build squash root
         if self.buildSquashRoot == True:
