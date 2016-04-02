@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 #
 # Reconstructor -- http://reconstructor.aperantis.com
 #    Copyright (c) 2006-2009  Reconstructor Team <reconstructor@aperantis.com>
@@ -31,7 +31,15 @@ import apt_pkg
 import commands
 import urllib
 import ConfigParser
-sys.path.append(os.getcwd() + '/lib/')
+
+path = sys.path[0]
+cur_file_dir = path
+if os.path.isdir(path):
+     cur_file_dir = path
+elif os.path.isfile(path):
+         cur_file_dir = os.path.dirname(path)
+
+sys.path.append(cur_file_dir + '/lib/')
 # import Reconstructor modules
 from Reconstructor.PackageHelper import PackageHelper
 
@@ -49,6 +57,7 @@ try:
 except Exception, detail:
     print detail
     sys.exit(1)
+
 
 def find_newest_kernel_version(base):   
         re_file = re.compile("initrd.img[-]")        
@@ -73,12 +82,12 @@ class Reconstructor:
     """Reconstructor - Creates custom ubuntu cds..."""
     def __init__(self):
         # vars
-        self.gladefile = os.getcwd() + '/glade/gui.glade'
-        self.iconFile = os.getcwd() + '/glade/app.png'
-        self.logoFile = os.getcwd() + '/glade/reconstructor.png'
-        self.terminalIconFile = os.getcwd() + '/glade/terminal.png'
-        self.chrootxIconFile = os.getcwd() + '/glade/chrootx.png'
-        self.updateIconFile = os.getcwd() + '/glade/update.png'
+        self.gladefile = cur_file_dir + '/glade/gui.glade'
+        self.iconFile = cur_file_dir + '/glade/app.png'
+        self.logoFile = cur_file_dir + '/glade/reconstructor.png'
+        self.terminalIconFile = cur_file_dir + '/glade/terminal.png'
+        self.chrootxIconFile = cur_file_dir + '/glade/chrootx.png'
+        self.updateIconFile = cur_file_dir + '/glade/update.png'
 
         self.appName = "Reconstructor"
         self.codeName = " \"\" "
@@ -102,7 +111,7 @@ class Reconstructor:
         self.jauntyVersion = '9.04'
         self.karmicVersion = '9.10'
 	self.saucyVersion = '13.10'
-        self.moduleDir = os.getcwd() + '/modules/'
+        self.moduleDir = cur_file_dir + '/modules/'
         self.mountDir = '/media/cdrom'
         self.tmpDir = "tmp"
         self.altRemasterDir = "remaster_alt"
@@ -127,7 +136,8 @@ class Reconstructor:
         self.createAltRemasterDir = False
         self.createAltInitrdRoot = False
         self.isoFilename = ""
-        self.buildLiveCdFilename = ''
+        self.buildLiveCdFilename = ""
+        self.cdArchIndex = 0
         self.setupComplete = False
         self.manualInstall = False
         self.watch = gtk.gdk.Cursor(gtk.gdk.WATCH)
@@ -204,6 +214,7 @@ class Reconstructor:
         self.moduleColumnPath = 9
         self.execModulesEnabled = False
         self.bootModulesEnabled = False
+        self.TerminalInitialized = False
         # time command for timing operations
         self.timeCmd = commands.getoutput('which time') + ' -f \"\nBuild Time: %E  CPU: %P\n\"'
 
@@ -402,9 +413,15 @@ class Reconstructor:
         if kernelVersion != '':
             #print 'kernelVersion='+kernelVersion
             if (os.path.exists(os.path.join(self.customDir,"root/boot/vmlinuz-"+kernelVersion))) == False:
-                os.popen('cp '+ os.path.join(self.customDir,"remaster/casper/vmlinuz* ") + os.path.join(self.customDir,"root/boot/vmlinuz-"+kernelVersion))
+                if (os.path.exists(os.path.join(self.customDir,"remaster/casper/vmlinuz.efi"))):
+                     os.popen('cp '+ os.path.join(self.customDir,"remaster/casper/vmlinuz.efi ") + os.path.join(self.customDir,"root/boot/vmlinuz-"+kernelVersion))
+                else:
+                     os.popen('cp '+ os.path.join(self.customDir,"remaster/casper/vmlinuz ") + os.path.join(self.customDir,"root/boot/vmlinuz-"+kernelVersion))
             if (os.path.exists(os.path.join(self.customDir,"root/boot/initrd.img-"+kernelVersion))) == False:
-                os.popen('cp '+ os.path.join(self.customDir,"remaster/casper/initrd* ") + os.path.join(self.customDir,"root/boot/initrd.img-"+kernelVersion))
+                if (os.path.exists(os.path.join(self.customDir,"remaster/casper/initrd.lz"))):
+                    os.popen('cp '+ os.path.join(self.customDir,"remaster/casper/initrd.lz ") + os.path.join(self.customDir,"root/boot/initrd.img-"+kernelVersion))
+                else:
+                    os.popen('cp '+ os.path.join(self.customDir,"remaster/casper/initrd ") + os.path.join(self.customDir,"root/boot/initrd.img-"+kernelVersion))
             if kernelFile:
                 if (os.path.exists(os.path.join(self.customDir,"root/"+kernelFile))):
                     kernelFileReady = True
@@ -690,7 +707,7 @@ class Reconstructor:
 
     # Handle Module Properties
     def getModuleProperties(self, moduleName):
-        print _('Loading module properties...')
+        #print _('Loading module properties...')
 
         fMod = file(os.path.join(self.moduleDir, moduleName), 'r')
 
@@ -763,7 +780,7 @@ class Reconstructor:
 
     # Loads modules
     def loadModules(self):
-        print _('Loading modules...')
+        #print _('Loading modules...')
         # generate model for treeview
         # create treestore of (install(bool), modulename, version, author, description, runInChroot(hidden), filepath(hidden))
         self.treeModel = None
@@ -808,7 +825,7 @@ class Reconstructor:
                 for f in files:
                     r, ext = os.path.splitext(f)
                     if ext == '.rmod':
-                        print 'Module: ' + f.replace('.rmod', '') + ' found...'
+                        #print 'Module: ' + f.replace('.rmod', '') + ' found...'
 
                         modPath = os.path.join(self.moduleDir, f)
 
@@ -1610,9 +1627,9 @@ class Reconstructor:
             config.optionxform = str
             config.read(os.path.join(os.environ['HOME'], ".reconstructor"))
             try:
-                 CustomDir=config.get('global','workdir')
+                 CustomDir = config.get('global','workdir')
             except:
-                 CustomDir=''
+                 CustomDir = ''
             if CustomDir:
                 self.wTree.get_widget("entryWorkingDir").set_text(CustomDir)
             return True
@@ -1644,9 +1661,9 @@ class Reconstructor:
                 if not config.has_section('global'):
                    config.add_section('global')
 		try: 
-			workdir=config.get('global','workdir')
+			workdir = config.get('global','workdir')
 		except:
-			workdir="."
+			workdir = "."
                 if workdir != self.customDir:
                       if not config.has_section('ISO'):
                          config.add_section('ISO')
@@ -1657,19 +1674,29 @@ class Reconstructor:
                       config.write(open(os.path.join(os.environ['HOME'], ".reconstructor"),'wb'))
 
                 try:
-                    IsoFilename=config.get('ISO','isofilename')
-	            cdDesc=config.get('ISO','cddesc')
+                    self.isoFilename = config.get('ISO','isofilename')
  	        except:
-                    IsoFilename=''
-                    cdDesc=''
+                    self.isoFilename = ''
+
+                try:
+	            self.cdDesc = config.get('ISO','cddesc')
+ 	        except:
+                    self.cdDesc = ''
+
+                try:
+	            self.cdArchIndex = int(config.get('ISO','cdarchidx'))
+ 	        except:
+                    self.cdArchIndex = 0
 
                 # set iso filenames
-                if IsoFilename:
-                    self.wTree.get_widget("entryLiveIsoFilename").set_text(IsoFilename)
+                if self.isoFilename:
+                    self.wTree.get_widget("entryLiveIsoFilename").set_text(self.isoFilename)
                 # set descriptions
-                if cdDesc:
-                    self.wTree.get_widget("entryLiveCdDescription").set_text(cdDesc)
-
+                if self.cdDesc:
+                    self.wTree.get_widget("entryLiveCdDescription").set_text(self.cdDesc)
+                
+                self.wTree.get_widget("comboboxLiveCdArch").set_active(self.cdArchIndex)
+                self.wTree.get_widget("comboboxAltBuildArch").set_active(self.cdArchIndex)
 
                 if self.checkSetup() == True:
                     if self.checkWorkingDir() == True:
@@ -1771,6 +1798,7 @@ class Reconstructor:
             #warnDlg.show()
             response = warnDlg.run()
             if response == gtk.RESPONSE_OK:
+                self.doneTerminal(forceMode=True,silentMode=True)
                 warnDlg.destroy()
                 self.setPage(self.pageLiveBuild)
                 # check for windows apps and enable/disable checkbox as necessary
@@ -1795,6 +1823,7 @@ class Reconstructor:
                config.add_section('ISO')
             config.set('ISO','isofilename',self.wTree.get_widget("entryLiveIsoFilename").get_text())
 	    config.set('ISO','cddesc',self.wTree.get_widget("entryLiveCdDescription").get_text())
+	    config.set('ISO','cdarchidx',self.wTree.get_widget("comboboxLiveCdArch").get_active())
             config.write(open(os.path.join(os.environ['HOME'], ".reconstructor"),'wb'))
             # build
             warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_YES, gtk.RESPONSE_OK))
@@ -1843,17 +1872,29 @@ class Reconstructor:
                       config.set('global','workdir',self.customDir)
                       config.write(open(os.path.join(os.environ['HOME'], ".reconstructor"),'wb'))
                 try:
-                    IsoFilename=config.get('ISO','isofilename')
-	            cdDesc=config.get('ISO','cddesc')
+                    self.isoFilename = config.get('ISO','isofilename')
  	        except:
-                    IsoFilename=''
-                    cdDesc=''
+                    self.isoFilename = ''
+
+                try:
+	            self.cdDesc = config.get('ISO','cddesc')
+ 	        except:
+                    self.cdDesc = ''
+
+                try:
+	            self.cdArchIndex = int(config.get('ISO','cdarchidx'))
+ 	        except:
+                    self.cdArchIndex = 0
+
                 # set iso filenames
-                if IsoFilename:
-                    self.wTree.get_widget("entryAltBuildIsoFilename").set_text(IsoFilename)
+                if self.isoFilename:
+                    self.wTree.get_widget("entryAltBuildIsoFilename").set_text(self.isoFilename)
                 # set descriptions
-                if cdDesc:
-                    self.wTree.get_widget("entryBuildAltCdDescription").set_text(cdDesc)
+                if self.cdDesc:
+                    self.wTree.get_widget("entryBuildAltCdDescription").set_text(self.cdDesc)
+
+                self.wTree.get_widget("comboboxLiveCdArch").set_active(self.cdArchIndex)
+                self.wTree.get_widget("comboboxAltBuildArch").set_active(self.cdArchIndex)
 
                 if self.checkAltSetup() == True:
                     if self.checkAltWorkingDir() == True:
@@ -2176,40 +2217,45 @@ class Reconstructor:
     # launch chroot terminal
     def launchTerminal(self):
         try:
-            # setup environment
-            # add current user to the access control list
-            user = commands.getoutput('echo $USER')
-            print _("Adding user " + user + " to access control list...")
-            os.popen('xhost +local:' + user)
-            # copy dns info
-            #if os.path.exists(os.path.join(self.customDir, "root/etc/resolv.conf")):
-            print _("Copying DNS info...")
-            os.popen('cp -f /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
-            # mount /proc
-            print _("Mounting /proc filesystem...")
-            os.popen('mount --bind /proc \"' + os.path.join(self.customDir, "root/proc") + '\"')
-	    #mount /dev
-            print _("Mounting /dev filesystem...")
-            os.popen('mount --bind /dev \"' + os.path.join(self.customDir, "root/dev") + '\"')
-	    #mount /var/run/dbus
-            print _("Mounting /var/run/dubs filesystem...")
-            os.popen('mount --bind /var/run/dbus \"' + os.path.join(self.customDir, "root/var/run/dbus") + '\"')
-            # copy apt.conf
-            print _("Copying apt configuration...")
-            if not os.path.exists(os.path.join(self.customDir, "root/etc/apt/apt.conf.d/")):
-                os.makedirs(os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
-            os.popen('cp -f /etc/apt/apt.conf.d/* ' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
-            # copy wgetrc
-            print _("Copying wgetrc configuration...")
-            # backup
-            os.popen('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\"')
-            os.popen('cp -f /etc/wgetrc ' + os.path.join(self.customDir, "root/etc/wgetrc"))
-            # HACK: create temporary script for chrooting
-            scr = '#!/bin/bash\n#\n#\t(c) reconstructor, 2006\n#\nchroot ' + os.path.join(self.customDir, "root/") + '\n'
-            f=open('/tmp/reconstructor-terminal.sh', 'w')
-            f.write(scr)
-            f.close()
-            os.popen('chmod a+x ' + os.path.join(self.customDir, "/tmp/reconstructor-terminal.sh"))
+            if self.TerminalInitialized == False:
+                # setup environment
+                # add current user to the access control list
+                user = commands.getoutput('echo $USER')
+                print _("Adding user " + user + " to access control list...")
+                os.popen('xhost +local:' + user)
+                # copy dns info
+                #if os.path.exists(os.path.join(self.customDir, "root/etc/resolv.conf")):
+                print _("Copying DNS info...")
+                os.popen('cp -f /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                # mount /proc
+                print _("Mounting /proc filesystem...")
+                os.popen('mount --bind /proc \"' + os.path.join(self.customDir, "root/proc") + '\"')
+	        #mount /dev
+                print _("Mounting /dev filesystem...")
+                os.popen('mount --bind /dev \"' + os.path.join(self.customDir, "root/dev") + '\"')
+	        #mount /sys
+                print _("Mounting /sys filesystem...")
+                os.popen('mount --bind /sys \"' + os.path.join(self.customDir, "root/sys") + '\"')
+	        #mount /var/run/dbus
+                #print _("Mounting /var/run/dubs filesystem...")
+                #os.popen('mount --bind /var/run/dbus \"' + os.path.join(self.customDir, "root/var/run/dbus") + '\"')
+                # copy apt.conf
+                print _("Copying apt configuration...")
+                if not os.path.exists(os.path.join(self.customDir, "root/etc/apt/apt.conf.d/")):
+                    os.makedirs(os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
+                os.popen('cp -f /etc/apt/apt.conf.d/* ' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
+                # copy wgetrc
+                print _("Copying wgetrc configuration...")
+                # backup
+                os.popen('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\"')
+                os.popen('cp -f /etc/wgetrc ' + os.path.join(self.customDir, "root/etc/wgetrc"))
+                # HACK: create temporary script for chrooting
+                scr = '#!/bin/bash\n#\n#\t(c) reconstructor, 2006\n#\nchroot ' + os.path.join(self.customDir, "root/") + '\n'
+                f=open('/tmp/reconstructor-terminal.sh', 'w')
+                f.write(scr)
+                f.close()
+                os.popen('chmod a+x ' + os.path.join(self.customDir, "/tmp/reconstructor-terminal.sh"))
+                TerminalInitialized=True
             # TODO: replace default terminal title with "Reconstructor Terminal"
             # use gnome-terminal if available -- more features
             if commands.getoutput('which gnome-terminal') != '':
@@ -2223,70 +2269,67 @@ class Reconstructor:
                 print _('Launching Xterm for advanced customization...')
                 # use xterm if gnome-terminal isn't available
                 os.popen('export HOME=/root ; xterm -bg black -fg white -rightbar -title \"Reconstructor Terminal\" -e /tmp/reconstructor-terminal.sh')
-
-            # restore wgetrc
-            print _("Restoring wgetrc configuration...")
-            os.popen('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\"')
-            # remove apt.conf
-            #print _("Removing apt.conf configuration...")
-            #os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf") + '\"')
-            # remove dns info
-            # remove some locks
-            print _("Removing some locks...")
-            os.popen('rm -f ' + os.path.join(self.customDir, "root/var/lib/dpkg/lock"))   
-            os.popen('rm -f ' + os.path.join(self.customDir, "root/var/lib/apt/lists/lock"))   
-            print _("Removing DNS info...")
-            os.popen('rm -Rf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
-            # umount /var/run/dbus
-            print _("Umounting /var/run/dubs...")
-            error = commands.getoutput('umount  -l \"' + os.path.join(self.customDir, "root/var/run/dbus/") + '\"')
-            if(error != ''):
-                self.suggestReboot('/var/run/dbus could not be unmounted. It must be unmounted before you can build an ISO.')
-            # umount /dev
-            print _("Umounting /dev...")
-            error = commands.getoutput('umount  -l \"' + os.path.join(self.customDir, "root/dev/") + '\"')
-            if(error != ''):
-                self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
-            # umount /proc
-            print _("Umounting /proc...")
-            error = commands.getoutput('umount  -l \"' + os.path.join(self.customDir, "root/proc/") + '\"')
-            if(error != ''):
-                self.suggestReboot('/proc could not be unmounted. It must be unmounted before you can build an ISO.')
-            #clean /run
-            print _("Clean /run ...")
-            os.popen('rm -rf  \"' + os.path.join(self.customDir, "root/run/*") + '\"')   
-            # remove temp script
-            os.popen('rm -Rf /tmp/reconstructor-terminal.sh')
-
         except Exception, detail:
-            # restore settings
-            # restore wgetrc
-            print _("Restoring wgetrc configuration...")
-            os.popen('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\"')
-            # remove apt.conf
-            #print _("Removing apt.conf configuration...")
-            #os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf") + '\"')
-            # remove dns info
-            print _("Removing DNS info...")
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
-            # umount /dev
-            print _("Umounting /dev...")
-            error = commands.getoutput('umount  -l \"' + os.path.join(self.customDir, "root/dev/") + '\"')
-            if(error != ''):
-                self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
-            # umount /proc
-            print _("Umounting /proc...")
-            error = commands.getoutput('umount  -l \"' + os.path.join(self.customDir, "root/proc/") + '\"')
-            if(error != ''):
-                self.suggestReboot('/proc could not be unmounted. It must be unmounted before you can build an ISO.')
-            # remove temp script
-            os.popen('rm -Rf /tmp/reconstructor-terminal.sh')
-
+            self.doneTerminal()
             errText = _('Error launching terminal: ')
             print errText, detail
             pass
 
         return
+
+    def doneTerminal(self,forceMode=False,silentMode=False):
+            if self.TerminalInitialized == True or forceMode == True:
+                # restore wgetrc
+                if silentMode == False:
+                    print _("Restoring wgetrc configuration...")
+                os.popen('[ -f \"' +os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" ] && ' + ' mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\"')
+                # remove apt.conf
+                #print _("Removing apt.conf configuration...")
+                #os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf") + '\"')
+                # remove dns info
+                # remove some locks
+                if silentMode == False:
+                    print _("Removing some locks...")
+                os.popen('rm -f ' + os.path.join(self.customDir, "root/var/lib/dpkg/lock"))   
+                os.popen('rm -f ' + os.path.join(self.customDir, "root/var/lib/apt/lists/lock"))   
+                if silentMode == False:
+                    print _("Removing DNS info...")
+                os.popen('rm -Rf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                # umount /var/run/dbus
+                #if os.path.exists(os.path.join(self.customDir, "root/var/run/dbus/system_bus_socket")):
+                #    if silentMode == False:
+                #        print _("Umounting /var/run/dubs...")
+                #    error = commands.getoutput('umount  -l \"' + os.path.join(self.customDir, "root/var/run/dbus") + '\"')
+                #    if(error != ''):
+                #        self.suggestReboot('/var/run/dbus could not be unmounted. It must be unmounted before you can build an ISO.')
+                # umount /sys
+                if os.path.exists(os.path.join(self.customDir, "root/sys/kernel")):
+                    if silentMode == False:
+                        print _("Umounting /sys...")
+                    error = commands.getoutput('umount   -l \"' + os.path.join(self.customDir, "root/sys") + '\"')
+                    if(error != ''):
+                        self.suggestReboot('/sys could not be unmounted. It must be unmounted before you can build an ISO.')
+                # umount /dev
+                if os.path.exists(os.path.join(self.customDir, "root/dev/cpu/microcode")):
+                    if silentMode == False:
+                        print _("Umounting /dev...")
+                    error = commands.getoutput('umount  -l \"' + os.path.join(self.customDir, "root/dev") + '\"')
+                    if(error != ''):
+                        self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
+                # umount /proc
+                if os.path.exists(os.path.join(self.customDir, "root/proc/stat")):
+                    if silentMode == False:
+                        print _("Umounting /proc...")
+                    error = commands.getoutput('umount  -l \"' + os.path.join(self.customDir, "root/proc") + '\"')
+                    if(error != ''):
+                        self.suggestReboot('/proc could not be unmounted. It must be unmounted before you can build an ISO.')
+                #clean /run
+                if silentMode == False:
+                    print _("Clean /run ...")
+                os.popen('rm -rf  \"' + os.path.join(self.customDir, "root/run/*") + '\"')   
+                # remove temp script
+                os.popen('rm -Rf /tmp/reconstructor-terminal.sh')
+                self.TerminalInitialized = False
 
     def genericDialog(self,text):
         genericDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_OK, gtk.RESPONSE_OK))
@@ -3090,6 +3133,8 @@ class Reconstructor:
 
     def calculateIsoSize(self):
         try:
+            self.doneTerminal(forceMode=True,silentMode=True)
+
             # reset current size
             self.wTree.get_widget("labelSoftwareIsoSize").set_text("")
             totalSize = None
@@ -3617,6 +3662,7 @@ class Reconstructor:
         self.launchTerminal()
 
     def on_buttonCustomizeLaunchChrootX_clicked(self, widget):
+        self.doneTerminal()
         self.launchChrootXephyr()
 
     def on_buttonBurnIso_clicked(self, widget):
@@ -3826,8 +3872,7 @@ class Reconstructor:
         print "Create Remaster Directory: " + str(self.createRemasterDir)
         print "Create Custom Root: " + str(self.createCustomRoot)
         print "Create Initrd Root: " + str(self.createInitrdRoot)
-        print "ISO Filename: " + str(self.isoFilename)
-
+ 
     def saveAltSetupInfo(self):
         # do setup - check and create dirs as needed
         print _("INFO: Saving working directory information...")
@@ -3839,7 +3884,6 @@ class Reconstructor:
         print "Custom Directory: " + str(self.customDir)
         print "Create Remaster Directory: " + str(self.createAltRemasterDir)
         print "Create Initrd Root: " + str(self.createAltInitrdRoot)
-        print "ISO Filename: " + str(self.isoFilename)
 
 
 # ---------- Setup ---------- #
@@ -3991,10 +4035,10 @@ class Reconstructor:
 
             # extract initrd
             print _("Extracting Initial Ram Disk (initrd)...")
-            if apt_pkg.version_compare(self.cdUbuntuVersion,"9.10") >= 0:
+            if (os.path.exists(self.mountDir + '/casper/initrd.lz')):
                 os.popen('cd \"' + os.path.join(self.customDir, "initrd/") + '\"; cat ' + self.mountDir + '/casper/initrd.lz | lzma -d | cpio -i')
-            else:
-                os.popen('cd \"' + os.path.join(self.customDir, "initrd/") + '\"; cat ' + self.mountDir + '/casper/initrd | gzip -d | cpio -i')
+            elif (os.path.exists(self.mountDir + '/casper/initrd')):
+                os.popen('cd \"' + os.path.join(self.customDir, "initrd/") + '\"; cat ' + self.mountDir,'/casper/initrd | gzip -d | cpio -i')
 
 
             # umount cdrom
@@ -4155,17 +4199,21 @@ class Reconstructor:
 
     def liveCDKernel(self):
         os.popen('cd \"' + self.customDir + '\"; ' + 'rm -Rf initrd/*')
-        if apt_pkg.version_compare(self.cdUbuntuVersion, "9.10") >= 0:
+        if (os.path.exists(os.path.join(self.customDir,"remaster/casper/initrd.lz"))):
             os.popen('cp -f \"' + os.path.join(self.customDir, "root/initrd.img") + '\" \"' + os.path.join(self.customDir, "initrd/initrd.lz") + '\"')
+            os.popen('cd \"' + os.path.join(self.customDir, "initrd/") + '\"; cat ' + 'initrd.lz | lzma -df | cpio -i')
+            os.popen('cp -f \"' + os.path.join(self.customDir, "root/initrd.img") + '\" \"' + os.path.join(self.customDir, "remaster/casper/initrd.lz") + '\"')
+
         else:
             os.popen('cp -f \"' + os.path.join(self.customDir, "root/initrd.img") + '\" \"' + os.path.join(self.customDir, "initrd/initrd") + '\"')
+            os.popen('cd \"' + os.path.join(self.customDir, "initrd/") + '\"; cat ' + 'initrd | gzip -df | cpio -i')
+            os.popen('cp -f \"' + os.path.join(self.customDir, "root/initrd.img") + '\" \"' + os.path.join(self.customDir, "remaster/casper/initrd") + '\"')
 
-        os.popen('cd \"' + os.path.join(self.customDir, "initrd/") + '\"; cat ' + 'initrd.lz | lzma -d | cpio -i')
         os.popen('rm -Rf \"' + os.path.join(self.customDir, "initrd/initrd") + '\"')
         os.popen('rm -Rf \"' + os.path.join(self.customDir, "remaster/casper/vmlinuz*") + '\"')
-	if apt_pkg.version_compare(self.cdUbuntuVersion,"13.10") >= 0: 
+        if (os.path.exists(os.path.join(self.customDir,"remaster/casper/vmlinuz.efi"))):
            os.popen('cp -f \"' + os.path.join(self.customDir, "root/vmlinuz") + '\" \"' + os.path.join(self.customDir, "remaster/casper/vmlinuz.efi") + '\"')
-        else:
+        else :
            os.popen('cp -f \"' + os.path.join(self.customDir, "root/vmlinuz") + '\" \"' + os.path.join(self.customDir, "remaster/casper/vmlinuz") + '\"')
 
 # ---------- Customize Live ---------- #
@@ -4811,7 +4859,7 @@ class Reconstructor:
                     # create apt-ftparchive-deb.conf
                     print _("Creating apt-ftparchive-deb.conf...")
                     # add archive dir path
-                    os.popen('cat \"' + os.getcwd() + '/lib/apt-ftparchive-deb.conf\" | sed \'s/ARCHIVEDIR/' + archDir + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf\"')
+                    os.popen('cat \"' + cur_file_dir + '/lib/apt-ftparchive-deb.conf\" | sed \'s/ARCHIVEDIR/' + archDir + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf\"')
                     # add dist
                     os.popen('cat \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf\" | sed \'s/DIST/' + self.ubuntuCodename + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf.tmp\"')
                     os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\" ; mv apt-ftparchive-deb.conf.tmp apt-ftparchive-deb.conf ; rm -f apt-ftparchive-deb.conf.tmp')
@@ -4826,7 +4874,7 @@ class Reconstructor:
                 if os.path.exists(os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf') == False:
                     print _("Creating apt-ftparchive-udeb.conf...")
                     # add archive dir path
-                    os.popen('cat \"' + os.getcwd() + '/lib/apt-ftparchive-udeb.conf\" | sed \'s/ARCHIVEDIR/' + archDir + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf\"')
+                    os.popen('cat \"' + cur_file_dir + '/lib/apt-ftparchive-udeb.conf\" | sed \'s/ARCHIVEDIR/' + archDir + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf\"')
                     # add dist
                     os.popen('cat \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf\" | sed \'s/DIST/' + self.ubuntuCodename + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf.tmp\"')
                     os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\" ; mv apt-ftparchive-udeb.conf.tmp apt-ftparchive-udeb.conf ; rm -f apt-ftparchive-udeb.conf.tmp')
@@ -4841,7 +4889,7 @@ class Reconstructor:
                 if os.path.exists(os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-extras.conf') == False:
                     print _("Creating apt-ftparchive-extras.conf...")
                     # add archive dir path
-                    os.popen('cat \"' + os.getcwd() + '/lib/apt-ftparchive-extras.conf\" | sed \'s/ARCHIVEDIR/' + archDir + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-extras.conf\"')
+                    os.popen('cat \"' + cur_file_dir + '/lib/apt-ftparchive-extras.conf\" | sed \'s/ARCHIVEDIR/' + archDir + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-extras.conf\"')
                     # add dist
                     os.popen('cat \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-extras.conf\" | sed \'s/DIST/' + self.ubuntuCodename + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-extras.conf.tmp\"')
                     os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\" ; mv apt-ftparchive-extras.conf.tmp apt-ftparchive-extras.conf ; rm -f apt-ftparchive-extras.conf.tmp')
@@ -5003,7 +5051,7 @@ class Reconstructor:
         self.LiveCdDescription = "ubuntu-custom"
         self.LiveCdRemovePrograms = self.wTree.get_widget("checkbuttonLiveCdRemoveWin32Programs").get_active()
         self.LiveCdArch = self.wTree.get_widget("comboboxLiveCdArch").get_active_text()
-        self.hfsMap = os.getcwd() + "/lib/hfs.map"
+        self.hfsMap = cur_file_dir + "/lib/hfs.map"
 
         print " "
         print _("INFO: Starting Build...")
@@ -5014,7 +5062,11 @@ class Reconstructor:
             if os.path.exists(os.path.join(self.customDir, "initrd")):
                 print _("Creating Initrd...")
                 kver=find_newest_kernel_version(os.path.join(self.customDir, "root/boot"))
-	        scr = '#!/bin/sh\n#\n cd /boot\n if grep COMPRESS= /etc/initramfs-tools/initramfs.conf>/dev/null ; then \n\t/usr/sbin/mkinitramfs -c lzma -o initrd.img-'+kver + ' '+kver+'\n else\n\t cat /usr/sbin/mkinitramfs | sed -e \"s/gzip/lzma/g\" >/tmp/mkinitramfs-lzma \n\t chmod +x /tmp/mkinitramfs-lzma\n\t /tmp/mkinitramfs-lzma -o initrd.img-'+kver + ' '+kver+' \n\t rm -f /tmp/mkinitramfs-lzma\n fi\n\trm -f /vmlinuz /initrd.img\n\tcd /\n\tln -s boot/vmlinuz-'+kver+' vmlinuz\n\tln -s boot/initrd.img-'+kver+' initrd.img\n'
+                if os.path.exists(os.path.join(self.customDir, "remaster/casper/initrd.lz")):
+	            scr = '#!/bin/sh\n#\n cd /boot\n if grep COMPRESS= /etc/initramfs-tools/initramfs.conf>/dev/null ; then \n\t/usr/sbin/mkinitramfs -c lzma -o initrd.img-'+kver + ' '+kver+'\n else\n\t cat /usr/sbin/mkinitramfs | sed -e \"s/gzip/lzma/g\" >/tmp/mkinitramfs-lzma \n\t chmod +x /tmp/mkinitramfs-lzma\n\t /tmp/mkinitramfs-lzma -o initrd.img-'+kver + ' '+kver+' \n\t rm -f /tmp/mkinitramfs-lzma\n fi\n\trm -f /vmlinuz /initrd.img\n\tcd /\n\tln -s boot/vmlinuz-'+kver+' vmlinuz\n\tln -s boot/initrd.img-'+kver+' initrd.img\n'
+                else:
+	            scr = '#!/bin/sh\n#\n cd /boot\n \t/usr/sbin/mkinitramfs -c gzip -o initrd.img-'+kver + ' '+kver+'\n\trm -f /vmlinuz /initrd.img\n\tcd /\n\tln -s boot/vmlinuz-'+kver+' vmlinuz\n\tln -s boot/initrd.img-'+kver+' initrd.img\n'
+
 	        f=open(os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"), 'w')
 	        f.write(scr)
 	        f.close()
@@ -5022,11 +5074,11 @@ class Reconstructor:
                 os.popen('chroot '+os.path.join(self.customDir, "root/")+' /tmp/lmkinitrafs.sh >/dev/null 2>&1')
 	        os.popen('rm -f ' + os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"))
                 if os.path.exists(os.path.join(self.customDir, "root/boot/initrd.img-"+kver)) and os.path.exists(os.path.join(self.customDir, "root/boot/vmlinuz-"+kver)):
-                    if apt_pkg.version_compare(self.cdUbuntuVersion,"9.10") >= 0:
+                    if os.path.exists(os.path.join(self.customDir, "remaster/casper/initrd.lz")):
 		        os.popen('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd.lz"))
-                    else:
+                    else :
 		        os.popen('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd"))
-                    if apt_pkg.version_compare(self.cdUbuntuVersion,"13.10") >= 0:
+                    if os.path.exists(os.path.join(self.customDir, "remaster/casper/vmlinuz.efi")):
                         os.popen('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz.efi"))		
                     else:
                         os.popen('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz"))		
@@ -5141,7 +5193,7 @@ class Reconstructor:
         self.buildAltCdFilename = self.wTree.get_widget("entryAltBuildIsoFilename").get_text()
         self.altCdDescription = "ubuntu-custom-alt"
         self.altCdArch = self.wTree.get_widget("comboboxAltBuildArch").get_active_text()
-        self.hfsMap = os.getcwd() + "/lib/hfs.map"
+        self.hfsMap = cur_file_dir + "/lib/hfs.map"
 
         print " "
         print _("INFO: Starting Build...")
@@ -5152,18 +5204,21 @@ class Reconstructor:
             if os.path.exists(os.path.join(self.customDir, "initrd_alt")):
                 print _("Creating Initrd...")
                 kver=find_newest_kernel_version(os.path.join(self.customDir, "root/boot"))
-	        scr = '#!/bin/sh\n#\n  cat /usr/sbin/mkinitramfs | sed -e \"s/gzip/lzma/g\" >/tmp/mkinitramfs-lzma ;chmod +x /tmp/mkinitramfs-lzma;cd /boot; /tmp/mkinitramfs-lzma -o initrd.img-'+kver+' '+kver+';rm -f /tmp/mkinitramfs-lzma\n'
+                if os.path.exists(os.path.join(self.customDir, "remaster/casper/initrd.lz")):
+	             scr = '#!/bin/sh\n#\n  cat /usr/sbin/mkinitramfs | sed -e \"s/gzip/lzma/g\" >/tmp/mkinitramfs-lzma ;chmod +x /tmp/mkinitramfs-lzma;cd /boot; /tmp/mkinitramfs-lzma -o initrd.img-'+kver+' '+kver+';rm -f /tmp/mkinitramfs-lzma\n'
+                else:
+	             scr = '#!/bin/sh\n#\n cd /boot; /usr/sbin/mkinitramfs -o initrd.img-'+kver+' '+kver+'\n'
 	        f=open(os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"), 'w')
 	        f.write(scr)
 	        f.close()
 	        os.popen('chmod a+x ' + os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"))
                 os.popen('chroot \"'+os.path.join(self.customDir, "root/")+'\" /tmp/lmkinitrafs.sh >/dev/null 2>&1')
 	        os.popen('rm -f ' + os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"))
-                if apt_pkg.version_compare(self.cdUbuntuVersion,"9.10") >= 0:
+                if os.path.exists(os.path.join(self.customDir, "remaster/casper/initrd.lz")):
 		    os.popen('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd.lz"))		
                 else:
 		    os.popen('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd"))		
-                if apt_pkg.version_compare(self.cdUbuntuVersion,"13.10") >= 0:
+                if os.path.exists(os.path.join(self.customDir, "remaster/casper/vmlinuz.efi")):
 		    os.popen('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz.efi"))
                 else:
 		    os.popen('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz"))
@@ -5317,13 +5372,13 @@ if __name__ == "__main__":
     if os.getuid() != 0 :
         ## show non-root privledge error
         warnDlg = gtk.Dialog(title="Reconstructor", parent=None, flags=0, buttons=(gtk.STOCK_OK, gtk.RESPONSE_OK))
-        warnDlg.set_icon_from_file('glade/app.png')
+        warnDlg.set_icon_from_file(cur_file_dir + '/glade/app.png')
         warnDlg.vbox.set_spacing(10)
         labelSpc = gtk.Label(" ")
         warnDlg.vbox.pack_start(labelSpc)
         labelSpc.show()
         warnText = _("  <b>You must run with root privledges.</b>")
-        infoText = _("Open a Terminal, change to the directory with reconstructor, \nand type <b>sudo python reconstructor.py</b>  ")
+        infoText = _("Open a Terminal, \nand type <b>sudo python reconstructor.py</b>  ")
         label = gtk.Label(warnText)
         lblInfo = gtk.Label(infoText)
         label.set_use_markup(True)
@@ -5338,7 +5393,7 @@ if __name__ == "__main__":
             #gtk.main_quit()
             sys.exit(0)
         # use gksu to open -- HIDES TERMINAL
-        #os.popen('gksu ' + os.getcwd() + '/reconstructor.py')
+        #os.popen('gksu ' + cur_file_dir + '/reconstructor.py')
         #gtk.main_quit()
         #sys.exit(0)
     else :

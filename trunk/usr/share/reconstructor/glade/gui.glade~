@@ -2399,7 +2399,6 @@ and use a Live CD instead.</property>
                                 <property name="receives_default">False</property>
                                 <property name="tooltip" translatable="yes">Check this if you have updated the kernel in the chroot or with a module. This will make the LiveCD use the updated kernel when booting the LiveCD.</property>
                                 <property name="draw_indicator">True</property>
-                                <property name="active">True</property>
                               </widget>
                               <packing>
                                 <property name="top_attach">6</property>

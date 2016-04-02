@@ -1,4 +1,1 @@
-#!/bin/bash
-cd /usr/share/reconstructor
-
-sudo python reconstructor.py
+../share/reconstructor/reconstructor.py
