@@ -1,1 +1,2 @@
 rm -f /usr/bin/reconstructor
+rm -f /usr/share/reconstructor/lib/Reconstructor/*.pyc

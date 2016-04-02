@@ -2055,7 +2055,7 @@ class Reconstructor:
         else:
             self.wTree.get_widget("buttonBurnIso").hide()
 
-    def exitApp(self):
+    def exitApp(self,widget, data=None):
         gtk.main_quit()
         sys.exit(0)
 
@@ -3131,6 +3131,17 @@ class Reconstructor:
             print errText, detail
             pass
 
+    def FileSize(self,path):
+        size = 0L
+        for root , dirs, files in os.walk(path, True):
+            for name in files:
+                if os.path.exists(os.path.join(root, name)) :
+                    if os.path.islink(os.path.join(root, name)):
+                        size += 0
+                    else:
+                        size += int(round((os.path.getsize(os.path.join(root, name))+4093)/4096)*4)
+        return size
+
     def calculateIsoSize(self):
         try:
             self.doneTerminal(forceMode=True,silentMode=True)
@@ -3142,26 +3153,17 @@ class Reconstructor:
             rootSize = 0
             squashSize = 0
             print _('Calculating Live ISO Size...')
-            # regex for extracting size
-            r = re.compile('(\d+)\s', re.IGNORECASE)
-            # get size of remaster dir - use du -s (it's faster)
-            remaster = commands.getoutput('du -s ' + os.path.join(self.customDir, "remaster/"))
-            mRemaster = r.match(remaster)
-            remasterSize = int(mRemaster.group(1))
+            remasterSize = self.FileSize(os.path.join(self.customDir,"remaster/"))
             # subtract squashfs root
             if os.path.exists(os.path.join(self.customDir, "remaster/casper/filesystem.squashfs")):
-                squash = commands.getoutput('du -s ' + os.path.join(self.customDir, "remaster/casper/filesystem.squashfs"))
-                mSquash = r.match(squash)
-                squashSize = int(mSquash.group(1))
+                squashSize = int(round(os.path.getsize(os.path.join(self.customDir, "remaster/casper/filesystem.squashfs"))/1024))
 
             remasterSize -= squashSize
             # get size of root dir
-            root = commands.getoutput('du -s ' + os.path.join(self.customDir, "root/"))
-            mRoot = r.match(root)
-            rootSize = int(mRoot.group(1))
-
+            rootSize = self.FileSize(os.path.join(self.customDir, "root/"))
+            print "rootSize=",rootSize
             # divide root size to simulate squash compression
-            self.wTree.get_widget("labelSoftwareIsoSize").set_text( '~ ' + str(int(round((remasterSize + (rootSize/3.56))/1024))) + ' MB')
+            self.wTree.get_widget("labelSoftwareIsoSize").set_text( '~ ' + str(int(round((remasterSize + (rootSize/3.55))/1024))) + ' MB')
             self.setDefaultCursor()
             # set page here - since this is run on a background thread,
             # the next page will show too quickly if set in self.checkPage()
@@ -3178,12 +3180,7 @@ class Reconstructor:
             totalSize = None
             remasterSize = 0
             print _('Calculating Alternate ISO Size...')
-            # regex for extracting size
-            r = re.compile('(\d+)\s', re.IGNORECASE)
-            # get size of remaster dir - use du -s (it's faster)
-            remaster = commands.getoutput('du -s ' + os.path.join(self.customDir, self.altRemasterDir))
-            mRemaster = r.match(remaster)
-            remasterSize = int(mRemaster.group(1))
+            remasterSize = self.FileSize(os.path.join(self.customDir, self.altRemasterDir))
 
             self.wTree.get_widget("labelAltIsoSize").set_text( '~ ' + str(int(round(remasterSize/1024))) + ' MB')
             self.setDefaultCursor()
@@ -5142,10 +5139,7 @@ class Reconstructor:
                 os.popen('rm \"' + os.path.join(self.customDir, "remaster/") + 'md5sum.txt\"')
                 # exclude isolinux directory or else when checking disc integrity it will say there are errors
                 os.popen('(cd \"' + os.path.join(self.customDir, "remaster/") + '\"; ' + 'find . -type f -not -name md5sum.txt -not -path \'*/isolinux/*\' -print0 | xargs -0 md5sum > md5sum.txt)')
-                r = re.compile('(\d+)\s', re.IGNORECASE)
-                root = commands.getoutput('du -s ' + os.path.join(self.customDir, "root/"))
-                mRoot = r.match(root)
-                rootSize = int(mRoot.group(1))
+                rootSize = self.FileSize(os.path.join(self.customDir, "root/"))
                 print >>open(os.path.join(self.customDir, "remaster/casper/filesystem.size"),"w"),'%lu'%(rootSize)
 
                 # remove existing iso
@@ -5235,10 +5229,7 @@ class Reconstructor:
                 os.popen('rm \"' + os.path.join(self.customDir, "remaster_alt/") + 'md5sum.txt\"')
                 # exclude isolinux directory or else when checking disc integrity it will say there are errors
                 os.popen('(cd \"' + os.path.join(self.customDir, "remaster_alt/") + '\"; ' + 'find . -type f -not -name md5sum.txt -not -path \'*/isolinux/*\' -print0 | xargs -0 md5sum > md5sum.txt)')
-                r = re.compile('(\d+)\s', re.IGNORECASE)
-                root = commands.getoutput('du -s ' + os.path.join(self.customDir, "root/"))
-                mRoot = r.match(root)
-                rootSize = int(mRoot.group(1))
+                rootSize = self.FileSize(os.path.join(self.customDir, "root/"))
                 print >>open(os.path.join(self.customDir, "remaster/casper/filesystem.size"),"w"),'%lu'%(rootSize)
 
                 # remove existing iso
