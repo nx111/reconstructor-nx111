@@ -833,8 +833,8 @@ class Reconstructor:
                         modProps = self.getModuleProperties(f)
                         modSubCategory = modProps[self.modSubCategoryKey]
 
-                        if self.modules.has_key(modProps[self.modNameKey]):
-                            print "The module is already present"
+                        #if self.modules.has_key(modProps[self.modNameKey]):
+                        #    print "The module is already present"
 
                         self.modules[modProps[self.modNameKey]] = modProps
 
@@ -1673,31 +1673,6 @@ class Reconstructor:
                 
                       config.write(open(os.path.join(os.environ['HOME'], ".reconstructor"),'wb'))
 
-                try:
-                    self.isoFilename = config.get('ISO','isofilename')
- 	        except:
-                    self.isoFilename = ''
-
-                try:
-	            self.cdDesc = config.get('ISO','cddesc')
- 	        except:
-                    self.cdDesc = ''
-
-                try:
-	            self.cdArchIndex = int(config.get('ISO','cdarchidx'))
- 	        except:
-                    self.cdArchIndex = 0
-
-                # set iso filenames
-                if self.isoFilename:
-                    self.wTree.get_widget("entryLiveIsoFilename").set_text(self.isoFilename)
-                # set descriptions
-                if self.cdDesc:
-                    self.wTree.get_widget("entryLiveCdDescription").set_text(self.cdDesc)
-                
-                self.wTree.get_widget("comboboxLiveCdArch").set_active(self.cdArchIndex)
-                self.wTree.get_widget("comboboxAltBuildArch").set_active(self.cdArchIndex)
-
                 if self.checkSetup() == True:
                     if self.checkWorkingDir() == True:
                         warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=    (gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_YES, gtk.RESPONSE_OK))
@@ -1819,12 +1794,30 @@ class Reconstructor:
             config = ConfigParser.ConfigParser()
             config.optionxform = str
             config.read(os.path.join(os.environ['HOME'], ".reconstructor"))
-            if not config.has_section('ISO'):
-               config.add_section('ISO')
-            config.set('ISO','isofilename',self.wTree.get_widget("entryLiveIsoFilename").get_text())
-	    config.set('ISO','cddesc',self.wTree.get_widget("entryLiveCdDescription").get_text())
-	    config.set('ISO','cdarchidx',self.wTree.get_widget("comboboxLiveCdArch").get_active())
-            config.write(open(os.path.join(os.environ['HOME'], ".reconstructor"),'wb'))
+            try:
+                self.isoFilename = config.get('ISO','isofilename')
+            except:
+                self.isoFilename = ''
+
+            try:
+                self.cdDesc = config.get('ISO','cddesc')
+            except:
+                self.cdDesc = ''
+
+            try:
+                self.cdArchIndex = int(config.get('ISO','cdarchidx'))
+            except:
+                self.cdArchIndex = 0
+
+            # set iso filenames
+            if self.isoFilename and self.isoFilename != "":
+                self.wTree.get_widget("entryLiveIsoFilename").set_text(self.isoFilename)
+            # set descriptions
+            if self.cdDesc and self.cdDesc != "":
+                self.wTree.get_widget("entryLiveCdDescription").set_text(self.cdDesc)
+
+            self.wTree.get_widget("comboboxLiveCdArch").set_active(self.cdArchIndex)
+
             # build
             warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_YES, gtk.RESPONSE_OK))
             warnDlg.set_icon_from_file(self.iconFile)
@@ -1843,6 +1836,14 @@ class Reconstructor:
             label.show()
             #warnDlg.show()
             response = warnDlg.run()
+
+            if not config.has_section('ISO'):
+               config.add_section('ISO')
+            config.set('ISO','isofilename',self.wTree.get_widget("entryLiveIsoFilename").get_text())
+	    config.set('ISO','cddesc',self.wTree.get_widget("entryLiveCdDescription").get_text())
+	    config.set('ISO','cdarchidx',self.wTree.get_widget("comboboxLiveCdArch").get_active())
+            config.write(open(os.path.join(os.environ['HOME'], ".reconstructor"),'wb'))
+
             if response == gtk.RESPONSE_OK:
                 warnDlg.destroy()
                 self.setBusyCursor()
@@ -1871,30 +1872,6 @@ class Reconstructor:
                       config.set('ISO','cddesc','')
                       config.set('global','workdir',self.customDir)
                       config.write(open(os.path.join(os.environ['HOME'], ".reconstructor"),'wb'))
-                try:
-                    self.isoFilename = config.get('ISO','isofilename')
- 	        except:
-                    self.isoFilename = ''
-
-                try:
-	            self.cdDesc = config.get('ISO','cddesc')
- 	        except:
-                    self.cdDesc = ''
-
-                try:
-	            self.cdArchIndex = int(config.get('ISO','cdarchidx'))
- 	        except:
-                    self.cdArchIndex = 0
-
-                # set iso filenames
-                if self.isoFilename:
-                    self.wTree.get_widget("entryAltBuildIsoFilename").set_text(self.isoFilename)
-                # set descriptions
-                if self.cdDesc:
-                    self.wTree.get_widget("entryBuildAltCdDescription").set_text(self.cdDesc)
-
-                self.wTree.get_widget("comboboxLiveCdArch").set_active(self.cdArchIndex)
-                self.wTree.get_widget("comboboxAltBuildArch").set_active(self.cdArchIndex)
 
                 if self.checkAltSetup() == True:
                     if self.checkAltWorkingDir() == True:
@@ -1992,11 +1969,29 @@ class Reconstructor:
             config = ConfigParser.ConfigParser()
             config.optionxform = str
             config.read(os.path.join(os.environ['HOME'], ".reconstructor"))
-            if not config.has_section('ISO'):
-               config.add_section('ISO')
-            config.set('ISO','isofilename',self.wTree.get_widget("entryAltBuildIsoFilename").get_text())
-	    config.set('ISO','cddesc',self.wTree.get_widget("entryBuildAltCdDescription").get_text())
-            config.write(open(os.path.join(os.environ['HOME'], ".reconstructor"),'wb'))
+            try:
+                self.isoFilename = config.get('ISO','isofilename')
+            except:
+                self.isoFilename = ''
+
+            try:
+                self.cdDesc = config.get('ISO','cddesc')
+            except:
+                self.cdDesc = ''
+
+            try:
+	        self.cdArchIndex = int(config.get('ISO','cdarchidx'))
+            except:
+                self.cdArchIndex = 0
+
+            # set iso filenames
+            if self.isoFilename and self.isoFilename != "":
+                self.wTree.get_widget("entryAltIsoFilename").set_text(self.isoFilename)
+            # set descriptions
+            if self.cdDesc and self.cdDesc != "":
+                self.wTree.get_widget("entryAltCdDescription").set_text(self.cdDesc)
+
+            self.wTree.get_widget("comboboxAltBuildArch").set_active(self.cdArchIndex)
 
             # build
             warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_YES, gtk.RESPONSE_OK))
@@ -2016,6 +2011,13 @@ class Reconstructor:
             label.show()
             #warnDlg.show()
             response = warnDlg.run()
+
+            if not config.has_section('ISO'):
+               config.add_section('ISO')
+            config.set('ISO','isofilename',self.wTree.get_widget("entryAltBuildIsoFilename").get_text())
+	    config.set('ISO','cddesc',self.wTree.get_widget("entryBuildAltCdDescription").get_text())
+            config.write(open(os.path.join(os.environ['HOME'], ".reconstructor"),'wb'))
+
             if response == gtk.RESPONSE_OK:
                 warnDlg.destroy()
                 self.setBusyCursor()
@@ -3161,7 +3163,6 @@ class Reconstructor:
             remasterSize -= squashSize
             # get size of root dir
             rootSize = self.FileSize(os.path.join(self.customDir, "root/"))
-            print "rootSize=",rootSize
             # divide root size to simulate squash compression
             self.wTree.get_widget("labelSoftwareIsoSize").set_text( '~ ' + str(int(round((remasterSize + (rootSize/3.55))/1024))) + ' MB')
             self.setDefaultCursor()
