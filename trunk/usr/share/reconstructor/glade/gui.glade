@@ -9,8 +9,8 @@
     <property name="default_width">640</property>
     <property name="default_height">580</property>
     <property name="destroy_with_parent">True</property>
-    <signal name="destroy" handler="on_windowMain_destroy" swapped="no"/>
-    <signal name="delete_event" handler="on_windowMain_delete_event" swapped="no"/>
+    <signal name="destroy" handler="on_windowMain_destroy"/>
+    <signal name="delete_event" handler="on_windowMain_delete_event"/>
     <child>
       <widget class="GtkVBox" id="vbox1">
         <property name="visible">True</property>
@@ -50,7 +50,7 @@ To continue, click Next...</property>
                         <property name="border_width">5</property>
                         <property name="use_underline">True</property>
                         <property name="yalign">0.50999999046325684</property>
-                        <signal name="clicked" handler="on_buttonCheckUpdates_clicked" swapped="no"/>
+                        <signal name="clicked" handler="on_buttonCheckUpdates_clicked"/>
                       </widget>
                       <packing>
                         <property name="expand">False</property>
@@ -346,7 +346,7 @@ and use a Live CD instead.</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
                             <property name="use_underline">True</property>
-                            <signal name="clicked" handler="on_buttonBrowseWorkingDir_clicked" swapped="no"/>
+                            <signal name="clicked" handler="on_buttonBrowseWorkingDir_clicked"/>
                           </widget>
                           <packing>
                             <property name="left_attach">2</property>
@@ -364,7 +364,7 @@ and use a Live CD instead.</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
                             <property name="use_underline">True</property>
-                            <signal name="clicked" handler="on_buttonBrowseIsoFilename_clicked" swapped="no"/>
+                            <signal name="clicked" handler="on_buttonBrowseIsoFilename_clicked"/>
                           </widget>
                           <packing>
                             <property name="left_attach">2</property>
@@ -562,7 +562,7 @@ and use a Live CD instead.</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
-                        <signal name="clicked" handler="on_buttonSoftwareCalculateIsoSize_clicked" swapped="no"/>
+                        <signal name="clicked" handler="on_buttonSoftwareCalculateIsoSize_clicked"/>
                         <child>
                           <widget class="GtkImage" id="image1">
                             <property name="visible">True</property>
@@ -1534,7 +1534,7 @@ and use a Live CD instead.</property>
                                                 <property name="receives_default">False</property>
                                                 <property name="tooltip" translatable="yes">Import GDM Theme</property>
                                                 <property name="use_underline">True</property>
-                                                <signal name="clicked" handler="on_buttonImportGdmTheme_clicked" swapped="no"/>
+                                                <signal name="clicked" handler="on_buttonImportGdmTheme_clicked"/>
                                               </widget>
                                               <packing>
                                                 <property name="left_attach">2</property>
@@ -1804,7 +1804,7 @@ and use a Live CD instead.</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
                                                 <property name="use_underline">True</property>
-                                                <signal name="clicked" handler="on_buttonBrowseGnomeDesktopWallpaper_clicked" swapped="no"/>
+                                                <signal name="clicked" handler="on_buttonBrowseGnomeDesktopWallpaper_clicked"/>
                                               </widget>
                                               <packing>
                                                 <property name="left_attach">2</property>
@@ -1823,7 +1823,7 @@ and use a Live CD instead.</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
                                                 <property name="use_underline">True</property>
-                                                <signal name="clicked" handler="on_buttonBrowseGnomeFont_clicked" swapped="no"/>
+                                                <signal name="clicked" handler="on_buttonBrowseGnomeFont_clicked"/>
                                               </widget>
                                               <packing>
                                                 <property name="left_attach">2</property>
@@ -1844,7 +1844,7 @@ and use a Live CD instead.</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
                                                 <property name="use_underline">True</property>
-                                                <signal name="clicked" handler="on_buttonBrowseGnomeDocumentFont_clicked" swapped="no"/>
+                                                <signal name="clicked" handler="on_buttonBrowseGnomeDocumentFont_clicked"/>
                                               </widget>
                                               <packing>
                                                 <property name="left_attach">2</property>
@@ -1865,7 +1865,7 @@ and use a Live CD instead.</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
                                                 <property name="use_underline">True</property>
-                                                <signal name="clicked" handler="on_buttonBrowseGnomeFixedFont_clicked" swapped="no"/>
+                                                <signal name="clicked" handler="on_buttonBrowseGnomeFixedFont_clicked"/>
                                               </widget>
                                               <packing>
                                                 <property name="left_attach">2</property>
@@ -1965,7 +1965,7 @@ and use a Live CD instead.</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
                                                 <property name="use_underline">True</property>
-                                                <signal name="clicked" handler="on_buttonBrowseGnomeDesktopFont_clicked" swapped="no"/>
+                                                <signal name="clicked" handler="on_buttonBrowseGnomeDesktopFont_clicked"/>
                                               </widget>
                                               <packing>
                                                 <property name="left_attach">2</property>
@@ -2017,7 +2017,7 @@ and use a Live CD instead.</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
                                                 <property name="use_underline">True</property>
-                                                <signal name="clicked" handler="on_buttonBrowseGnomeDesktopTitleBarFont_clicked" swapped="no"/>
+                                                <signal name="clicked" handler="on_buttonBrowseGnomeDesktopTitleBarFont_clicked"/>
                                               </widget>
                                               <packing>
                                                 <property name="left_attach">2</property>
@@ -2101,7 +2101,7 @@ and use a Live CD instead.</property>
                                                 <property name="receives_default">False</property>
                                                 <property name="tooltip" translatable="yes">Import Theme</property>
                                                 <property name="use_underline">True</property>
-                                                <signal name="clicked" handler="on_buttonImportGnomeTheme_clicked" swapped="no"/>
+                                                <signal name="clicked" handler="on_buttonImportGnomeTheme_clicked"/>
                                               </widget>
                                               <packing>
                                                 <property name="left_attach">2</property>
@@ -2224,7 +2224,7 @@ and use a Live CD instead.</property>
                                                 <property name="receives_default">False</property>
                                                 <property name="tooltip" translatable="yes">Import Icons</property>
                                                 <property name="use_underline">True</property>
-                                                <signal name="clicked" handler="on_buttonImportGnomeThemeIcons_clicked" swapped="no"/>
+                                                <signal name="clicked" handler="on_buttonImportGnomeThemeIcons_clicked"/>
                                               </widget>
                                               <packing>
                                                 <property name="left_attach">2</property>
@@ -2292,7 +2292,7 @@ and use a Live CD instead.</property>
                                                     <property name="tooltip" translatable="yes">Launch Interactive Editor</property>
                                                     <property name="border_width">5</property>
                                                     <property name="use_underline">True</property>
-                                                    <signal name="clicked" handler="on_buttonInteractiveEditLaunch_clicked" swapped="no"/>
+                                                    <signal name="clicked" handler="on_buttonInteractiveEditLaunch_clicked"/>
                                                   </widget>
                                                   <packing>
                                                     <property name="expand">False</property>
@@ -2315,7 +2315,7 @@ and use a Live CD instead.</property>
                                                         <property name="tooltip" translatable="yes">Deletes all interactive settings</property>
                                                         <property name="border_width">5</property>
                                                         <property name="use_underline">True</property>
-                                                        <signal name="clicked" handler="on_buttonInteractiveClear_clicked" swapped="no"/>
+                                                        <signal name="clicked" handler="on_buttonInteractiveClear_clicked"/>
                                                       </widget>
                                                       <packing>
                                                         <property name="expand">False</property>
@@ -2438,7 +2438,7 @@ and use a Live CD instead.</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
                                     <property name="tooltip" translatable="yes">Imports an APT Repository GPG key</property>
-                                    <signal name="clicked" handler="on_buttonAptRepoImportGpgKey_clicked" swapped="no"/>
+                                    <signal name="clicked" handler="on_buttonAptRepoImportGpgKey_clicked"/>
                                     <child>
                                       <widget class="GtkAlignment" id="alignment8">
                                         <property name="visible">True</property>
@@ -2780,7 +2780,7 @@ and use a Live CD instead.</property>
                                     <property name="receives_default">False</property>
                                     <property name="use_underline">True</property>
                                     <property name="draw_indicator">True</property>
-                                    <signal name="toggled" handler="on_checkbuttonOptimizationStartupEnable_toggled" swapped="no"/>
+                                    <signal name="toggled" handler="on_checkbuttonOptimizationStartupEnable_toggled"/>
                                   </widget>
                                   <packing>
                                     <property name="expand">False</property>
@@ -3047,7 +3047,7 @@ and use a Live CD instead.</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
                                     <property name="use_underline">True</property>
-                                    <signal name="clicked" handler="on_buttonOptimizeShutdownRestore_clicked" swapped="no"/>
+                                    <signal name="clicked" handler="on_buttonOptimizeShutdownRestore_clicked"/>
                                   </widget>
                                   <packing>
                                     <property name="expand">False</property>
@@ -3534,7 +3534,7 @@ and use a Live CD instead.</property>
                                         <property name="can_focus">True</property>
                                         <property name="receives_default">False</property>
                                         <property name="tooltip" translatable="yes">Add module to library</property>
-                                        <signal name="clicked" handler="on_buttonModulesAddModule_clicked" swapped="no"/>
+                                        <signal name="clicked" handler="on_buttonModulesAddModule_clicked"/>
                                         <child>
                                           <widget class="GtkAlignment" id="alignment2">
                                             <property name="visible">True</property>
@@ -3640,7 +3640,7 @@ and use a Live CD instead.</property>
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
                                         <property name="receives_default">False</property>
-                                        <signal name="clicked" handler="on_buttonModulesClearRunOnBoot_clicked" swapped="no"/>
+                                        <signal name="clicked" handler="on_buttonModulesClearRunOnBoot_clicked"/>
                                         <child>
                                           <widget class="GtkAlignment" id="alignment4">
                                             <property name="visible">True</property>
@@ -3696,7 +3696,7 @@ and use a Live CD instead.</property>
                                         <property name="can_focus">True</property>
                                         <property name="receives_default">False</property>
                                         <property name="use_underline">True</property>
-                                        <signal name="clicked" handler="on_buttonModulesUpdateModule_clicked" swapped="no"/>
+                                        <signal name="clicked" handler="on_buttonModulesUpdateModule_clicked"/>
                                       </widget>
                                       <packing>
                                         <property name="expand">False</property>
@@ -3771,7 +3771,7 @@ and use a Live CD instead.</property>
                             <property name="receives_default">False</property>
                             <property name="tooltip" translatable="yes">Launches a chroot'd terminal for advanced customization</property>
                             <property name="use_underline">True</property>
-                            <signal name="clicked" handler="on_buttonCustomizeLaunchTerminal_clicked" swapped="no"/>
+                            <signal name="clicked" handler="on_buttonCustomizeLaunchTerminal_clicked"/>
                           </widget>
                           <packing>
                             <property name="expand">False</property>
@@ -3801,7 +3801,7 @@ and use a Live CD instead.</property>
                             <property name="receives_default">False</property>
                             <property name="tooltip" translatable="yes">Launches a chroot'd X server for advanced customization</property>
                             <property name="use_underline">True</property>
-                            <signal name="clicked" handler="on_buttonCustomizeLaunchChrootX_clicked" swapped="no"/>
+                            <signal name="clicked" handler="on_buttonCustomizeLaunchChrootX_clicked"/>
                           </widget>
                           <packing>
                             <property name="expand">False</property>
@@ -3826,7 +3826,7 @@ and use a Live CD instead.</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
                         <property name="tooltip" translatable="yes">Apply Software Changes...</property>
-                        <signal name="clicked" handler="on_buttonSoftwareApply_clicked" swapped="no"/>
+                        <signal name="clicked" handler="on_buttonSoftwareApply_clicked"/>
                         <child>
                           <widget class="GtkAlignment" id="alignment5">
                             <property name="visible">True</property>
@@ -3980,7 +3980,7 @@ and use a Live CD instead.</property>
                         <property name="use_underline">True</property>
                         <property name="active">True</property>
                         <property name="draw_indicator">True</property>
-                        <signal name="toggled" handler="on_checkbuttonBuildIso_toggled" swapped="no"/>
+                        <signal name="toggled" handler="on_checkbuttonBuildIso_toggled"/>
                       </widget>
                       <packing>
                         <property name="top_attach">2</property>
@@ -4101,7 +4101,7 @@ and use a Live CD instead.</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
                         <property name="use_underline">True</property>
-                        <signal name="clicked" handler="on_buttonBrowseLiveCdFilename_clicked" swapped="no"/>
+                        <signal name="clicked" handler="on_buttonBrowseLiveCdFilename_clicked"/>
                       </widget>
                       <packing>
                         <property name="left_attach">2</property>
@@ -4368,7 +4368,7 @@ and use an Alternate CD instead.</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
                             <property name="use_underline">True</property>
-                            <signal name="clicked" handler="on_buttonBrowseAltWorkingDir_clicked" swapped="no"/>
+                            <signal name="clicked" handler="on_buttonBrowseAltWorkingDir_clicked"/>
                           </widget>
                           <packing>
                             <property name="left_attach">2</property>
@@ -4386,7 +4386,7 @@ and use an Alternate CD instead.</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
                             <property name="use_underline">True</property>
-                            <signal name="clicked" handler="on_buttonBrowseAltIsoFilename_clicked" swapped="no"/>
+                            <signal name="clicked" handler="on_buttonBrowseAltIsoFilename_clicked"/>
                           </widget>
                           <packing>
                             <property name="left_attach">2</property>
@@ -4440,7 +4440,7 @@ and use an Alternate CD instead.</property>
                             <property name="receives_default">False</property>
                             <property name="use_underline">True</property>
                             <property name="draw_indicator">True</property>
-                            <signal name="clicked" handler="on_checkbuttonAltCreateRemasterDir_clicked" swapped="no"/>
+                            <signal name="clicked" handler="on_checkbuttonAltCreateRemasterDir_clicked"/>
                           </widget>
                           <packing>
                             <property name="right_attach">2</property>
@@ -4594,7 +4594,7 @@ Desktop</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
-                        <signal name="clicked" handler="on_buttonAltIsoCalculate_clicked" swapped="no"/>
+                        <signal name="clicked" handler="on_buttonAltIsoCalculate_clicked"/>
                         <child>
                           <widget class="GtkImage" id="image7">
                             <property name="visible">True</property>
@@ -4656,7 +4656,7 @@ Desktop</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
                         <property name="tooltip" translatable="yes">Imports an APT Repository GPG key</property>
-                        <signal name="clicked" handler="on_buttonAltPackagesImportGpgKey_clicked" swapped="no"/>
+                        <signal name="clicked" handler="on_buttonAltPackagesImportGpgKey_clicked"/>
                         <child>
                           <widget class="GtkAlignment" id="alignment7">
                             <property name="visible">True</property>
@@ -4960,7 +4960,7 @@ Desktop</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
                         <property name="tooltip" translatable="yes">Apply Changes</property>
-                        <signal name="clicked" handler="on_buttonAltPackagesApply_clicked" swapped="no"/>
+                        <signal name="clicked" handler="on_buttonAltPackagesApply_clicked"/>
                         <child>
                           <widget class="GtkAlignment" id="alignment6">
                             <property name="visible">True</property>
@@ -5091,7 +5091,7 @@ Desktop</property>
                         <property name="use_underline">True</property>
                         <property name="active">True</property>
                         <property name="draw_indicator">True</property>
-                        <signal name="toggled" handler="on_checkbuttonAltBuildIso_toggled" swapped="no"/>
+                        <signal name="toggled" handler="on_checkbuttonAltBuildIso_toggled"/>
                       </widget>
                       <packing>
                         <property name="top_attach">1</property>
@@ -5203,7 +5203,7 @@ Desktop</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
                         <property name="use_underline">True</property>
-                        <signal name="clicked" handler="on_buttonBrowseAltCdFilename_clicked" swapped="no"/>
+                        <signal name="clicked" handler="on_buttonBrowseAltCdFilename_clicked"/>
                       </widget>
                       <packing>
                         <property name="left_attach">2</property>
@@ -5316,7 +5316,7 @@ PowerPC</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
-                        <signal name="clicked" handler="on_buttonBurnIso_clicked" swapped="no"/>
+                        <signal name="clicked" handler="on_buttonBurnIso_clicked"/>
                         <child>
                           <widget class="GtkAlignment" id="alignment1">
                             <property name="visible">True</property>
@@ -5440,7 +5440,7 @@ if i have forgotten anyone, please let me know...
                       <widget class="GtkButton" id="buttonDonate">
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
-                        <signal name="clicked" handler="on_buttonDonate_clicked" swapped="no"/>
+                        <signal name="clicked" handler="on_buttonDonate_clicked"/>
                         <child>
                           <widget class="GtkAlignment" id="alignment9">
                             <property name="visible">True</property>
@@ -5538,7 +5538,7 @@ if i have forgotten anyone, please let me know...
                 <property name="can_default">True</property>
                 <property name="receives_default">False</property>
                 <property name="use_underline">True</property>
-                <signal name="clicked" handler="on_buttonBack_clicked" swapped="no"/>
+                <signal name="clicked" handler="on_buttonBack_clicked"/>
               </widget>
               <packing>
                 <property name="expand">False</property>
@@ -5554,7 +5554,7 @@ if i have forgotten anyone, please let me know...
                 <property name="can_default">True</property>
                 <property name="receives_default">False</property>
                 <property name="use_underline">True</property>
-                <signal name="clicked" handler="on_buttonNext_clicked" swapped="no"/>
+                <signal name="clicked" handler="on_buttonNext_clicked"/>
               </widget>
               <packing>
                 <property name="expand">False</property>

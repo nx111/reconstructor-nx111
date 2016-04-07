@@ -400,6 +400,14 @@ class Reconstructor:
             self.wTree.get_widget("expanderGnomeInteractive").hide()
             return
 
+    def isMounted(self,path):
+        error = commands.getoutput("grep -c \"" + path +"\" /proc/mounts")
+        # print '..check mounted: ' + "grep -c \"" + path +"\" /proc/mounts  (" + error +")"
+        if error != '0':
+            return True
+        else:
+            return False
+
     def CheckChrootKernel(self):
         # check vmlinuz and initrd
         print  'Check Chroot Kernel ...'
@@ -1615,6 +1623,44 @@ class Reconstructor:
 
         return workingDirOk
 
+    def readConfig(self):
+        config = ConfigParser.ConfigParser()
+        config.optionxform = str
+        config.read(os.path.join(os.environ['HOME'], ".reconstructor"))
+        try:
+            self.isoFilename = config.get('ISO','isofilename')
+        except:
+            self.isoFilename = ''
+
+        try:
+            self.cdDesc = config.get('ISO','cddesc')
+        except:
+            self.cdDesc = ''
+
+        try:
+            self.cdArchIndex = int(config.get('ISO','cdarchidx'))
+        except:
+            self.cdArchIndex = 0
+        
+
+    def saveConfig(self,isLiveCD=True):
+        config = ConfigParser.ConfigParser()
+        config.optionxform = str
+        if not config.has_section('global'):
+            config.add_section('global')
+        config.set('global','workdir',self.customDir)
+        if not config.has_section('ISO'):
+            config.add_section('ISO')
+        if isLiveCD == True:
+            config.set('ISO','isofilename',self.wTree.get_widget("entryLiveIsoFilename").get_text())
+            config.set('ISO','cddesc',self.wTree.get_widget("entryLiveCdDescription").get_text())
+            config.set('ISO','cdarchidx',self.wTree.get_widget("comboboxLiveCdArch").get_active())
+        else:
+            config.set('ISO','isofilename',self.wTree.get_widget("entryAltIsoFilename").get_text())
+            config.set('ISO','cddesc',self.wTree.get_widget("entryAltCdDescription").get_text())
+            config.set('ISO','cdarchidx',self.wTree.get_widget("comboboxAltCdArch").get_active())
+        config.write(open(os.path.join(os.environ['HOME'], ".reconstructor"),'wt'))
+
 
     def checkPage(self, pageNum):
         if self.runningDebug == True:
@@ -1653,25 +1699,7 @@ class Reconstructor:
             self.interactiveEdit = False
             # check for custom dir
             if self.checkCustomDir() == True:
-                config = ConfigParser.ConfigParser()
-                config.optionxform = str
-		if not os.path.exists(os.path.join(os.environ['HOME'], ".reconstructor")):
-			open(os.path.join(os.environ['HOME'], ".reconstructor"), "a") 
-                config.read(os.path.join(os.environ['HOME'], ".reconstructor"))
-                if not config.has_section('global'):
-                   config.add_section('global')
-		try: 
-			workdir = config.get('global','workdir')
-		except:
-			workdir = "."
-                if workdir != self.customDir:
-                      if not config.has_section('ISO'):
-                         config.add_section('ISO')
-                      config.set('ISO','isofilename','')
-                      config.set('ISO','cddesc','')
-                      config.set('global','workdir',self.customDir)
-                
-                      config.write(open(os.path.join(os.environ['HOME'], ".reconstructor"),'wb'))
+                self.readConfig()
 
                 if self.checkSetup() == True:
                     if self.checkWorkingDir() == True:
@@ -1771,9 +1799,18 @@ class Reconstructor:
             label.show()
             lblApply.show()
             #warnDlg.show()
+            # set iso filenames
+            if self.isoFilename and self.isoFilename != "":
+                self.wTree.get_widget("entryLiveIsoFilename").set_text(self.isoFilename)
+            # set descriptions
+            if self.cdDesc and self.cdDesc != "":
+                self.wTree.get_widget("entryLiveCdDescription").set_text(self.cdDesc)
+
+            self.wTree.get_widget("comboboxLiveCdArch").set_active(self.cdArchIndex)
+
             response = warnDlg.run()
             if response == gtk.RESPONSE_OK:
-                self.doneTerminal(forceMode=True,silentMode=True)
+                self.doneTerminal(forceMode=False,silentMode=False)
                 warnDlg.destroy()
                 self.setPage(self.pageLiveBuild)
                 # check for windows apps and enable/disable checkbox as necessary
@@ -1791,32 +1828,7 @@ class Reconstructor:
 
         elif pageNum == self.pageLiveBuild:
             #write config 
-            config = ConfigParser.ConfigParser()
-            config.optionxform = str
-            config.read(os.path.join(os.environ['HOME'], ".reconstructor"))
-            try:
-                self.isoFilename = config.get('ISO','isofilename')
-            except:
-                self.isoFilename = ''
-
-            try:
-                self.cdDesc = config.get('ISO','cddesc')
-            except:
-                self.cdDesc = ''
-
-            try:
-                self.cdArchIndex = int(config.get('ISO','cdarchidx'))
-            except:
-                self.cdArchIndex = 0
-
-            # set iso filenames
-            if self.isoFilename and self.isoFilename != "":
-                self.wTree.get_widget("entryLiveIsoFilename").set_text(self.isoFilename)
-            # set descriptions
-            if self.cdDesc and self.cdDesc != "":
-                self.wTree.get_widget("entryLiveCdDescription").set_text(self.cdDesc)
-
-            self.wTree.get_widget("comboboxLiveCdArch").set_active(self.cdArchIndex)
+            self.saveConfig(True)
 
             # build
             warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_YES, gtk.RESPONSE_OK))
@@ -1835,15 +1847,8 @@ class Reconstructor:
             lblInfo.show()
             label.show()
             #warnDlg.show()
+
             response = warnDlg.run()
-
-            if not config.has_section('ISO'):
-               config.add_section('ISO')
-            config.set('ISO','isofilename',self.wTree.get_widget("entryLiveIsoFilename").get_text())
-	    config.set('ISO','cddesc',self.wTree.get_widget("entryLiveCdDescription").get_text())
-	    config.set('ISO','cdarchidx',self.wTree.get_widget("comboboxLiveCdArch").get_active())
-            config.write(open(os.path.join(os.environ['HOME'], ".reconstructor"),'wb'))
-
             if response == gtk.RESPONSE_OK:
                 warnDlg.destroy()
                 self.setBusyCursor()
@@ -1860,19 +1865,7 @@ class Reconstructor:
             self.saveAltSetupInfo()
             # check for custom dir
             if self.checkCustomDir() == True:
-                config = ConfigParser.ConfigParser()
-                config.optionxform = str
-                config.read(os.path.join(os.environ['HOME'], ".reconstructor"))
-                if not config.has_section('global'):
-                   config.add_section('global')
-                if config.get('global','workdir') != self.customDir:
-                      if not config.has_section('ISO'):
-                         config.add_section('ISO')
-                      config.set('ISO','isofilename','')
-                      config.set('ISO','cddesc','')
-                      config.set('global','workdir',self.customDir)
-                      config.write(open(os.path.join(os.environ['HOME'], ".reconstructor"),'wb'))
-
+                self.readConfig()
                 if self.checkAltSetup() == True:
                     if self.checkAltWorkingDir() == True:
                         warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=    (gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_YES, gtk.RESPONSE_OK))
@@ -1953,6 +1946,16 @@ class Reconstructor:
             label.show()
             lblApply.show()
             #warnDlg.show()
+
+            # set iso filenames
+            if self.isoFilename and self.isoFilename != "":
+                self.wTree.get_widget("entryAltIsoFilename").set_text(self.isoFilename)
+            # set descriptions
+            if self.cdDesc and self.cdDesc != "":
+                self.wTree.get_widget("entryAltCdDescription").set_text(self.cdDesc)
+
+            self.wTree.get_widget("comboboxAltBuildArch").set_active(self.cdArchIndex)
+
             response = warnDlg.run()
             if response == gtk.RESPONSE_OK:
                 warnDlg.destroy()
@@ -1966,33 +1969,8 @@ class Reconstructor:
                 return False
         elif pageNum == self.pageAltBuild:
             #write config 
-            config = ConfigParser.ConfigParser()
-            config.optionxform = str
-            config.read(os.path.join(os.environ['HOME'], ".reconstructor"))
-            try:
-                self.isoFilename = config.get('ISO','isofilename')
-            except:
-                self.isoFilename = ''
-
-            try:
-                self.cdDesc = config.get('ISO','cddesc')
-            except:
-                self.cdDesc = ''
-
-            try:
-	        self.cdArchIndex = int(config.get('ISO','cdarchidx'))
-            except:
-                self.cdArchIndex = 0
-
-            # set iso filenames
-            if self.isoFilename and self.isoFilename != "":
-                self.wTree.get_widget("entryAltIsoFilename").set_text(self.isoFilename)
-            # set descriptions
-            if self.cdDesc and self.cdDesc != "":
-                self.wTree.get_widget("entryAltCdDescription").set_text(self.cdDesc)
-
-            self.wTree.get_widget("comboboxAltBuildArch").set_active(self.cdArchIndex)
-
+            #write config 
+            self.saveConfig(False)
             # build
             warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_YES, gtk.RESPONSE_OK))
             warnDlg.set_icon_from_file(self.iconFile)
@@ -2011,12 +1989,6 @@ class Reconstructor:
             label.show()
             #warnDlg.show()
             response = warnDlg.run()
-
-            if not config.has_section('ISO'):
-               config.add_section('ISO')
-            config.set('ISO','isofilename',self.wTree.get_widget("entryAltBuildIsoFilename").get_text())
-	    config.set('ISO','cddesc',self.wTree.get_widget("entryBuildAltCdDescription").get_text())
-            config.write(open(os.path.join(os.environ['HOME'], ".reconstructor"),'wb'))
 
             if response == gtk.RESPONSE_OK:
                 warnDlg.destroy()
@@ -2229,18 +2201,18 @@ class Reconstructor:
                 #if os.path.exists(os.path.join(self.customDir, "root/etc/resolv.conf")):
                 print _("Copying DNS info...")
                 os.popen('cp -f /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
-                # mount /proc
-                print _("Mounting /proc filesystem...")
-                os.popen('mount --bind /proc \"' + os.path.join(self.customDir, "root/proc") + '\"')
-	        #mount /dev
+                #mount /dev
                 print _("Mounting /dev filesystem...")
                 os.popen('mount --bind /dev \"' + os.path.join(self.customDir, "root/dev") + '\"')
-	        #mount /sys
+                # mount /proc
+                print _("Mounting /proc filesystem...")
+                os.popen('mount none -t proc \"' + os.path.join(self.customDir, "root/proc") + '\"')
+                #mount /sys
                 print _("Mounting /sys filesystem...")
-                os.popen('mount --bind /sys \"' + os.path.join(self.customDir, "root/sys") + '\"')
-	        #mount /var/run/dbus
-                #print _("Mounting /var/run/dubs filesystem...")
-                #os.popen('mount --bind /var/run/dbus \"' + os.path.join(self.customDir, "root/var/run/dbus") + '\"')
+                os.popen('mount none -t sysfs \"' + os.path.join(self.customDir, "root/sys") + '\"')
+                #mount /sys
+                print _("Mounting /dev/pts filesystem...")
+                os.popen('mount none -t devpts \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
                 # copy apt.conf
                 print _("Copying apt configuration...")
                 if not os.path.exists(os.path.join(self.customDir, "root/etc/apt/apt.conf.d/")):
@@ -2257,19 +2229,21 @@ class Reconstructor:
                 f.write(scr)
                 f.close()
                 os.popen('chmod a+x ' + os.path.join(self.customDir, "/tmp/reconstructor-terminal.sh"))
-                TerminalInitialized=True
+                self.TerminalInitialized = True
             # TODO: replace default terminal title with "Reconstructor Terminal"
-            # use gnome-terminal if available -- more features
-            if commands.getoutput('which gnome-terminal') != '':
-                print _('Launching Gnome-Terminal for advanced customization...')
-                commands.getoutput('export HOME=/root ; gnome-terminal --hide-menubar -t \"Reconstructor Terminal\" -e \"/tmp/reconstructor-terminal.sh\" >/tmp/gnome-terminal-reconstructor.log')
-                if commands.getoutput('cat /tmp/gnome-terminal-reconstructor.log | grep fail') != '':
+            # use COLORTERM if available -- more features
+            # get COLORTERM
+            terminal = os.environ["COLORTERM"]
+            if terminal != '' and commands.getoutput('which '+ terminal) != '':
+                print _('Launching ' + terminal +' for advanced customization...')
+                commands.getoutput('export HOME=/root ; ' + terminal + ' --hide-menubar -t \"Reconstructor Terminal\" -e \"/tmp/reconstructor-terminal.sh\" >/tmp/terminal-reconstructor.log')
+                if commands.getoutput('cat /tmp/terminal-reconstructor.log | grep fail') != '':
                     print _(failed + '\nLaunching Xterm for advanced customization...')
                     os.popen('export HOME=/root ; xterm -bg black -fg white -rightbar -title \"Reconstructor Terminal\" -e /tmp/reconstructor-terminal.sh')
-                commands.getoutput('rm -f /tmp/gnome-terminal-reconstructor.log')
+                os.popen('rm -f /tmp/terminal-reconstructor.log')
             else:
                 print _('Launching Xterm for advanced customization...')
-                # use xterm if gnome-terminal isn't available
+                # use xterm if COLORTERM isn't available
                 os.popen('export HOME=/root ; xterm -bg black -fg white -rightbar -title \"Reconstructor Terminal\" -e /tmp/reconstructor-terminal.sh')
         except Exception, detail:
             self.doneTerminal()
@@ -2297,34 +2271,34 @@ class Reconstructor:
                 if silentMode == False:
                     print _("Removing DNS info...")
                 os.popen('rm -Rf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
-                # umount /var/run/dbus
-                #if os.path.exists(os.path.join(self.customDir, "root/var/run/dbus/system_bus_socket")):
-                #    if silentMode == False:
-                #        print _("Umounting /var/run/dubs...")
-                #    error = commands.getoutput('umount  -l \"' + os.path.join(self.customDir, "root/var/run/dbus") + '\"')
-                #    if(error != ''):
-                #        self.suggestReboot('/var/run/dbus could not be unmounted. It must be unmounted before you can build an ISO.')
-                # umount /sys
-                if os.path.exists(os.path.join(self.customDir, "root/sys/kernel")):
-                    if silentMode == False:
-                        print _("Umounting /sys...")
-                    error = commands.getoutput('umount   -l \"' + os.path.join(self.customDir, "root/sys") + '\"')
-                    if(error != ''):
-                        self.suggestReboot('/sys could not be unmounted. It must be unmounted before you can build an ISO.')
-                # umount /dev
-                if os.path.exists(os.path.join(self.customDir, "root/dev/cpu/microcode")):
-                    if silentMode == False:
-                        print _("Umounting /dev...")
-                    error = commands.getoutput('umount  -l \"' + os.path.join(self.customDir, "root/dev") + '\"')
-                    if(error != ''):
-                        self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
                 # umount /proc
-                if os.path.exists(os.path.join(self.customDir, "root/proc/stat")):
+                if self.isMounted(os.path.join(self.customDir, "root/proc")):
                     if silentMode == False:
                         print _("Umounting /proc...")
-                    error = commands.getoutput('umount  -l \"' + os.path.join(self.customDir, "root/proc") + '\"')
+                    error = commands.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/proc") + '\"')
                     if(error != ''):
                         self.suggestReboot('/proc could not be unmounted. It must be unmounted before you can build an ISO.')
+                # umount /sys
+                if self.isMounted(os.path.join(self.customDir, "root/sys")):
+                    if silentMode == False:
+                        print _("Umounting /sys...")
+                    error = commands.getoutput('umount   -lf \"' + os.path.join(self.customDir, "root/sys") + '\"')
+                    if(error != ''):
+                        self.suggestReboot('/sys could not be unmounted. It must be unmounted before you can build an ISO.')
+                # umount /dev/pts
+                if self.isMounted(os.path.join(self.customDir, "root/dev/pts")):
+                    if silentMode == False:
+                        print _("Umounting /dev/pts...")
+                    error = commands.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
+                    if(error != ''):
+                        self.suggestReboot('/dev/pts could not be unmounted. It must be unmounted before you can build an ISO.')
+                # umount /dev
+                if self.isMounted(os.path.join(self.customDir, "root/dev")):
+                    if silentMode == False:
+                        print _("Umounting /dev...")
+                    error = commands.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/dev") + '\"')
+                    if(error != ''):
+                        self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
                 #clean /run
                 if silentMode == False:
                     print _("Clean /run ...")
@@ -2502,15 +2476,15 @@ class Reconstructor:
             if os.path.exists(os.path.join(self.customDir, "root/etc/resolv.conf")):
                 print _("Copying DNS info...")
                 os.popen('cp -f /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
-            # mount /proc
-            print _("Mounting /proc filesystem...")
-            os.popen('mount --bind /proc \"' + os.path.join(self.customDir, "root/proc") + '\"')
             # mount /dev
             print _("Mounting /dev filesystem...")
             os.popen('mount --bind /dev \"' + os.path.join(self.customDir, "root/dev") + '\"')
             # mount devpts
             print _("Mounting devpts...")
             os.popen('mount -t devpts none \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
+            # mount /proc
+            print _("Mounting /proc filesystem...")
+            os.popen('mount -t proc none \"' + os.path.join(self.customDir, "root/proc") + '\"')
             # mount sysfs
             print _("Mounting /sys filesystem...")
             os.popen('mount -t sysfs none \"' + os.path.join(self.customDir, "root/sys") + '\"')
@@ -2541,7 +2515,7 @@ class Reconstructor:
 
             # umount /tmp
             print _("Umounting /tmp...")
-            error = commands.getoutput('umount -l \"' + os.path.join(self.customDir, "root/tmp") + '\"')
+            error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/tmp") + '\"')
             if(error != ''):
                 self.suggestReboot('/tmp could not be unmounted. It must be unmounted before you can build an ISO.')
             # remove dns info
@@ -2549,24 +2523,24 @@ class Reconstructor:
             os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
             # umount /proc
             print _("Umounting /proc...")
-            error = commands.getoutput('umount -l \"' + os.path.join(self.customDir, "root/proc/") + '\"')
+            error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/proc/") + '\"')
             if(error != ''):
                 self.suggestReboot('/proc could not be unmounted. It must be unmounted before you can build an ISO.')
-            # umount devpts
-            print _("Umounting devpts...")
-            error = commands.getoutput('umount -l \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
-            if(error != ''):
-                self.suggestReboot('devpts could not be unmounted. It must be unmounted before you can build an ISO.')
-            # umount /dev
-            print _("Umounting /dev...")
-            error = commands.getoutput('umount -l \"' + os.path.join(self.customDir, "root/dev/") + '\"')
-            if(error != ''):
-                self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
             # umount /sys
             print _("Umounting /sys...")
-            error = commands.getoutput('umount -l \"' + os.path.join(self.customDir, "root/sys/") + '\"')
+            error = commands.getoutput('umount -fR \"' + os.path.join(self.customDir, "root/sys/") + '\"')
             if(error != ''):
                 self.suggestReboot('/sys could not be unmounted. It must be unmounted before you can build an ISO.')
+            # umount devpts
+            print _("Umounting devpts...")
+            error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
+            if(error != ''):
+                self.suggestReboot('/dev/pts could not be unmounted. It must be unmounted before you can build an ISO.')
+            # umount /dev
+            print _("Umounting /dev...")
+            error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/dev/") + '\"')
+            if(error != ''):
+                self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
             # remove temp script
             os.popen('rm -Rf /tmp/xephyr-chroot.sh')
             # startx complains about suspicious activity sometimes:P
@@ -2603,7 +2577,7 @@ class Reconstructor:
             os.popen('rm -f ' + os.path.join(self.customDir, "root/etc/hosts"))
             # umount /tmp
             print _("Umounting /tmp...")
-            error = commands.getoutput('umount -l \"' + os.path.join(self.customDir, "root/tmp") + '\"')
+            error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/tmp") + '\"')
             if(error != ''):
                 self.suggestReboot('/tmp could not be unmounted. It must be unmounted before you can build an ISO.')
             # remove dns info
@@ -2611,24 +2585,24 @@ class Reconstructor:
             os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
             # umount /proc
             print _("Umounting /proc...")
-            error = commands.getoutput('umount -l \"' + os.path.join(self.customDir, "root/proc/") + '\"')
+            error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/proc/") + '\"')
             if(error != ''):
                 self.suggestReboot('/proc could not be unmounted. It must be unmounted before you can build an ISO.')
-            # umount devpts
-            print _("Umounting devpts...")
-            error = commands.getoutput('umount -l \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
-            if(error != ''):
-                self.suggestReboot('devpts could not be unmounted. It must be unmounted before you can build an ISO.')
-            # umount /dev
-            print _("Umounting /dev...")
-            error = commands.getoutput('umount -l \"' + os.path.join(self.customDir, "root/dev/") + '\"')
-            if(error != ''):
-                self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
             # umount /sys
             print _("Umounting /sys...")
-            error = commands.getoutput('umount -l \"' + os.path.join(self.customDir, "root/sys/") + '\"')
+            error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/sys/") + '\"')
             if(error != ''):
                 self.suggestReboot('/sys could not be unmounted. It must be unmounted before you can build an ISO.')
+            # umount devpts
+            print _("Umounting devpts...")
+            error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
+            if(error != ''):
+                self.suggestReboot('/dev/pts could not be unmounted. It must be unmounted before you can build an ISO.')
+            # umount /dev
+            print _("Umounting /dev...")
+            error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/dev/") + '\"')
+            if(error != ''):
+                self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
             # remove temp script
             os.popen('rm -Rf /tmp/xephyr-chroot.sh')
             # startx complains about suspicious activity sometimes:P
@@ -3138,9 +3112,7 @@ class Reconstructor:
         for root , dirs, files in os.walk(path, True):
             for name in files:
                 if os.path.exists(os.path.join(root, name)) :
-                    if os.path.islink(os.path.join(root, name)):
-                        size += 0
-                    else:
+                    if not os.path.islink(os.path.join(root, name)):
                         size += int(round((os.path.getsize(os.path.join(root, name))+4093)/4096)*4)
         return size
 
@@ -3164,7 +3136,8 @@ class Reconstructor:
             # get size of root dir
             rootSize = self.FileSize(os.path.join(self.customDir, "root/"))
             # divide root size to simulate squash compression
-            self.wTree.get_widget("labelSoftwareIsoSize").set_text( '~ ' + str(int(round((remasterSize + (rootSize/3.55))/1024))) + ' MB')
+            SoftwareIsoSize = int(round((remasterSize + (rootSize/3.55))/1024))
+            self.wTree.get_widget("labelSoftwareIsoSize").set_text( '~ ' + str(SoftwareIsoSize) + ' MB')
             self.setDefaultCursor()
             # set page here - since this is run on a background thread,
             # the next page will show too quickly if set in self.checkPage()
@@ -4493,8 +4466,8 @@ class Reconstructor:
                 os.popen('cp -f /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             # mount /proc
             print _("Mounting /proc filesystem...")
-            os.popen('mount --bind /proc \"' + os.path.join(self.customDir, "root/proc") + '\"')
-	    #mount /var/run/dbus
+            os.popen('mount -t proc none \"' + os.path.join(self.customDir, "root/proc") + '\"')
+            #mount /var/run/dbus
             print _("Mounting /var/run/dubs filesystem...")
             os.popen('mount --bind /var/run/dbus \"' + os.path.join(self.customDir, "root/var/run/dbus") + '\"')
 	
@@ -4508,16 +4481,17 @@ class Reconstructor:
             # backup
             os.popen('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\"')
             os.popen('cp -f /etc/wgetrc ' + os.path.join(self.customDir, "root/etc/wgetrc"))
-            # run module script using gnome-terminal if available -- more features
-            if commands.getoutput('which gnome-terminal') != '':
-                print _('Launching Chroot Gnome-Terminal...')
-                failed = commands.getoutput('gnome-terminal --hide-menubar -t \"Reconstructor Modules\" -x chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/module-exec.sh')
+            terminal = os.environ["COLORTERM"]
+            # run module script using COLORTERM if available -- more features
+            if terminal != '' and commands.getoutput('which ' + terminal) != '':
+                print _('Launching Chroot ' + terminal + '...')
+                failed = commands.getoutput(terminal + '--hide-menubar -t \"Reconstructor Modules\" -x chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/module-exec.sh')
                 if commands.getoutput('echo' + failed + ' | grep fail') != '':
                     print _(failed + '\nLaunching Chroot Xterm...')
                     os.popen('xterm -bg black -fg white -rightbar -title \'Reconstructor Modules\' -e chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/module-exec.sh')
             else:
                 print _('Launching Chroot Xterm...')
-                # run module script using xterm if gnome-terminal isn't available
+                # run module script using xterm if COLORTERM isn't available
                 os.popen('xterm -bg black -fg white -rightbar -title \'Reconstructor Modules\' -e chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/module-exec.sh')
             # cleanup
             os.popen('cd \"' + os.path.join(self.customDir, "root/tmp/") + '\" ; ' + 'rm -Rf *.rmod 1>&2 2>/dev/null')
@@ -4532,13 +4506,13 @@ class Reconstructor:
             print _("Removing DNS info...")
             os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
             # umount /var/run/dbus
-            print _("Umounting /var/run/dubs...")
-            error = commands.getoutput('umount  -l \"' + os.path.join(self.customDir, "root/var/run/dbus/") + '\"')
+            print _("Umounting -lf /var/run/dubs...")
+            error = commands.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/var/run/dbus/") + '\"')
             if(error != ''):
                 self.suggestReboot('/var/run/dbus could not be unmounted. It must be unmounted before you can build an ISO.')
             # umount /proc
             print _("Umounting /proc...")
-            error = commands.getoutput('umount  -l \"' + os.path.join(self.customDir, "root/proc/") + '\"')
+            error = commands.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/proc/") + '\"')
             if(error != ''):
                 self.suggestReboot('/proc could not be unmounted. It must be unmounted before you can build an ISO.')
 
@@ -4600,7 +4574,7 @@ class Reconstructor:
                 os.popen('cp -f /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             # mount /proc
             print _("Mounting /proc filesystem...")
-            os.popen('mount --bind /proc \"' + os.path.join(self.customDir, "root/proc") + '\"')
+            os.popen('mount -t proc none \"' + os.path.join(self.customDir, "root/proc") + '\"')
             # copy apt.conf
             print _("Copying apt.conf configuration...")
             if not os.path.exists(os.path.join(self.customDir, "root/etc/apt/apt.conf.d/")):
@@ -4648,7 +4622,7 @@ class Reconstructor:
             os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
             # umount /proc
             print _("Umounting /proc...")
-            error = commands.getoutput('umount  -l \"' + os.path.join(self.customDir, "root/proc/") + '\"')
+            error = commands.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/proc/") + '\"')
             if(error != ''):
                 self.suggestReboot('/proc could not be unmounted. It must be unmounted before you can build an ISO.')
             self.setDefaultCursor()
