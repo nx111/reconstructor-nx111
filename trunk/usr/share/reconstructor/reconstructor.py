@@ -1659,11 +1659,6 @@ class Reconstructor:
                 self.cdArchIndex = int(config.get('ISO','cdarchidx'))
             except:
                 self.cdArchIndex = 0
-        else:
-            config.set('ISO','discType',self.discType)
-            config.set('ISO','isofilename','')
-            config.set('ISO','cdDesc','')
-            config.set('ISO','cdarchidx',0)
 
     def saveConfig(self):
         config = ConfigParser.ConfigParser()
@@ -4093,7 +4088,7 @@ class Reconstructor:
                 os.makedirs(os.path.join(self.customDir, self.altRemasterRepo))
             #print "INFO: Creating Remaster directory..."
             # check for iso
-            self.isoFilename = self.wTree.get_widget("entryIsoFilename").get_text()
+            self.isoFilename = self.wTree.get_widget("entryAltIsoFilename").get_text()
             print 'ISO File:' + self.isoFilename
             if self.isoFilename == "":
                 mntDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))
@@ -4183,7 +4178,12 @@ class Reconstructor:
 
             # extract initrd
             print _("Extracting Alternate Initial Ram Disk (initrd)...")
-            os.popen('cd \"' + os.path.join(self.customDir, self.altInitrdRoot) + '\"; cat ' + self.mountDir + '/install/initrd.lz | lzma -d | cpio -i')
+            if (os.path.exists(self.mountDir + '/install/initrd.lz')):
+                os.popen('cd \"' + os.path.join(self.customDir, self.altInitrdRoot) + '\"; cat ' + self.mountDir + '/install/initrd.lz | lzma -d | cpio -i')
+            elif (os.path.exists(self.mountDir + '/install/initrd.gz')):
+                os.popen('cd \"' + os.path.join(self.customDir, self.altInitrdRoot) + '\"; cat ' + self.mountDir + '/install/initrd.gz | gzip -d | cpio -i')
+            elif (os.path.exists(self.mountDir + '/install/initrd')):
+                os.popen('cd \"' + os.path.join(self.customDir, self.altInitrdRoot) + '\"; cat ' + self.mountDir + '/install/initrd | gzip -d | cpio -i')
 
             # umount cdrom
             os.popen("umount " + self.mountDir)
