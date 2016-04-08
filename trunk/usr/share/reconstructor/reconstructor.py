@@ -2251,10 +2251,7 @@ class Reconstructor:
             # TODO: replace default terminal title with "Reconstructor Terminal"
             # use COLORTERM if available -- more features
             # get COLORTERM
-            try:
-                terminal = os.environ["COLORTERM"]
-            except:
-                terminal = 'gnome-terminal'
+            terminal = self.getTerminal()
             if terminal != '' and commands.getoutput('which '+ terminal) != '':
                 print _('Launching ' + terminal +' for advanced customization...')
                 commands.getoutput('export HOME=/root ; ' + terminal + ' --hide-menubar -t \"Reconstructor Terminal\" -e \"/tmp/reconstructor-terminal.sh\" >/tmp/terminal-reconstructor.log')
@@ -4215,6 +4212,25 @@ class Reconstructor:
         else :
            os.popen('cp -f \"' + os.path.join(self.customDir, "root/vmlinuz") + '\" \"' + os.path.join(self.customDir, "remaster/casper/vmlinuz") + '\"')
 
+
+    def getTerminal(self):
+        try:
+            terminal = os.environ["COLORTERM"]
+        except:
+            if commands.getoutput('which gnome-terminal') != '':
+                terminal = 'gnome-terminal'
+            elif commands.getoutput('which mate-terminal') != '':
+                terminal = 'mate-terminal'
+            elif commands.getoutput('which konsole') != '':
+                terminal = 'konsole'
+            elif commands.getoutput('which xfc4-terminal') != '':
+                terminal = 'xfc4-terminal'
+            elif commands.getoutput('which lxterminal') != '':
+                terminal = 'lxterminal'
+            elif commands.getoutput('which qterminal') != '':
+                terminal = 'qterminal'
+        return terminal
+
 # ---------- Customize Live ---------- #
     def customize(self):
         print _("INFO: Customizing...")
@@ -4509,10 +4525,7 @@ class Reconstructor:
             # backup
             os.popen('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\"')
             os.popen('cp -f /etc/wgetrc ' + os.path.join(self.customDir, "root/etc/wgetrc"))
-            try:
-                terminal = os.environ["COLORTERM"]
-            except:
-                terminal = 'gnome-terminal'
+            terminal = self.getTerminal()
             # run module script using COLORTERM if available -- more features
             if terminal != '' and commands.getoutput('which ' + terminal) != '':
                 print _('Launching Chroot ' + terminal + '...')
