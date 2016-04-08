@@ -136,6 +136,7 @@ class Reconstructor:
         self.createAltRemasterDir = False
         self.createAltInitrdRoot = False
         self.isoFilename = ""
+        self.buildAltCdFilename = ""
         self.buildLiveCdFilename = ""
         self.cdArchIndex = 0
         self.setupComplete = False
@@ -1627,31 +1628,53 @@ class Reconstructor:
         config = ConfigParser.ConfigParser()
         config.optionxform = str
         config.read(os.path.join(os.environ['HOME'], ".reconstructor"))
-        try:
-            self.isoFilename = config.get('ISO','isofilename')
-        except:
-            self.isoFilename = ''
+        if not config.has_section('global'):
+            config.add_section('global')
+        if not config.has_section('ISO'):
+            config.add_section('ISO')
 
         try:
-            self.cdDesc = config.get('ISO','cddesc')
+            discType = config.get('ISO','discType')
         except:
-            self.cdDesc = ''
+            discType = 'live'
 
-        try:
-            self.cdArchIndex = int(config.get('ISO','cdarchidx'))
-        except:
-            self.cdArchIndex = 0
-        
+        if discType == self.discType:
+            if discType == 'live':
+                try:
+                    self.buildLiveCdFilename = config.get('ISO','isofilename')
+                except:
+                    self.buildLiveCdFilename = ''
+            else:
+                try:
+                    self.buildAltCdFilename = config.get('ISO','isofilename')
+                except:
+                    self.buildaltCdFilename = ''
 
-    def saveConfig(self,isLiveCD=True):
+            try:
+                self.cdDesc = config.get('ISO','cddesc')
+            except:
+                self.cdDesc = ''
+
+            try:
+                self.cdArchIndex = int(config.get('ISO','cdarchidx'))
+            except:
+                self.cdArchIndex = 0
+        else:
+            config.set('ISO','discType',self.discType)
+            config.set('ISO','isofilename','')
+            config.set('ISO','cdDesc','')
+            config.set('ISO','cdarchidx',0)
+
+    def saveConfig(self):
         config = ConfigParser.ConfigParser()
         config.optionxform = str
         if not config.has_section('global'):
             config.add_section('global')
-        config.set('global','workdir',self.customDir)
         if not config.has_section('ISO'):
             config.add_section('ISO')
-        if isLiveCD == True:
+        config.set('global','workdir',self.customDir)
+        config.set('ISO','discType',self.discType)
+        if self.discType == 'live':
             config.set('ISO','isofilename',self.wTree.get_widget("entryLiveIsoFilename").get_text())
             config.set('ISO','cddesc',self.wTree.get_widget("entryLiveCdDescription").get_text())
             config.set('ISO','cdarchidx',self.wTree.get_widget("comboboxLiveCdArch").get_active())
@@ -1800,8 +1823,8 @@ class Reconstructor:
             lblApply.show()
             #warnDlg.show()
             # set iso filenames
-            if self.isoFilename and self.isoFilename != "":
-                self.wTree.get_widget("entryLiveIsoFilename").set_text(self.isoFilename)
+            if self.buildLiveCdFilename and self.buildLiveCdFilename != "":
+                self.wTree.get_widget("entryLiveIsoFilename").set_text(self.buildLiveCdFilename)
             # set descriptions
             if self.cdDesc and self.cdDesc != "":
                 self.wTree.get_widget("entryLiveCdDescription").set_text(self.cdDesc)
@@ -1828,7 +1851,7 @@ class Reconstructor:
 
         elif pageNum == self.pageLiveBuild:
             #write config 
-            self.saveConfig(True)
+            self.saveConfig()
 
             # build
             warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_YES, gtk.RESPONSE_OK))
@@ -1948,8 +1971,8 @@ class Reconstructor:
             #warnDlg.show()
 
             # set iso filenames
-            if self.isoFilename and self.isoFilename != "":
-                self.wTree.get_widget("entryAltIsoFilename").set_text(self.isoFilename)
+            if self.buildAltCdFilename and self.buildAltCdFilename != "":
+                self.wTree.get_widget("entryAltIsoFilename").set_text(self.buildAltCdFilename)
             # set descriptions
             if self.cdDesc and self.cdDesc != "":
                 self.wTree.get_widget("entryAltCdDescription").set_text(self.cdDesc)
@@ -1970,7 +1993,7 @@ class Reconstructor:
         elif pageNum == self.pageAltBuild:
             #write config 
             #write config 
-            self.saveConfig(False)
+            self.saveConfig()
             # build
             warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_YES, gtk.RESPONSE_OK))
             warnDlg.set_icon_from_file(self.iconFile)
@@ -2233,7 +2256,10 @@ class Reconstructor:
             # TODO: replace default terminal title with "Reconstructor Terminal"
             # use COLORTERM if available -- more features
             # get COLORTERM
-            terminal = os.environ["COLORTERM"]
+            try:
+                terminal = os.environ["COLORTERM"]
+            except:
+                terminal = 'gnome-terminal'
             if terminal != '' and commands.getoutput('which '+ terminal) != '':
                 print _('Launching ' + terminal +' for advanced customization...')
                 commands.getoutput('export HOME=/root ; ' + terminal + ' --hide-menubar -t \"Reconstructor Terminal\" -e \"/tmp/reconstructor-terminal.sh\" >/tmp/terminal-reconstructor.log')
@@ -3837,7 +3863,6 @@ class Reconstructor:
         self.createRemasterDir = self.wTree.get_widget("checkbuttonCreateRemaster").get_active()
         self.createCustomRoot = self.wTree.get_widget("checkbuttonCreateRoot").get_active()
         self.createInitrdRoot = self.wTree.get_widget("checkbuttonCreateInitRd").get_active()
-        self.isoFilename = self.wTree.get_widget("entryIsoFilename").get_text()
         # debug
         print "Custom Directory: " + str(self.customDir)
         print "Create Remaster Directory: " + str(self.createRemasterDir)
@@ -3850,7 +3875,6 @@ class Reconstructor:
         self.customDir = self.wTree.get_widget("entryAltWorkingDir").get_text()
         self.createAltRemasterDir = self.wTree.get_widget("checkbuttonAltCreateRemasterDir").get_active()
         self.createAltInitrdRoot = self.wTree.get_widget("checkbuttonAltCreateInitrdDir").get_active()
-        self.isoFilename = self.wTree.get_widget("entryAltIsoFilename").get_text()
         # debug
         print "Custom Directory: " + str(self.customDir)
         print "Create Remaster Directory: " + str(self.createAltRemasterDir)
@@ -3861,6 +3885,8 @@ class Reconstructor:
     def setupWorkingDirectory(self):
         print _("INFO: Setting up working directory...")
         # remaster dir
+        self.isoFilename = self.wTree.get_widget("entryIsoFilename").get_text()
+        print 'ISO File:' + self.isoFilename
         if self.createRemasterDir == True:
             # check for existing directories and remove if necessary
             #if os.path.exists(os.path.join(self.customDir, "remaster")):
@@ -3870,7 +3896,7 @@ class Reconstructor:
                 print "INFO: Creating Remaster directory..."
                 os.makedirs(os.path.join(self.customDir, "remaster"))
             # check for iso
-            if self.isoFilename == "":
+            if  self.isoFilename == "":
                 mntDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))
                 mntDlg.set_icon_from_file(self.iconFile)
                 mntDlg.vbox.set_spacing(10)
@@ -4067,6 +4093,8 @@ class Reconstructor:
                 os.makedirs(os.path.join(self.customDir, self.altRemasterRepo))
             #print "INFO: Creating Remaster directory..."
             # check for iso
+            self.isoFilename = self.wTree.get_widget("entryIsoFilename").get_text()
+            print 'ISO File:' + self.isoFilename
             if self.isoFilename == "":
                 mntDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))
                 mntDlg.set_icon_from_file(self.iconFile)
@@ -4481,7 +4509,10 @@ class Reconstructor:
             # backup
             os.popen('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\"')
             os.popen('cp -f /etc/wgetrc ' + os.path.join(self.customDir, "root/etc/wgetrc"))
-            terminal = os.environ["COLORTERM"]
+            try:
+                terminal = os.environ["COLORTERM"]
+            except:
+                terminal = 'gnome-terminal'
             # run module script using COLORTERM if available -- more features
             if terminal != '' and commands.getoutput('which ' + terminal) != '':
                 print _('Launching Chroot ' + terminal + '...')
