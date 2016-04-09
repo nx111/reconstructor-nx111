@@ -393,6 +393,15 @@ class Reconstructor:
         self.wTree.get_widget("comboboxLiveCdArch").set_active(0)
         self.wTree.get_widget("comboboxAltBuildArch").set_active(0)
 
+        # set default customDir form config file
+        config = ConfigParser.ConfigParser()
+        config.optionxform = str
+        config.read(os.path.join(os.environ['HOME'], ".reconstructor"))
+        try:
+             self.customDir = config.get('global','workdir')
+        except:
+             self.customDir = ''
+
         # enable/disable experimental features
         if self.enableExperimental == True:
             self.wTree.get_widget("expanderGnomeInteractive").show()
@@ -401,8 +410,9 @@ class Reconstructor:
             self.wTree.get_widget("expanderGnomeInteractive").hide()
             return
 
+
     def isMounted(self,path):
-        error = commands.getoutput("grep -c \"" + path +"\" /proc/mounts")
+        error = commands.getoutput("grep -c \"[[:space:]]" + path +"\" /proc/mounts")
         # print '..check mounted: ' + "grep -c \"" + path +"\" /proc/mounts  (" + error +")"
         if error != '0':
             return True
@@ -1686,16 +1696,9 @@ class Reconstructor:
             #print " "
         if pageNum == self.pageWelcome:
             # intro
+            if self.customDir:
+                self.wTree.get_widget("entryWorkingDir").set_text(self.customDir)
             self.setPage(self.pageDiscType)
-            config = ConfigParser.ConfigParser()
-            config.optionxform = str
-            config.read(os.path.join(os.environ['HOME'], ".reconstructor"))
-            try:
-                 CustomDir = config.get('global','workdir')
-            except:
-                 CustomDir = ''
-            if CustomDir:
-                self.wTree.get_widget("entryWorkingDir").set_text(CustomDir)
             return True
         elif pageNum == self.pageDiscType:
             typeText = _("Disc Type:")
@@ -1718,7 +1721,7 @@ class Reconstructor:
             # check for custom dir
             if self.checkCustomDir() == True:
                 self.readConfig()
-
+                self.doneTerminal(forceMode=True,silentMode=False,justUmount=True)
                 if self.checkSetup() == True:
                     if self.checkWorkingDir() == True:
                         warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=    (gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_YES, gtk.RESPONSE_OK))
@@ -1828,8 +1831,8 @@ class Reconstructor:
 
             response = warnDlg.run()
             if response == gtk.RESPONSE_OK:
-                self.doneTerminal(forceMode=False,silentMode=False)
                 warnDlg.destroy()
+                self.doneTerminal(forceMode=False,silentMode=False,justUmount=False)
                 self.setPage(self.pageLiveBuild)
                 # check for windows apps and enable/disable checkbox as necessary
                 if self.checkWindowsPrograms() == True:
@@ -1870,6 +1873,7 @@ class Reconstructor:
             if response == gtk.RESPONSE_OK:
                 warnDlg.destroy()
                 self.setBusyCursor()
+                self.doneTerminal(forceMode=True,silentMode=False,justUmount=False)
                 gobject.idle_add(self.build)
                 # change Next text to Finish
                 self.wTree.get_widget("buttonNext").set_label("Finish")
@@ -2048,6 +2052,7 @@ class Reconstructor:
             self.wTree.get_widget("buttonBurnIso").hide()
 
     def exitApp(self,widget, data=None):
+        self.doneTerminal(forceMode=True,silentMode=False,justUmount=True)
         gtk.main_quit()
         sys.exit(0)
 
@@ -2264,37 +2269,24 @@ class Reconstructor:
                 # use xterm if COLORTERM isn't available
                 os.popen('export HOME=/root ; xterm -bg black -fg white -rightbar -title \"Reconstructor Terminal\" -e /tmp/reconstructor-terminal.sh')
         except Exception, detail:
-            self.doneTerminal()
+            self.doneTerminal(forceMode=True,silentMode=False,justUmount=False)
             errText = _('Error launching terminal: ')
             print errText, detail
             pass
 
         return
 
-    def doneTerminal(self,forceMode=False,silentMode=False):
-            if self.TerminalInitialized == True or forceMode == True:
-                # restore wgetrc
-                if silentMode == False:
-                    print _("Restoring wgetrc configuration...")
-                os.popen('[ -f \"' +os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" ] && ' + ' mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\"')
-                # remove apt.conf
-                #print _("Removing apt.conf configuration...")
-                #os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf") + '\"')
-                # remove dns info
-                # remove some locks
-                if silentMode == False:
-                    print _("Removing some locks...")
+    def doneTerminal(self,forceMode=False,silentMode=False,justUmount=False):
+            if self.customDir != '' and ( self.TerminalInitialized == True or forceMode == True ):
                 os.popen('rm -f ' + os.path.join(self.customDir, "root/var/lib/dpkg/lock"))   
                 os.popen('rm -f ' + os.path.join(self.customDir, "root/var/lib/apt/lists/lock"))   
-                if silentMode == False:
-                    print _("Removing DNS info...")
-                os.popen('rm -Rf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
                 # umount /proc
                 if self.isMounted(os.path.join(self.customDir, "root/proc")):
                     if silentMode == False:
                         print _("Umounting /proc...")
                     error = commands.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/proc") + '\"')
                     if(error != ''):
+                        print "error=\""+error+"\""
                         self.suggestReboot('/proc could not be unmounted. It must be unmounted before you can build an ISO.')
                 # umount /sys
                 if self.isMounted(os.path.join(self.customDir, "root/sys")):
@@ -2302,6 +2294,7 @@ class Reconstructor:
                         print _("Umounting /sys...")
                     error = commands.getoutput('umount   -lf \"' + os.path.join(self.customDir, "root/sys") + '\"')
                     if(error != ''):
+                        print "error=\""+error+"\""
                         self.suggestReboot('/sys could not be unmounted. It must be unmounted before you can build an ISO.')
                 # umount /dev/pts
                 if self.isMounted(os.path.join(self.customDir, "root/dev/pts")):
@@ -2309,6 +2302,7 @@ class Reconstructor:
                         print _("Umounting /dev/pts...")
                     error = commands.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
                     if(error != ''):
+                        print "error=\""+error+"\""
                         self.suggestReboot('/dev/pts could not be unmounted. It must be unmounted before you can build an ISO.')
                 # umount /dev
                 if self.isMounted(os.path.join(self.customDir, "root/dev")):
@@ -2316,11 +2310,25 @@ class Reconstructor:
                         print _("Umounting /dev...")
                     error = commands.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/dev") + '\"')
                     if(error != ''):
+                        print "error=\""+error+"\""
                         self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
-                #clean /run
-                if silentMode == False:
-                    print _("Clean /run ...")
-                os.popen('rm -rf  \"' + os.path.join(self.customDir, "root/run/*") + '\"')   
+                if justUmount == False:
+                    # restore wgetrc
+                    if silentMode == False:
+                        print _("Restoring wgetrc configuration...")
+                    os.popen('[ -f \"' +os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" ] && ' + ' mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\"')
+                    # remove apt.conf
+                    #print _("Removing apt.conf configuration...")
+                    #os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf") + '\"')
+                    # remove dns info
+                    # remove some locks
+                    if silentMode == False:
+                        print _("Removing DNS info...")
+                    os.popen('rm -Rf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                    #clean /run
+                    if silentMode == False:
+                        print _("Clean /run ...")
+                    os.popen('rm -rf  \"' + os.path.join(self.customDir, "root/run/*") + '\"')   
                 # remove temp script
                 os.popen('rm -Rf /tmp/reconstructor-terminal.sh')
                 self.TerminalInitialized = False
@@ -3136,7 +3144,7 @@ class Reconstructor:
 
     def calculateIsoSize(self):
         try:
-            self.doneTerminal(forceMode=True,silentMode=True)
+            self.doneTerminal(forceMode=True,silentMode=True,justUmount=False)
 
             # reset current size
             self.wTree.get_widget("labelSoftwareIsoSize").set_text("")
@@ -3922,6 +3930,8 @@ class Reconstructor:
 
             # unmount iso/cd-rom
             os.popen("umount " + self.mountDir)
+        # call doneTerminal to umount all direcotry that mounted
+        self.doneTerminal(forceMode=True,silentMode=False,justUmount=False)
         # custom root dir
         if self.createCustomRoot == True:
             #if os.path.exists(os.path.join(self.customDir, "root")):
