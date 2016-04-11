@@ -421,7 +421,7 @@ class Reconstructor:
 
     def showProgress(self,text,fraction):
         if text:
-            self.wTree.get_widget("progressbar").set_text(text)
+            self.wTree.get_widget("labelStatus").set_text(text)
         if fraction:
             self.wTree.get_widget("progressbar").set_fraction(fraction)
 
@@ -5118,7 +5118,7 @@ class Reconstructor:
             # create initrd
             if os.path.exists(os.path.join(self.customDir, "initrd")):
                 print _("Creating Initrd...")
-                self.wTree.get_widget("progressbar").set_text(_("Creating Initrd..."))
+                self.showProgress(_("Creating Initrd..."))
                 kver=find_newest_kernel_version(os.path.join(self.customDir, "root/boot"))
                 if os.path.exists(os.path.join(self.customDir, "remaster/casper/initrd.lz")):
 	            scr = '#!/bin/sh\n#\n cd /boot\n if grep COMPRESS= /etc/initramfs-tools/initramfs.conf>/dev/null ; then \n\t/usr/sbin/mkinitramfs -c lzma -o initrd.img-'+kver + ' '+kver+'\n else\n\t cat /usr/sbin/mkinitramfs | sed -e \"s/gzip/lzma/g\" >/tmp/mkinitramfs-lzma \n\t chmod +x /tmp/mkinitramfs-lzma\n\t /tmp/mkinitramfs-lzma -o initrd.img-'+kver + ' '+kver+' \n\t rm -f /tmp/mkinitramfs-lzma\n fi\n\trm -f /vmlinuz /initrd.img\n\tcd /\n\tln -s boot/vmlinuz-'+kver+' vmlinuz\n\tln -s boot/initrd.img-'+kver+' initrd.img\n'
@@ -5198,8 +5198,7 @@ class Reconstructor:
             # create iso
             if os.path.exists(os.path.join(self.customDir, "remaster")):
                 print _("Creating ISO...")
-                self.wTree.get_widget("progressbar").set_text(_("Creating ISO..."))
-                self.showProgress(False,0.87)
+                self.showProgress(_("Creating ISO..."),0.87)
                 # add disc id
                 os.popen('echo \"Built by Reconstructor ' + self.appVersion + ' - Rev ' + self.updateId + ' (c) Reconstructor Team, 2006-2009 - http://reconstructor.aperantis.com\" > \"' + os.path.join(self.customDir, "remaster/.disc_id") + '\"')
                 # update md5
