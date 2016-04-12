@@ -419,9 +419,9 @@ class Reconstructor:
         else:
             return False
 
-    def showProgress(self,text=False,fraction=False):
+    def showProgress(self,text,fraction):
         if text:
-            self.wTree.get_widget("labelStatus").set_text("INF: " + text)
+            self.wTree.get_widget("labelStatus").set_text(text)
         if fraction:
             self.wTree.get_widget("progressbar").set_fraction(fraction)
 
@@ -1750,13 +1750,13 @@ class Reconstructor:
                         if response == gtk.RESPONSE_OK:
                             warnDlg.destroy()
                             self.setBusyCursor()
-                            self.setupWorkingDirectory()
+                            gobject.idle_add(self.setupWorkingDirectory)
                             # load modules
-                            self.loadModules()
+                            gobject.idle_add(self.loadModules)
                             self.setBusyCursor()
 
                              # calculate iso size
-                            self.calculateIsoSize()
+                            gobject.idle_add(self.calculateIsoSize)
                             #self.calculateIsoSize()
                             return True
                         else:
@@ -1774,12 +1774,12 @@ class Reconstructor:
                         self.loadAvailableDesktops()
                         self.setBusyCursor()
                         # load modules
-                        self.loadModules()
+                        gobject.idle_add(self.loadModules)
 
                         self.CheckChrootKernel()
 
                         # calculate iso size in the background
-                        self.calculateIsoSize()
+                        gobject.idle_add(self.calculateIsoSize)
                         #self.calculateIsoSize()
                         return True
                     else:
@@ -1882,7 +1882,7 @@ class Reconstructor:
                 warnDlg.destroy()
                 self.setBusyCursor()
                 self.doneTerminal(forceMode=True,silentMode=False,justUmount=False)
-                self.build()
+                gobject.idle_add(self.build)
                 # change Next text to Finish
                 self.wTree.get_widget("buttonNext").set_label("Finish")
                 return True
@@ -1918,7 +1918,7 @@ class Reconstructor:
                         if response == gtk.RESPONSE_OK:
                             warnDlg.destroy()
                             self.setBusyCursor()
-                            self.setupAltWorkingDirectory()
+                            gobject.idle_add(self.setupAltWorkingDirectory)
                             return True
                         else:
                             warnDlg.destroy()
@@ -1930,7 +1930,7 @@ class Reconstructor:
                     if self.checkAltWorkingDir() == True:
                         self.setBusyCursor()
                         # calculate iso size in the background
-                        self.calculateAltIsoSize()
+                        gobject.idle_add(self.calculateAltIsoSize)
                         return True
                     else:
                         return False
@@ -2026,7 +2026,7 @@ class Reconstructor:
                 warnDlg.destroy()
                 self.setBusyCursor()
                 self.showProgress(_('Building Alternate CD...'),0.72)
-                self.buildAlternate()
+                gobject.idle_add(self.buildAlternate)
                 # change Next text to Finish
                 self.wTree.get_widget("buttonNext").set_label("Finish")
                 return True
@@ -3619,18 +3619,18 @@ class Reconstructor:
         if response == gtk.RESPONSE_OK:
             warnDlg.destroy()
             self.setBusyCursor()
-            self.customize()
-            self.calculateIsoSize()
+            gobject.idle_add(self.customize)
+            gobject.idle_add(self.calculateIsoSize)
         else:
             warnDlg.destroy()
 
     def on_buttonSoftwareCalculateIsoSize_clicked(self, widget):
         self.setBusyCursor()
-        self.calculateIsoSize()
+        gobject.idle_add(self.calculateIsoSize)
 
     def on_buttonAltIsoCalculate_clicked(self, widget):
         self.setBusyCursor()
-        self.calculateAltIsoSize()
+        gobject.idle_add(self.calculateAltIsoSize)
 
     def on_buttonInteractiveEditLaunch_clicked(self, widget):
         self.startInteractiveEdit()
@@ -3653,14 +3653,14 @@ class Reconstructor:
             warnDlg.destroy()
             self.setBusyCursor()
             # clear settings
-            self.clearInteractiveSettings()
+            gobject.idle_add(self.clearInteractiveSettings)
         else:
             warnDlg.destroy()
 
 
     def on_buttonOptimizeShutdownRestore_clicked(self, widget):
         self.setBusyCursor()
-        self.restoreShutdown()
+        gobject.idle_add(self.restoreShutdown)
 
     def on_checkbuttonOptimizationStartupEnable_toggled(self, widget):
         if self.wTree.get_widget("checkbuttonOptimizationStartupEnable").get_active() == True:
@@ -3688,7 +3688,7 @@ class Reconstructor:
 
     def on_buttonCheckUpdates_clicked(self, widget):
         self.setBusyCursor()
-        self.checkForUpdates()
+        gobject.idle_add(self.checkForUpdates)
 
     def on_buttonModulesAddModule_clicked(self, widget):
         # filter only tar.gz files
@@ -3727,7 +3727,7 @@ class Reconstructor:
         # check for valid module and update
         if modPath != None:
             self.setBusyCursor()
-            self.updateModule(modName, modVersion, modPath, modUpdateUrl, treeview)
+            gobject.idle_add(self.updateModule, modName, modVersion, modPath, modUpdateUrl, treeview)
 
     def on_buttonModulesClearRunOnBoot_clicked(self, widget):
         warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_YES, gtk.RESPONSE_OK))
@@ -3856,7 +3856,7 @@ class Reconstructor:
         if response == gtk.RESPONSE_OK:
             warnDlg.destroy()
             self.setBusyCursor()
-            self.customizeAlt()
+            gobject.idle_add(self.customizeAlt)
         else:
             warnDlg.destroy()
 
@@ -4226,7 +4226,7 @@ class Reconstructor:
 
         self.setDefaultCursor()
         # calculate iso size in the background
-        self.calculateAltIsoSize()
+        gobject.idle_add(self.calculateAltIsoSize)
         print _("Finished setting up alternate working directory...")
         print " "
         return False
@@ -5087,7 +5087,7 @@ class Reconstructor:
         print _("Finished customizing alternate install...")
         print " "
         # calculate iso size in the background
-        self.calculateAltIsoSize()
+        gobject.idle_add(self.calculateAltIsoSize)
         #return False
 
 # ---------- Build ---------- #
