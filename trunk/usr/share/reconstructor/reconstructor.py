@@ -3151,6 +3151,7 @@ class Reconstructor:
 
     def calculateIsoSize(self):
         try:
+            self.setBusyCursor()
             self.doneTerminal(forceMode=True,silentMode=True,justUmount=False)
 
             # reset current size
@@ -3163,6 +3164,7 @@ class Reconstructor:
             self.showProgress(_('Calculating Live ISO Size...'),0.20)
             yield True
 
+            self.setBusyCursor()
             remasterSize = self.FileSize(os.path.join(self.customDir,"remaster/"))
             # subtract squashfs root
             if os.path.exists(os.path.join(self.customDir, "remaster/casper/filesystem.squashfs")):
@@ -3174,8 +3176,8 @@ class Reconstructor:
             # divide root size to simulate squash compression
             SoftwareIsoSize = int(round((remasterSize + (rootSize/3.55))/1024))
             self.wTree.get_widget("labelSoftwareIsoSize").set_text( '~ ' + str(SoftwareIsoSize) + ' MB')
-            self.showProgress(_("Calculated Live ISO Size."),0.25)
-            self.setDefaultCursor()
+            self.showProgress(_("Finished Calculating Live ISO Size."),0.25)
+            #self.setDefaultCursor()
             # set page here - since this is run on a background thread,
             # the next page will show too quickly if set in self.checkPage()
             self.setPage(self.pageLiveCustomize)
@@ -3183,6 +3185,7 @@ class Reconstructor:
             errText = _("Error calculating estimated iso size: ")
             print errText, detail
             pass
+        self.setDefaultCursor()
         yield False
 
     def calculateAltIsoSize(self):
@@ -3194,11 +3197,12 @@ class Reconstructor:
             print _('Calculating Alternate ISO Size...')
             self.showProgress(_('Calculating Alternate ISO Size...'))
             yield True
+            self.setBusyCursor()
             remasterSize = self.FileSize(os.path.join(self.customDir, self.altRemasterDir))
 
             self.wTree.get_widget("labelAltIsoSize").set_text( '~ ' + str(int(round(remasterSize/1024))) + ' MB')
             self.setDefaultCursor()
-            self.showProgress(_("Calculated Altername ISO Size."),0.35)
+            self.showProgress(_("Finished Calculating Altername ISO Size."),0.35)
             # set page here - since this is run on a background thread,
             # the next page will show too quickly if set in self.checkPage()
             self.setPage(self.pageAltCustomize)
@@ -3206,6 +3210,7 @@ class Reconstructor:
             errText = _("Error calculating estimated iso size: ")
             print errText, detail
             pass
+        self.setDefaultCursor()
         yield False
 
     def startInteractiveEdit(self):
@@ -3902,6 +3907,7 @@ class Reconstructor:
         print _("INFO: Setting up working directory...")
         self.showProgress(_("Setting up working directory..."),0.05)
         yield True
+        self.setBusyCursor()
         # remaster dir
         self.isoFilename = self.wTree.get_widget("entryIsoFilename").get_text()
         print 'ISO File:' + self.isoFilename
@@ -3944,6 +3950,7 @@ class Reconstructor:
             self.showProgress(_("Copying files..."),0.06)
             yield True
             # copy remaster files
+            self.setBusyCursor()
             os.popen('rsync -at --del ' + self.mountDir + '/ \"' + os.path.join(self.customDir, "remaster") + '\"')
             print _("Finished copying files...")
             self.showProgress(_("Finished copying files..."),0.10)
@@ -4003,6 +4010,7 @@ class Reconstructor:
             self.showProgress(_("Extracting squashfs root..."),0.10)
             yield True
             # copy squashfs root
+            self.setBusyCursor()
             os.popen('rsync -at --del \"' + os.path.join(self.customDir, "tmpsquash") + '\"/ \"' + os.path.join(self.customDir, "root/") + '\"')
             # umount tmpsquashfs
             print _("Unmounting tmpsquash...")
@@ -4059,6 +4067,7 @@ class Reconstructor:
             print _("Extracting Initial Ram Disk (initrd)...")
             self.showProgress(_("Extracting Initial Ram Disk (initrd)..."),0.18)
             yield True
+            self.setBusyCursor()
             if (os.path.exists(self.mountDir + '/casper/initrd.lz')):
                 os.popen('cd \"' + os.path.join(self.customDir, "initrd/") + '\"; cat ' + self.mountDir + '/casper/initrd.lz | lzma -d | cpio -i')
             elif (os.path.exists(self.mountDir + '/casper/initrd')):
@@ -4157,6 +4166,7 @@ class Reconstructor:
             self.showProgress(_("Copying alternate remaster directory..."),0.08)
             yield True
             #os.popen('rsync -at --del --exclude=\"pool/main/**/*.deb\" --exclude=\"pool/restricted/**/*.deb\" ' + self.mountDir + '/ \"' + os.path.join(self.customDir, self.altRemasterDir) + '\"')
+            self.setBusyCursor()
             os.popen('rsync -at --del ' + self.mountDir + '/ \"' + os.path.join(self.customDir, self.altRemasterDir) + '\"')
             self.showProgress(False,0.20)
             yield True
@@ -4220,6 +4230,7 @@ class Reconstructor:
             print _("Extracting Alternate Initial Ram Disk (initrd)...")
             self.showProgress(_("Extracting Alternate Initial Ram Disk (initrd)..."),0.22)
             yield True
+            self.setBusyCursor()
             if (os.path.exists(self.mountDir + '/install/initrd.lz')):
                 os.popen('cd \"' + os.path.join(self.customDir, self.altInitrdRoot) + '\"; cat ' + self.mountDir + '/install/initrd.lz | lzma -d | cpio -i')
             elif (os.path.exists(self.mountDir + '/install/initrd.gz')):
@@ -5184,6 +5195,7 @@ class Reconstructor:
                 self.showProgress(_("Building SquashFS root..."),0.70)
                 yield True
                 # check for alternate mksquashfs
+                self.setBusyCursor()
                 compStr=''
                 if apt_pkg.version_compare(self.cdUbuntuVersion,'10.04')>0:
                         compStr="-comp xz"
@@ -5216,6 +5228,7 @@ class Reconstructor:
                 print _("Creating ISO...")
                 self.showProgress(_("Creating ISO..."),0.87)
                 yield True
+                self.setBusyCursor()
                 # add disc id
                 os.popen('echo \"Built by Reconstructor ' + self.appVersion + ' - Rev ' + self.updateId + ' (c) Reconstructor Team, 2006-2009 - http://reconstructor.aperantis.com\" > \"' + os.path.join(self.customDir, "remaster/.disc_id") + '\"')
                 # update md5
@@ -5242,6 +5255,7 @@ class Reconstructor:
                 self.showProgress(False,0.90)
                 yield True
 
+                self.setBusyCursor()
                 # build iso according to architecture
                 if self.LiveCdArch == "x86":
                     print _("Building x86 ISO...")
@@ -5294,6 +5308,7 @@ class Reconstructor:
                 print _("Creating Initrd...")
                 self.showProgress(_("Creating Initrd..."),0.75)
                 yield True
+                self.setBusyCursor()
                 kver=find_newest_kernel_version(os.path.join(self.customDir, "root/boot"))
                 if os.path.exists(os.path.join(self.customDir, "remaster/casper/initrd.lz")):
 	             scr = '#!/bin/sh\n#\n  cat /usr/sbin/mkinitramfs | sed -e \"s/gzip/lzma/g\" >/tmp/mkinitramfs-lzma ;chmod +x /tmp/mkinitramfs-lzma;cd /boot; /tmp/mkinitramfs-lzma -o initrd.img-'+kver+' '+kver+';rm -f /tmp/mkinitramfs-lzma\n'
@@ -5321,6 +5336,7 @@ class Reconstructor:
                 print _("Creating ISO...")
                 self.showProgress(_("Creating ISO..."),0.80)
                 yield True
+                self.setBusyCursor()
                 # add disc id - alternate
                 os.popen('echo \"Built by Reconstructor ' + self.appVersion + ' - Rev ' + self.updateId + ' (c) Reconstructor Team, 2006 - http://reconstructor.aperantis.com\" > \"' + os.path.join(self.customDir, "remaster_alt/.disc_id") + '\"')
                 # update md5
@@ -5345,6 +5361,7 @@ class Reconstructor:
                 # build iso according to architecture
                 if self.altCdArch == "x86":
                     print _("Building x86 ISO...")
+                    self.setBusyCursor()
                     os.popen(self.timeCmd + ' mkisofs -o \"' + self.buildAltCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.altCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster_alt") + '\"')
                 elif self.altCdArch == "PowerPC":
                     print _("Building PowerPC ISO...")

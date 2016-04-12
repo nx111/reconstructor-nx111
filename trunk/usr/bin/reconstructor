@@ -1,1 +1,6 @@
-../share/reconstructor/reconstructor.py
+#!/bin/sh
+if [ `id -u` -eq 0 ]; then
+   python /usr/share/reconstructor/reconstructor.py
+else
+   gksu python /usr/share/reconstructor/reconstructor.py
+fi
