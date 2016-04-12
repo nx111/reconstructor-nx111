@@ -95,8 +95,8 @@ class Reconstructor:
         self.updateId = "328"
         self.donateUrl = "https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=ejhazlett%40gmail%2ecom&item_name=Reconstructor%20Donation&item_number=R_DONATE_001&no_shipping=2&no_note=1&tax=0&currency_code=USD&lc=US&bn=PP%2dDonationsBF&charset=UTF%2d8"
         #self.devRevision = time.strftime("%y%m%d", time.gmtime())
-        self.devRevision = "090430"
-        self.appVersion = "2.9"
+        self.devRevision = "160412"
+        self.appVersion = "2.9.1"
         self.cdUbuntuVersion = ''
         self.altCdUbuntuVersion = ''
         self.altCdUbuntuArch = ''
@@ -1587,7 +1587,6 @@ class Reconstructor:
                 warnDlg.destroy()
             else:
                 warnDlg.destroy()
-
         return workingDirOk
 
     def checkAltWorkingDir(self):
@@ -1639,7 +1638,6 @@ class Reconstructor:
                 warnDlg.destroy()
             else:
                 warnDlg.destroy()
-
         return workingDirOk
 
     def readConfig(self):
@@ -1752,14 +1750,10 @@ class Reconstructor:
                         if response == gtk.RESPONSE_OK:
                             warnDlg.destroy()
                             self.setBusyCursor()
-                            gobject.idle_add(self.setupWorkingDirectory)
+                            gobject.idle_add(self.setupWorkingDirectory().next)
                             # load modules
                             gobject.idle_add(self.loadModules)
                             self.setBusyCursor()
-
-                             # calculate iso size
-                            gobject.idle_add(self.calculateIsoSize().next)
-                            #self.calculateIsoSize()
                             return True
                         else:
                             warnDlg.destroy()
@@ -1920,7 +1914,7 @@ class Reconstructor:
                         if response == gtk.RESPONSE_OK:
                             warnDlg.destroy()
                             self.setBusyCursor()
-                            gobject.idle_add(self.setupAltWorkingDirectory)
+                            gobject.idle_add(self.setupAltWorkingDirectory().next)
                             return True
                         else:
                             warnDlg.destroy()
@@ -3627,17 +3621,17 @@ class Reconstructor:
             warnDlg.destroy()
             self.setBusyCursor()
             gobject.idle_add(self.customize)
-            gobject.idle_add(self.calculateIsoSize)
+            gobject.idle_add(self.calculateIsoSize().next)
         else:
             warnDlg.destroy()
 
     def on_buttonSoftwareCalculateIsoSize_clicked(self, widget):
         self.setBusyCursor()
-        gobject.idle_add(self.calculateIsoSize)
+        gobject.idle_add(self.calculateIsoSize().next)
 
     def on_buttonAltIsoCalculate_clicked(self, widget):
         self.setBusyCursor()
-        gobject.idle_add(self.calculateAltIsoSize)
+        gobject.idle_add(self.calculateAltIsoSize().next)
 
     def on_buttonInteractiveEditLaunch_clicked(self, widget):
         self.startInteractiveEdit()
@@ -3907,6 +3901,7 @@ class Reconstructor:
     def setupWorkingDirectory(self):
         print _("INFO: Setting up working directory...")
         self.showProgress(_("Setting up working directory..."),0.05)
+        yield True
         # remaster dir
         self.isoFilename = self.wTree.get_widget("entryIsoFilename").get_text()
         print 'ISO File:' + self.isoFilename
@@ -3947,12 +3942,12 @@ class Reconstructor:
 
             print _("Copying files...")
             self.showProgress(_("Copying files..."),0.06)
-
+            yield True
             # copy remaster files
             os.popen('rsync -at --del ' + self.mountDir + '/ \"' + os.path.join(self.customDir, "remaster") + '\"')
             print _("Finished copying files...")
             self.showProgress(_("Finished copying files..."),0.10)
-
+            yield True
             # unmount iso/cd-rom
             os.popen("umount " + self.mountDir)
         # call doneTerminal to umount all direcotry that mounted
@@ -4006,15 +4001,15 @@ class Reconstructor:
             os.popen('mount -t squashfs -o loop ' + self.mountDir + '/casper/filesystem.squashfs \"' + os.path.join(self.customDir, "tmpsquash") + '\"')
             print _("Extracting squashfs root...")
             self.showProgress(_("Extracting squashfs root..."),0.10)
-
+            yield True
             # copy squashfs root
             os.popen('rsync -at --del \"' + os.path.join(self.customDir, "tmpsquash") + '\"/ \"' + os.path.join(self.customDir, "root/") + '\"')
             # umount tmpsquashfs
             print _("Unmounting tmpsquash...")
-            os.popen('umount --force \"' + os.path.join(self.customDir, "tmpsquash") + '\"')
+            os.popen('umount -lf \"' + os.path.join(self.customDir, "tmpsquash") + '\"')
             # umount cdrom
             print _("Unmounting cdrom...")
-            os.popen("umount --force " + self.mountDir)
+            os.popen("umount -lf " + self.mountDir)
             # remove tmpsquash
             print _("Removing tmpsquash...")
             os.popen('rm -Rf \"' + os.path.join(self.customDir, "tmpsquash") + '\"')
@@ -4026,6 +4021,7 @@ class Reconstructor:
             self.CheckChrootKernel()
             print _("Finished extracting squashfs root...")
             self.showProgress(_("Finished extracting squashfs root..."),0.18)
+            yield True
         # initrd dir
         if self.createInitrdRoot == True:
             if os.path.exists(os.path.join(self.customDir, "initrd")):
@@ -4054,7 +4050,7 @@ class Reconstructor:
                 else:
                     mntDlg.destroy()
                     self.setDefaultCursor()
-                    return
+                    yield False
             else:
                 print _("Using ISO for initrd...")
                 os.popen('mount -o loop \"' + self.isoFilename + '\" ' + self.mountDir)
@@ -4062,6 +4058,7 @@ class Reconstructor:
             # extract initrd
             print _("Extracting Initial Ram Disk (initrd)...")
             self.showProgress(_("Extracting Initial Ram Disk (initrd)..."),0.18)
+            yield True
             if (os.path.exists(self.mountDir + '/casper/initrd.lz')):
                 os.popen('cd \"' + os.path.join(self.customDir, "initrd/") + '\"; cat ' + self.mountDir + '/casper/initrd.lz | lzma -d | cpio -i')
             elif (os.path.exists(self.mountDir + '/casper/initrd')):
@@ -4086,12 +4083,13 @@ class Reconstructor:
         print _("Finished setting up working directory...")
         print " "
         self.showProgress(_('Finished setting up working directory...'),0.20)
-
-        return False
+        gobject.idle_add(self.calculateIsoSize().next)
+        yield False
 
     def setupAltWorkingDirectory(self):
         print _("INFO: Setting up alternate working directory...")
         self.showProgress(_("Setting up alternate working directory..."),0.05)
+        yield True
         # remaster dir
         if self.createAltRemasterDir == True:
             # check for existing directories and remove if necessary
@@ -4149,7 +4147,7 @@ class Reconstructor:
                 else:
                     mntDlg.destroy()
                     self.setDefaultCursor()
-                    return False
+                    yield False
             else:
                 print _("Using ISO for remastering...")
                 os.popen('mount -o loop \"' + self.isoFilename + '\" ' + self.mountDir)
@@ -4157,9 +4155,11 @@ class Reconstructor:
             # copy remaster files
             print _("Copying alternate remaster directory...")
             self.showProgress(_("Copying alternate remaster directory..."),0.08)
+            yield True
             #os.popen('rsync -at --del --exclude=\"pool/main/**/*.deb\" --exclude=\"pool/restricted/**/*.deb\" ' + self.mountDir + '/ \"' + os.path.join(self.customDir, self.altRemasterDir) + '\"')
             os.popen('rsync -at --del ' + self.mountDir + '/ \"' + os.path.join(self.customDir, self.altRemasterDir) + '\"')
             self.showProgress(False,0.20)
+            yield True
 
             # ----- Removed due to poor ubuntu dependency packaging -----
             # copy alternate base
@@ -4211,7 +4211,7 @@ class Reconstructor:
                 else:
                     mntDlg.destroy()
                     self.setDefaultCursor()
-                    return
+                    yield False
             else:
                 print _("Using ISO for initrd...")
                 os.popen('mount -o loop \"' + self.isoFilename + '\" ' + self.mountDir)
@@ -4219,6 +4219,7 @@ class Reconstructor:
             # extract initrd
             print _("Extracting Alternate Initial Ram Disk (initrd)...")
             self.showProgress(_("Extracting Alternate Initial Ram Disk (initrd)..."),0.22)
+            yield True
             if (os.path.exists(self.mountDir + '/install/initrd.lz')):
                 os.popen('cd \"' + os.path.join(self.customDir, self.altInitrdRoot) + '\"; cat ' + self.mountDir + '/install/initrd.lz | lzma -d | cpio -i')
             elif (os.path.exists(self.mountDir + '/install/initrd.gz')):
@@ -4226,6 +4227,7 @@ class Reconstructor:
             elif (os.path.exists(self.mountDir + '/install/initrd')):
                 os.popen('cd \"' + os.path.join(self.customDir, self.altInitrdRoot) + '\"; cat ' + self.mountDir + '/install/initrd | gzip -d | cpio -i')
             self.showProgress(False,0.30)
+            yield True
 
             # umount cdrom
             os.popen("umount " + self.mountDir)
@@ -4233,10 +4235,10 @@ class Reconstructor:
 
         self.setDefaultCursor()
         # calculate iso size in the background
-        gobject.idle_add(self.calculateAltIsoSize)
+        gobject.idle_add(self.calculateAltIsoSize().next)
         print _("Finished setting up alternate working directory...")
         print " "
-        return False
+        yield False
 
     def liveCDKernel(self):
         os.popen('cd \"' + self.customDir + '\"; ' + 'rm -Rf initrd/*')
@@ -5094,7 +5096,7 @@ class Reconstructor:
         print _("Finished customizing alternate install...")
         print " "
         # calculate iso size in the background
-        gobject.idle_add(self.calculateAltIsoSize)
+        gobject.idle_add(self.calculateAltIsoSize().next)
         #return False
 
 # ---------- Build ---------- #
