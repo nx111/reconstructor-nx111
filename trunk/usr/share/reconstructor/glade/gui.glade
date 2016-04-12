@@ -6106,7 +6106,7 @@ merlinsvk, festor, mahdi, kilik, bossieman, dagaz, nimes
             <property name="resize_mode">queue</property>
             <child>
               <widget class="GtkLabel" id="label6">
-                <property name="width_request">30</property>
+                <property name="width_request">5</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="width_chars">3</property>
