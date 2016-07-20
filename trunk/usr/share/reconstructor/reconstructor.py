@@ -1643,7 +1643,7 @@ class Reconstructor:
     def readConfig(self):
         config = ConfigParser.ConfigParser()
         config.optionxform = str
-        config.read(os.path.join(os.environ['HOME'], ".reconstructor"))
+        config.read(os.path.join(self.customDir, ".reconstructor.conf"))
         if not config.has_section('global'):
             config.add_section('global')
         if not config.has_section('ISO'):
@@ -1681,9 +1681,12 @@ class Reconstructor:
         config.optionxform = str
         if not config.has_section('global'):
             config.add_section('global')
+        config.set('global','workdir',self.customDir)
+        config.write(open(os.path.join(os.environ['HOME'], ".reconstructor"),'wt'))
+        config.remove_section('global')
+
         if not config.has_section('ISO'):
             config.add_section('ISO')
-        config.set('global','workdir',self.customDir)
         config.set('ISO','discType',self.discType)
         if self.discType == 'live':
             config.set('ISO','isofilename',self.wTree.get_widget("entryLiveIsoFilename").get_text())
@@ -1693,7 +1696,7 @@ class Reconstructor:
             config.set('ISO','isofilename',self.wTree.get_widget("entryAltIsoFilename").get_text())
             config.set('ISO','cddesc',self.wTree.get_widget("entryAltCdDescription").get_text())
             config.set('ISO','cdarchidx',self.wTree.get_widget("comboboxAltCdArch").get_active())
-        config.write(open(os.path.join(os.environ['HOME'], ".reconstructor"),'wt'))
+        config.write(open(os.path.join(self.customDir, ".reconstructor.conf"),'wt'))
 
 
     def checkPage(self, pageNum):
@@ -3362,6 +3365,8 @@ class Reconstructor:
         if response == gtk.RESPONSE_OK :
             filename = workingDlg.get_current_folder()
             self.wTree.get_widget("entryWorkingDir").set_text(workingDlg.get_filename())
+            self.customDir = workingDlg.get_filename()
+            self.readConfig()
             workingDlg.hide()
         elif response == gtk.RESPONSE_CANCEL :
             workingDlg.destroy()
