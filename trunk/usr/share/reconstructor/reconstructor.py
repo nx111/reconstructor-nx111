@@ -2232,8 +2232,12 @@ class Reconstructor:
                 os.popen('xhost +local:' + user)
                 # copy dns info
                 #if os.path.exists(os.path.join(self.customDir, "root/etc/resolv.conf")):
-                print _("Copying DNS info...")
-                os.popen('cp -f /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                if os.path.exists("/etc/resolv.conf"):
+                    print _("Copying DNS info...")
+                    os.popen('cp -f /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                elif os.path.exists("/run/resolvconf/resolv.conf"):
+                    print _("Copying DNS info...")
+                    os.popen('cp -f /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
                 #mount /dev
                 print _("Mounting /dev filesystem...")
                 os.popen('mount --bind /dev \"' + os.path.join(self.customDir, "root/dev") + '\"')
@@ -2334,7 +2338,9 @@ class Reconstructor:
                     # remove some locks
                     if silentMode == False:
                         print _("Removing DNS info...")
-                    os.popen('rm -Rf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                    os.popen('rm -f ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                    os.popen('ln -s /run/resolvconf/resolv.conf  ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+
                     #clean /run
                     if silentMode == False:
                         print _("Clean /run ...")
@@ -2509,9 +2515,12 @@ class Reconstructor:
             print _("Mounting /tmp...")
             os.popen('mount --bind /tmp \"' + os.path.join(self.customDir, "root/tmp") + '\"')
             # copy dns info
-            if os.path.exists(os.path.join(self.customDir, "root/etc/resolv.conf")):
+            if os.path.exists("/etc/resolv.conf"):
                 print _("Copying DNS info...")
                 os.popen('cp -f /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+            elif os.path.exists("/run/resolvconf/resolv.conf"):
+                print _("Copying DNS info...")
+                os.popen('cp -f /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             # mount /dev
             print _("Mounting /dev filesystem...")
             os.popen('mount --bind /dev \"' + os.path.join(self.customDir, "root/dev") + '\"')
@@ -2556,7 +2565,8 @@ class Reconstructor:
                 self.suggestReboot('/tmp could not be unmounted. It must be unmounted before you can build an ISO.')
             # remove dns info
             print _("Removing DNS info...")
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
+            os.popen('rm -f \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
+            os.popen('ln -s /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             # umount /proc
             print _("Umounting /proc...")
             error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/proc/") + '\"')
@@ -2618,7 +2628,8 @@ class Reconstructor:
                 self.suggestReboot('/tmp could not be unmounted. It must be unmounted before you can build an ISO.')
             # remove dns info
             print _("Removing DNS info...")
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
+            os.popen('rm -f \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
+            os.popen('ln -s /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             # umount /proc
             print _("Umounting /proc...")
             error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/proc/") + '\"')
@@ -4568,9 +4579,12 @@ class Reconstructor:
             print _("Adding user " + user + " to access control list...")
             os.popen('xhost +local:' + user)
             # copy dns info
-            if os.path.exists(os.path.join(self.customDir, "root/etc/resolv.conf")):
+            if os.path.exists("/etc/resolv.conf"):
                 print _("Copying DNS info...")
                 os.popen('cp -f /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+            elif os.path.exists("/run/resolvconf/resolv.conf"):
+                print _("Copying DNS info...")
+                os.popen('cp -f /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             # mount /proc
             print _("Mounting /proc filesystem...")
             os.popen('mount -t proc none \"' + os.path.join(self.customDir, "root/proc") + '\"')
@@ -4611,7 +4625,9 @@ class Reconstructor:
             #os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d/*") + '\"')
             # remove dns info
             print _("Removing DNS info...")
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
+            os.popen('rm -f \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
+            os.popen('ln -s /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+
             # umount /var/run/dbus
             print _("Umounting -lf /var/run/dubs...")
             error = commands.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/var/run/dbus/") + '\"')
@@ -4676,9 +4692,12 @@ class Reconstructor:
             print _("Adding user " + user + " to access control list...")
             os.popen('xhost +local:' + user)
             # copy dns info
-            if os.path.exists(os.path.join(self.customDir, "root/etc/resolv.conf")):
+            if os.path.exists("/etc/resolv.conf"):
                 print _("Copying DNS info...")
                 os.popen('cp -f /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+            elif os.path.exists("/run/resolvconf/resolv.conf"):
+                print _("Copying DNS info...")
+                os.popen('cp -f /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             # mount /proc
             print _("Mounting /proc filesystem...")
             os.popen('mount -t proc none \"' + os.path.join(self.customDir, "root/proc") + '\"')
@@ -4726,7 +4745,9 @@ class Reconstructor:
             #os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf") + '\"')
             # remove dns info
             print _("Removing DNS info...")
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
+            os.popen('rm -f \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
+            os.popen('ln -s /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+
             # umount /proc
             print _("Umounting /proc...")
             error = commands.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/proc/") + '\"')
