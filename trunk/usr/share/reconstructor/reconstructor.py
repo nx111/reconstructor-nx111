@@ -2234,10 +2234,10 @@ class Reconstructor:
                 #if os.path.exists(os.path.join(self.customDir, "root/etc/resolv.conf")):
                 if os.path.exists("/etc/resolv.conf"):
                     print _("Copying DNS info...")
-                    os.popen('cp -f /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                    os.popen('cp -L --remove-destination /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
                 elif os.path.exists("/run/resolvconf/resolv.conf"):
                     print _("Copying DNS info...")
-                    os.popen('cp -f /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                    os.popen('cp -L --remove-destination /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
                 #mount /dev
                 print _("Mounting /dev filesystem...")
                 os.popen('mount --bind /dev \"' + os.path.join(self.customDir, "root/dev") + '\"')
@@ -2517,10 +2517,10 @@ class Reconstructor:
             # copy dns info
             if os.path.exists("/etc/resolv.conf"):
                 print _("Copying DNS info...")
-                os.popen('cp -f /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                os.popen('cp -L --remove-destination /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             elif os.path.exists("/run/resolvconf/resolv.conf"):
                 print _("Copying DNS info...")
-                os.popen('cp -f /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                os.popen('cp -L --remove-destination /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             # mount /dev
             print _("Mounting /dev filesystem...")
             os.popen('mount --bind /dev \"' + os.path.join(self.customDir, "root/dev") + '\"')
@@ -4581,10 +4581,10 @@ class Reconstructor:
             # copy dns info
             if os.path.exists("/etc/resolv.conf"):
                 print _("Copying DNS info...")
-                os.popen('cp -f /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                os.popen('cp -L --remove-destination /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             elif os.path.exists("/run/resolvconf/resolv.conf"):
                 print _("Copying DNS info...")
-                os.popen('cp -f /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                os.popen('cp -L --remove-destination /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             # mount /proc
             print _("Mounting /proc filesystem...")
             os.popen('mount -t proc none \"' + os.path.join(self.customDir, "root/proc") + '\"')
@@ -4694,10 +4694,10 @@ class Reconstructor:
             # copy dns info
             if os.path.exists("/etc/resolv.conf"):
                 print _("Copying DNS info...")
-                os.popen('cp -f /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                os.popen('cp -L --remove-destination /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             elif os.path.exists("/run/resolvconf/resolv.conf"):
                 print _("Copying DNS info...")
-                os.popen('cp -f /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                os.popen('cp -L --remove-destination /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             # mount /proc
             print _("Mounting /proc filesystem...")
             os.popen('mount -t proc none \"' + os.path.join(self.customDir, "root/proc") + '\"')

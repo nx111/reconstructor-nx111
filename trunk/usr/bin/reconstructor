@@ -1,6 +1,8 @@
 #!/bin/sh
 if [ `id -u` -eq 0 ]; then
    python /usr/share/reconstructor/reconstructor.py
+elif [ _`which gksu` != _ ]; then
+   gksu python /usr/share/reconstructor/reconstructor.py
 else
    sudo python /usr/share/reconstructor/reconstructor.py
 fi
