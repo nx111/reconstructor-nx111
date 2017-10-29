@@ -2238,6 +2238,11 @@ class Reconstructor:
                 elif os.path.exists("/run/resolvconf/resolv.conf"):
                     print _("Copying DNS info...")
                     os.popen('cp -L --remove-destination /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                #mount /run/dbus
+                print _("Mounting /run/dbus filesystem...")
+                if not os.path.exists("/run/dbus"):
+                    os.popen("mkdir /run/dbus")
+                os.popen('mount --bind /run/dbus \"' + os.path.join(self.customDir, "root/run/dbus") + '\"')
                 #mount /dev
                 print _("Mounting /dev filesystem...")
                 os.popen('mount --bind /dev \"' + os.path.join(self.customDir, "root/dev") + '\"')
@@ -2247,7 +2252,7 @@ class Reconstructor:
                 #mount /sys
                 print _("Mounting /sys filesystem...")
                 os.popen('mount none -t sysfs \"' + os.path.join(self.customDir, "root/sys") + '\"')
-                #mount /sys
+                #mount /dev/pts
                 print _("Mounting /dev/pts filesystem...")
                 os.popen('mount none -t devpts \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
                 # copy apt.conf
@@ -2326,6 +2331,14 @@ class Reconstructor:
                     if(error != ''):
                         print "error=\""+error+"\""
                         self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
+                # umount /run/dbus
+                if self.isMounted(os.path.join(self.customDir, "root/run/dbus")):
+                    if silentMode == False:
+                        print _("Umounting /run/dbus...")
+                    error = commands.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/run/dbus") + '\"')
+                    if(error != ''):
+                        print "error=\""+error+"\""
+                        self.suggestReboot('/run/dbus could not be unmounted. It must be unmounted before you can build an ISO.')
                 if justUmount == False:
                     # restore wgetrc
                     if silentMode == False:
@@ -2521,6 +2534,11 @@ class Reconstructor:
             elif os.path.exists("/run/resolvconf/resolv.conf"):
                 print _("Copying DNS info...")
                 os.popen('cp -L --remove-destination /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+            #mount /run/dbus
+            print _("Mounting /run/dbus filesystem...")
+            if not os.path.exists("/run/dbus"):
+                os.popen("mkdir /run/dbus")
+            os.popen('mount --bind /run/dbus \"' + os.path.join(self.customDir, "root/run/dbus") + '\"')
             # mount /dev
             print _("Mounting /dev filesystem...")
             os.popen('mount --bind /dev \"' + os.path.join(self.customDir, "root/dev") + '\"')
@@ -2587,6 +2605,11 @@ class Reconstructor:
             error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/dev/") + '\"')
             if(error != ''):
                 self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
+            # umount /run/dbus
+            print _("Umounting /run/dbus...")
+            error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/run/dbus") + '\"')
+            if(error != ''):
+                self.suggestReboot('/run/dbus could not be unmounted. It must be unmounted before you can build an ISO.')
             # remove temp script
             os.popen('rm -Rf /tmp/xephyr-chroot.sh')
             # startx complains about suspicious activity sometimes:P
