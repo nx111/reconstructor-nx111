@@ -4314,18 +4314,22 @@ class Reconstructor:
         try:
             terminal = os.environ["COLORTERM"]
         except:
-            if commands.getoutput('which gnome-terminal') != '':
-                terminal = 'gnome-terminal'
-            elif commands.getoutput('which mate-terminal') != '':
-                terminal = 'mate-terminal'
-            elif commands.getoutput('which konsole') != '':
-                terminal = 'konsole'
-            elif commands.getoutput('which xfc4-terminal') != '':
-                terminal = 'xfc4-terminal'
-            elif commands.getoutput('which lxterminal') != '':
-                terminal = 'lxterminal'
-            elif commands.getoutput('which qterminal') != '':
-                terminal = 'qterminal'
+            terminal = 'gnome-terminal'
+
+        if commands.getoutput('which ' + terminal) != '':
+            pass
+        elif commands.getoutput('which gnome-terminal') != '':
+            terminal = 'gnome-terminal'
+        elif commands.getoutput('which mate-terminal') != '':
+            terminal = 'mate-terminal'
+        elif commands.getoutput('which konsole') != '':
+            terminal = 'konsole'
+        elif commands.getoutput('which xfc4-terminal') != '':
+            terminal = 'xfc4-terminal'
+        elif commands.getoutput('which lxterminal') != '':
+            terminal = 'lxterminal'
+        elif commands.getoutput('which qterminal') != '':
+            terminal = 'qterminal'
         return terminal
 
 # ---------- Customize Live ---------- #
