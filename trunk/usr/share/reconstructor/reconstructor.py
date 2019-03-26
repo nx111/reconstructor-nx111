@@ -5234,16 +5234,20 @@ class Reconstructor:
                 if os.path.exists(os.path.join(self.customDir, "remaster/casper/filesystem.squashfs")):
                     print _("Removing existing SquashFS root...")
                     os.popen('rm -Rf \"' + os.path.join(self.customDir, "remaster/casper/filesystem.squashfs") + '\"')
+
                 # remove aptitude lock and crash logs
                 os.popen('rm -f ' + os.path.join(self.customDir, "root/var/lib/apt/lists/lock"))
                 os.popen('rm -f ' + os.path.join(self.customDir, "root/var/crash/*"))
+
+                # remove some history files
+                os.popen('rm -f ' + os.path.join(self.customDir, "root/root/.bash_histroy"))
                 
-                #remove kernel file
+                # remove kernel file
                 kernelVmlinuz = commands.getoutput("readlink " + os.path.join(self.customDir,"root/vmlinuz"))
                 kernelInitrd = commands.getoutput("readlink " + os.path.join(self.customDir,"root/initrd.img"))
                 os.popen('rm -f ' + os.path.join(self.customDir,"root/"+kernelVmlinuz))
                 os.popen('rm -f ' + os.path.join(self.customDir,"root/"+kernelInitrd)) 
-                
+
                 print _("Building SquashFS root...")
                 self.showProgress(_("Building SquashFS root..."),0.70)
                 yield True
