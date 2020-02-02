@@ -1,11 +1,11 @@
 Package: reconstructor
-Version: 2.9.1-180508
+Version: 2.10.0-200211
 Section: Utilities
 Priority: optional
 Architecture: all
 Maintainer: Evan Hazlett <ejhazlett@gmail.com>  nx111 <gd.zhangdz@gmail.cm>
 Installed-Size: 1600
-Depends: python-gtk2, python-glade2, python(>=2.3), python-apt, squashfs-tools, coreutils, mkisofs, gcc, make, rsync, gnupg, dpkg-dev, fakeroot, apt-utils, xserver-xephyr,lzma,sed
+Depends: python3(>=3.0), python-apt, squashfs-tools, coreutils, mkisofs, gcc, make, rsync, gnupg, dpkg-dev, fakeroot, apt-utils, xserver-xephyr,lzma,sed
 Description: Reconstructor Ubuntu CD Creator
  Reconstructor Ubuntu CD Creator.
  .
