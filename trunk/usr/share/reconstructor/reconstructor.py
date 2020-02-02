@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 #
 # Reconstructor -- http://reconstructor.aperantis.com
@@ -28,9 +28,9 @@ import gettext
 import re
 import apt
 import apt_pkg
-import commands
+import subprocess
 import urllib
-import ConfigParser
+import configparser
 
 path = sys.path[0]
 cur_file_dir = path
@@ -44,30 +44,28 @@ sys.path.append(cur_file_dir + '/lib/')
 from Reconstructor.PackageHelper import PackageHelper
 
 try:
-     import pygtk
-     pygtk.require("2.0")
-except Exception, detail:
-    print detail
-    pass
-try:
-    import gtk
-    import gtk.glade
-    import gobject
-    import pango
-except Exception, detail:
-    print detail
+    import gi
+    gi.require_version('Gtk', '3.0')
+    from gi.repository import Gtk
+    from gi.repository import Gdk
+    from gi.repository import GLib
+    from gi.repository import GObject
+    #import Gtk.glade
+    #import pango
+except Exception as detail:
+    print(detail)
     sys.exit(1)
 
 
 def find_newest_kernel_version(base):   
         re_file = re.compile("initrd.img[-]")        
-	ver=""
+        ver=""
                         
         final_file_list = []        
-        #print base        
+        #print base
         cur_list = os.listdir(base)        
         for item in cur_list:        
-                #print item
+                #print(item)
                 full_path = os.path.join(base, item)        
                 if re_file.match(item) and os.path.isfile(full_path):
                         ver1=re_file.sub('',item)
@@ -110,7 +108,7 @@ class Reconstructor:
         self.intrepidVersion = '8.10'
         self.jauntyVersion = '9.04'
         self.karmicVersion = '9.10'
-	self.saucyVersion = '13.10'
+        self.saucyVersion = '13.10'
         self.moduleDir = cur_file_dir + '/modules/'
         self.mountDir = '/media/cdrom'
         self.tmpDir = "tmp"
@@ -141,7 +139,7 @@ class Reconstructor:
         self.cdArchIndex = 0
         self.setupComplete = False
         self.manualInstall = False
-        self.watch = gtk.gdk.Cursor(gtk.gdk.WATCH)
+        self.watch = Gdk.Cursor(Gdk.CursorType.WATCH)
         self.working = None
         self.workingDlg = None
         self.runningDebug = False
@@ -150,8 +148,6 @@ class Reconstructor:
         self.pageDiscType = 1
         self.pageLiveSetup = 2
         self.pageLiveCustomize = 3
-        self.pageLiveCustomizeGnome = 1
-        self.pageLiveCustomizeOptimization = 3
         self.pageLiveBuild = 4
         self.pageAltSetup = 5
         self.pageAltCustomize = 6
@@ -217,7 +213,7 @@ class Reconstructor:
         self.bootModulesEnabled = False
         self.TerminalInitialized = False
         # time command for timing operations
-        self.timeCmd = commands.getoutput('which time') + ' -f \"\nBuild Time: %E  CPU: %P\n\"'
+        self.timeCmd = subprocess.getoutput('which time') + ' -f \"\nBuild Time: %E  CPU: %P\n\"'
 
         # startup daemon list for speedup
         #self.startupDaemons = ('ppp', 'hplip', 'cupsys', 'festival', 'laptop-mode', 'nvidia-kernel', 'rsync', 'bluez-utils', 'mdadm')
@@ -229,18 +225,19 @@ class Reconstructor:
         # locale
         locale.setlocale(locale.LC_ALL, '')
         gettext.bindtextdomain(APPDOMAIN, LANGDIR)
-        gtk.glade.bindtextdomain(APPDOMAIN, LANGDIR)
-        gtk.glade.textdomain(APPDOMAIN)
+        #Gtk.glade.bindtextdomain(APPDOMAIN, LANGDIR)
+        #Gtk.glade.textdomain(APPDOMAIN)
         gettext.textdomain(APPDOMAIN)
-        gettext.install(APPDOMAIN, LANGDIR, unicode=1)
+        gettext.install(APPDOMAIN, LANGDIR)
 
         # setup glade widget tree
-        self.wTree = gtk.glade.XML(self.gladefile, domain='reconstructor')
+        self.builder = Gtk.Builder()
+        self.builder.add_from_file(self.gladefile)
 
 
         # check for user
         if os.getuid() != 0 :
-            self.wTree.get_widget("windowMain").hide()
+            self.builder.get_object("windowMain").hide()
 
         # create signal dictionary and connect
         dic = { "on_buttonNext_clicked" : self.on_buttonNext_clicked,
@@ -249,7 +246,7 @@ class Reconstructor:
             "on_buttonBrowseIsoFilename_clicked" : self.on_buttonBrowseIsoFilename_clicked,
             "on_checkbuttonBuildIso_toggled" : self.on_checkbuttonBuildIso_toggled,
             "on_buttonBrowseLiveCdFilename_clicked" : self.on_buttonBrowseLiveCdFilename_clicked,
-             "on_buttonBrowseGnomeDesktopWallpaper_clicked" : self.on_buttonBrowseGnomeDesktopWallpaper_clicked,
+            "on_buttonBrowseGnomeDesktopWallpaper_clicked" : self.on_buttonBrowseGnomeDesktopWallpaper_clicked,
             "on_buttonBrowseGnomeFont_clicked" : self.on_buttonBrowseGnomeFont_clicked,
             "on_buttonBrowseGnomeDocumentFont_clicked" : self.on_buttonBrowseGnomeDocumentFont_clicked,
             "on_buttonBrowseGnomeDesktopFont_clicked": self.on_buttonBrowseGnomeDesktopFont_clicked,
@@ -270,6 +267,7 @@ class Reconstructor:
             "on_buttonCheckUpdates_clicked" : self.on_buttonCheckUpdates_clicked,
             "on_buttonModulesAddModule_clicked" : self.on_buttonModulesAddModule_clicked,
             "on_buttonModulesClearRunOnBoot_clicked" : self.on_buttonModulesClearRunOnBoot_clicked,
+            "on_buttonModulesUpdateModule_clicked" : self.on_buttonModulesUpdateModule_clicked,
             "on_buttonBrowseAltWorkingDir_clicked" : self.on_buttonBrowseAltWorkingDir_clicked,
             "on_buttonBrowseAltIsoFilename_clicked" : self.on_buttonBrowseAltIsoFilename_clicked,
             "on_buttonAltIsoCalculate_clicked" : self.on_buttonAltIsoCalculate_clicked,
@@ -280,9 +278,9 @@ class Reconstructor:
             "on_checkbuttonAltBuildIso_toggled" : self.on_checkbuttonAltBuildIso_toggled,
             "on_buttonBrowseAltCdFilename_clicked" : self.on_buttonBrowseAltCdFilename_clicked,
             "on_buttonDonate_clicked" : self.on_buttonDonate_clicked,
-            "on_windowMain_delete_event" : self.exitApp, #gtk.main_quit,
+            "on_windowMain_delete_event" : self.exitApp, #Gtk.main_quit,
             "on_windowMain_destroy" : self.exitApp }
-        self.wTree.signal_autoconnect(dic)
+        self.builder.connect_signals(dic)
 
         # add command option parser
         parser = optparse.OptionParser()
@@ -308,93 +306,91 @@ class Reconstructor:
 
         if options.debug == True:
             self.runningDebug = True
-            self.wTree.get_widget("notebookWizard").set_show_tabs(True)
-            print _('INFO: Running Debug...')
+            self.builder.get_object("notebookWizard").set_show_tabs(True)
+            print(_('INFO: Running Debug...'))
         else:
             # hide tabs
-            self.wTree.get_widget("notebookWizard").set_show_tabs(False)
+            #if self.builder.get_object("notebookWizard") != None:
+            self.builder.get_object("notebookWizard").set_show_tabs(False)
         if options.version == True:
-            print " "
-            print self.appName + " -- (c) Reconstructor Team, 2006-2009"
-            print "       Version: " + self.appVersion + " rev. " + self.updateId
-            print "        http://reconstructor.aperantis.com"
-            print " "
-            #gtk.main_quit()
+            print(" ")
+            print(self.appName + " -- (c) Reconstructor Team, 2006-2009")
+            print("       Version: " + self.appVersion + " rev. " + self.updateId)
+            print("        http://reconstructor.aperantis.com")
+            print(" ")
+            #Gtk.main_quit()
             sys.exit(0)
         if options.manualinstall == True:
-            print _('INFO: Manually Installing .deb archives in cache...')
+            print(_('INFO: Manually Installing .deb archives in cache...'))
             self.manualInstall = True
         if options.experimental == True:
-            print _('INFO: Enabling Experimental Features...')
+            print(_('INFO: Enabling Experimental Features...'))
             self.enableExperimental = True
         if options.update == True:
-            print _('INFO: Updating...')
+            print(_('INFO: Updating...'))
             self.update()
 
         # print copyright
-        print " "
-        print self.appName + " -- (c) Reconstructor Team, 2006-2009"
-        print "\t\tVersion: " + self.appVersion
-        print "\thttp://reconstructor.aperantis.com"
-        print " "
+        print(" ")
+        print(self.appName + " -- (c) Reconstructor Team, 2006-2009")
+        print("\t\tVersion: " + self.appVersion)
+        print("\thttp://reconstructor.aperantis.com")
+        print(" ")
 
         # set icons & logo
-        self.wTree.get_widget("windowMain").set_icon_from_file(self.iconFile)
-        self.wTree.get_widget("imageLogo").set_from_file(self.logoFile)
-        imgTerminal = gtk.Image()
+        self.builder.get_object("windowMain").set_icon_from_file(self.iconFile)
+        self.builder.get_object("imageLogo").set_from_file(self.logoFile)
+        imgTerminal = Gtk.Image()
         imgTerminal.set_from_file(self.terminalIconFile)
-        self.wTree.get_widget("buttonCustomizeLaunchTerminal").set_image(imgTerminal)
-        imgChrootX = gtk.Image()
+        self.builder.get_object("buttonCustomizeLaunchTerminal").set_image(imgTerminal)
+        imgChrootX = Gtk.Image()
         imgChrootX.set_from_file(self.chrootxIconFile)
-        self.wTree.get_widget("buttonCustomizeLaunchChrootX").set_image(imgChrootX)
-        imgUpdate = gtk.Image()
+        self.builder.get_object("buttonCustomizeLaunchChrootX").set_image(imgChrootX)
+        imgUpdate = Gtk.Image()
         imgUpdate.set_from_file(self.updateIconFile)
-        self.wTree.get_widget("buttonCheckUpdates").set_image(imgUpdate)
-        imgModUpdate = gtk.Image()
-        imgModUpdate.set_from_file(self.updateIconFile)
-        self.wTree.get_widget("buttonModulesUpdateModule").set_image(imgModUpdate)
+        self.builder.get_object("buttonCheckUpdates").set_image(imgUpdate)
 
         # check for existing mount dir
         if os.path.exists(self.mountDir) == False:
-            print _('INFO: Creating mount directory...')
+            print(_('INFO: Creating mount directory...'))
             os.makedirs(self.mountDir)
 
         # set app title
         if self.devInProgress:
-            self.wTree.get_widget("windowMain").set_title(self.appName + self.codeName + "  Build " + self.devRevision)
+            self.builder.get_object("windowMain").set_title(self.appName + self.codeName + "  Build " + self.devRevision)
         else:
-            self.wTree.get_widget("windowMain").set_title(self.appName)
+            self.builder.get_object("windowMain").set_title(self.appName)
 
         # check dependencies
         self.checkDependencies()
 
         # set version
-        self.wTree.get_widget("labelVersion").set_text('version ' + self.appVersion)
+        self.builder.get_object("labelVersion").set_text('version ' + self.appVersion)
 
         # hide back button initially
-        self.wTree.get_widget("buttonBack").hide()
+        self.builder.get_object("buttonBack").hide()
         # set default live cd text color
-        self.wTree.get_widget("colorbuttonBrowseLiveCdTextColor").set_color(gtk.gdk.color_parse("#FFFFFF"))
+        #self.builder.get_object("colorbuttonBrowseLiveCdTextColor").set_color(Gdk.color_parse("#FFFFFF"))
         # set default working directory path
         if options.workdir != "":
-            self.wTree.get_widget("entryWorkingDir").set_text(options.workdir)
-            self.wTree.get_widget("entryAltWorkingDir").set_text(options.workdir)
+            self.builder.get_object("entryWorkingDir").set_text(options.workdir)
+            self.builder.get_object("entryAltWorkingDir").set_text(options.workdir)
         else:
-            self.wTree.get_widget("entryWorkingDir").set_text(os.path.join(os.environ['HOME'], "reconstructor"))
-            self.wTree.get_widget("entryAltWorkingDir").set_text(os.path.join(os.environ['HOME'], "reconstructor"))
+            self.builder.get_object("entryWorkingDir").set_text(os.path.join(os.environ['HOME'], "reconstructor"))
+            self.builder.get_object("entryAltWorkingDir").set_text(os.path.join(os.environ['HOME'], "reconstructor"))
 	
-        self.wTree.get_widget("entryLiveIsoFilename").set_text(os.path.join(os.environ['HOME'], "ubuntu-custom-live.iso"))
-        self.wTree.get_widget("entryAltBuildIsoFilename").set_text(os.path.join(os.environ['HOME'], "ubuntu-custom-alt.iso"))
+        self.builder.get_object("entryLiveIsoFilename").set_text(os.path.join(os.environ['HOME'], "ubuntu-custom-live.iso"))
+        self.builder.get_object("entryAltBuildIsoFilename").set_text(os.path.join(os.environ['HOME'], "ubuntu-custom-alt.iso"))
         # set default descriptions
         cdDesc = _('Ubuntu Custom')
-        self.wTree.get_widget("entryLiveCdDescription").set_text(cdDesc)
-        self.wTree.get_widget("entryBuildAltCdDescription").set_text(cdDesc)
+        self.builder.get_object("entryLiveCdDescription").set_text(cdDesc)
+        self.builder.get_object("entryBuildAltCdDescription").set_text(cdDesc)
         # set default cd architectures
-        self.wTree.get_widget("comboboxLiveCdArch").set_active(0)
-        self.wTree.get_widget("comboboxAltBuildArch").set_active(0)
+        self.builder.get_object("comboboxLiveCdArch").set_active(0)
+        self.builder.get_object("comboboxAltBuildArch").set_active(0)
 
         # set default customDir form config file
-        config = ConfigParser.ConfigParser()
+        config = configparser.ConfigParser()
         config.optionxform = str
         config.read(os.path.join(os.environ['HOME'], ".reconstructor"))
         try:
@@ -402,18 +398,13 @@ class Reconstructor:
         except:
              self.customDir = ''
 
-        # enable/disable experimental features
-        if self.enableExperimental == True:
-            self.wTree.get_widget("expanderGnomeInteractive").show()
-            return
-        else:
-            self.wTree.get_widget("expanderGnomeInteractive").hide()
-            return
-
+    def run_generator(self, function):
+        gen = function()
+        GLib.idle_add(lambda: next(gen, False))
 
     def isMounted(self,path):
-        error = commands.getoutput("grep -c \"[[:space:]]" + path +"\" /proc/mounts")
-        # print '..check mounted: ' + "grep -c \"" + path +"\" /proc/mounts  (" + error +")"
+        error = subprocess.getoutput("grep -c \"[[:space:]]" + path +"\" /proc/mounts")
+        # print('..check mounted: ' + "grep -c \"" + path +"\" /proc/mounts  (" + error +")")
         if error != '0':
             return True
         else:
@@ -421,128 +412,129 @@ class Reconstructor:
 
     def showProgress(self,text=False,fraction=False):
         if text:
-            self.wTree.get_widget("labelStatus").set_text(text)
+            self.builder.get_object("labelStatus").set_text(text)
         if fraction:
-            self.wTree.get_widget("progressbar").set_fraction(fraction)
-        #print "DEBUG: showProgress  result: text=" + self.wTree.get_widget("labelStatus").get_text() + " [[fraction="+str(self.wTree.get_widget("progressbar").get_fraction()) + "]]"
+            self.builder.get_object("progressbar").set_fraction(fraction)
+        #print("DEBUG: showProgress  result: text=" + self.builder.get_object("labelStatus").get_text() + " [[fraction="+str(self.builder.get_object("progressbar").get_fraction()) + "]]")
 
 
     def CheckChrootKernel(self):
         # check vmlinuz and initrd
-        print  'Check Chroot Kernel ...'
+        print('Check Chroot Kernel ...')
         kernelFileReady = False
         kernelVersion = ''
-        kernelFile=commands.getoutput("readlink " + os.path.join(self.customDir,"root/vmlinuz"))
+        kernelFile=subprocess.getoutput("readlink " + os.path.join(self.customDir,"root/vmlinuz"))
         if kernelFile != '':
-            kernelVersion = commands.getoutput("basename " + kernelFile +" | sed -e 's/vmlinuz-//'")
+            kernelVersion = subprocess.getoutput("basename " + kernelFile +" | sed -e 's/vmlinuz-//'")
         if kernelVersion == '':
-            kernelVersion = commands.getoutput("grep linux-image-[[:digit:]].* " + os.path.join(self.customDir,"remaster/casper/filesystem.manifest") + " | cut -f1 -d' '| sed -e 's/^linux-image-//'")
+            kernelVersion = subprocess.getoutput("grep linux-image-[[:digit:]].* " + os.path.join(self.customDir,"remaster/casper/filesystem.manifest") + " | cut -f1 -d' '| sed -e 's/^linux-image-//'")
         if kernelVersion != '':
-            #print 'kernelVersion='+kernelVersion
+            #print('kernelVersion='+kernelVersion)
             if (os.path.exists(os.path.join(self.customDir,"root/boot/vmlinuz-"+kernelVersion))) == False:
                 if (os.path.exists(os.path.join(self.customDir,"remaster/casper/vmlinuz.efi"))):
-                     os.popen('cp '+ os.path.join(self.customDir,"remaster/casper/vmlinuz.efi ") + os.path.join(self.customDir,"root/boot/vmlinuz-"+kernelVersion))
+                     subprocess.getoutput('cp '+ os.path.join(self.customDir,"remaster/casper/vmlinuz.efi ") + os.path.join(self.customDir,"root/boot/vmlinuz-"+kernelVersion))
                 else:
-                     os.popen('cp '+ os.path.join(self.customDir,"remaster/casper/vmlinuz ") + os.path.join(self.customDir,"root/boot/vmlinuz-"+kernelVersion))
+                     subprocess.getoutput('cp '+ os.path.join(self.customDir,"remaster/casper/vmlinuz ") + os.path.join(self.customDir,"root/boot/vmlinuz-"+kernelVersion))
             if (os.path.exists(os.path.join(self.customDir,"root/boot/initrd.img-"+kernelVersion))) == False:
                 if (os.path.exists(os.path.join(self.customDir,"remaster/casper/initrd.lz"))):
-                    os.popen('cp '+ os.path.join(self.customDir,"remaster/casper/initrd.lz ") + os.path.join(self.customDir,"root/boot/initrd.img-"+kernelVersion))
+                    subprocess.getoutput('cp '+ os.path.join(self.customDir,"remaster/casper/initrd.lz ") + os.path.join(self.customDir,"root/boot/initrd.img-"+kernelVersion))
                 else:
-                    os.popen('cp '+ os.path.join(self.customDir,"remaster/casper/initrd ") + os.path.join(self.customDir,"root/boot/initrd.img-"+kernelVersion))
+                    subprocess.getoutput('cp '+ os.path.join(self.customDir,"remaster/casper/initrd ") + os.path.join(self.customDir,"root/boot/initrd.img-"+kernelVersion))
             if kernelFile:
                 if (os.path.exists(os.path.join(self.customDir,"root/"+kernelFile))):
                     kernelFileReady = True
             if kernelFileReady == False:
-                #print 'Recreate Kernel File Link....'
-                os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' rm -f vmlinuz')
-                os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' ln -s boot/vmlinuz-' + kernelVersion+ ' vmlinuz')
-                os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' rm -f initrd.img')
-                os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' ln -s boot/initrd.img-' + kernelVersion + '  initrd.img')
+                #print('Recreate Kernel File Link....')
+                subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' rm -f vmlinuz')
+                subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' ln -s boot/vmlinuz-' + kernelVersion+ ' vmlinuz')
+                subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' rm -f initrd.img')
+                subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' ln -s boot/initrd.img-' + kernelVersion + '  initrd.img')
 
 
     # Check for Application Dependencies
     def checkDependencies(self):
-        print _('Checking dependencies...')
+        print(_('Checking dependencies...'))
         dependList = ''
-        if commands.getoutput('which mksquashfs') == '':
-            print _('squashfs-tools NOT FOUND (needed for Root FS extraction)')
+        if subprocess.getoutput('which mksquashfs') == '':
+            print(_('squashfs-tools NOT FOUND (needed for Root FS extraction)'))
             dependList += 'squashfs-tools\n'
-        if commands.getoutput('which chroot') == '':
-            print _('chroot NOT FOUND (needed for Root FS customization)')
+        if subprocess.getoutput('which chroot') == '':
+            print(_('chroot NOT FOUND (needed for Root FS customization)'))
             dependList += 'chroot\n'
-        if commands.getoutput('which mkisofs') == '':
-            print _('mkisofs NOT FOUND (needed for ISO generation)')
+        if subprocess.getoutput('which mkisofs') == '':
+            print(_('mkisofs NOT FOUND (needed for ISO generation)'))
             dependList += 'mkisofs\n'
-        if commands.getoutput('which gcc') == '':
-            print _('gcc NOT FOUND (needed for VMWare/Qemu installation)')
+        if subprocess.getoutput('which gcc') == '':
+            print(_('gcc NOT FOUND (needed for VMWare/Qemu installation)'))
             dependList += 'gcc\n'
-        if commands.getoutput('which make') == '':
-            print _('make NOT FOUND (needed for VMWare/Qemu installation)')
+        if subprocess.getoutput('which make') == '':
+            print(_('make NOT FOUND (needed for VMWare/Qemu installation)'))
             dependList += 'make\n'
-        if commands.getoutput('which rsync') == '':
-            print _('rsync NOT FOUND (needed for Remastering ISO)')
+        if subprocess.getoutput('which rsync') == '':
+            print(_('rsync NOT FOUND (needed for Remastering ISO)'))
             dependList += 'rsync\n'
-        if commands.getoutput('which Xephyr') == '':
-            print _('Xephyr NOT Found (needed for ChrootX)')
+        if subprocess.getoutput('which Xephyr') == '':
+            print(_('Xephyr NOT Found (needed for ChrootX)'))
             dependList += 'xserver-xephyr\n'
          # gpg
-        if commands.getoutput('which gpg') == '':
-            print _('gpg NOT FOUND (needed for Alternate Key Signing)')
+        if subprocess.getoutput('which gpg') == '':
+            print(_('gpg NOT FOUND (needed for Alternate Key Signing)'))
             dependList += 'gpg\n'
         # dpkg-buildpackage
-        if commands.getoutput('which dpkg-buildpackage') == '':
-            print _('dpkg-dev NOT FOUND (needed for Alternate Key Package Building)')
+        if subprocess.getoutput('which dpkg-buildpackage') == '':
+            print(_('dpkg-dev NOT FOUND (needed for Alternate Key Package Building)'))
             dependList += 'dpkg-dev\n'
         # xterm
-        if commands.getoutput('which xterm') == '':
-            print _('xterm NOT FOUND (needed for gnome-terminal fallback)')
+        if subprocess.getoutput('which xterm') == '':
+            print(_('xterm NOT FOUND (needed for gnome-terminal fallback)'))
             dependList += 'xterm\n'
         # fakeroot
-        if commands.getoutput('which fakeroot') == '':
-            print _('fakeroot NOT FOUND (needed for Alternate Key Package Building)')
+        if subprocess.getoutput('which fakeroot') == '':
+            print(_('fakeroot NOT FOUND (needed for Alternate Key Package Building)'))
             dependList += 'fakeroot\n'
         # apt-ftparchive
-        if commands.getoutput('which apt-ftparchive') == '':
-            print _('apt-utils NOT FOUND (needed for Extra Repository Generation)')
+        if subprocess.getoutput('which apt-ftparchive') == '':
+            print(_('apt-utils NOT FOUND (needed for Extra Repository Generation)'))
             dependList += 'apt-utils\n'
         if dependList != '':
-            print _('\nThe following dependencies are not met: ')
-            print dependList
-            print _('Please install the dependencies and restart reconstructor.')
+            print(_('\nThe following dependencies are not met: '))
+            print(dependList)
+            print(_('Please install the dependencies and restart reconstructor.'))
             # show warning dialog
-            warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_YES, gtk.RESPONSE_OK))
+            warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+            warnDlg.add_buttons(Gtk.STOCK_NO, Gtk.ResponseType.CANCEL, Gtk.STOCK_YES, Gtk.ResponseType.OK)
             warnDlg.set_icon_from_file(self.iconFile)
             warnDlg.vbox.set_spacing(10)
-            labelSpc = gtk.Label(" ")
-            warnDlg.vbox.pack_start(labelSpc)
+            labelSpc = Gtk.Label(" ")
+            warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
             labelSpc.show()
             lblText = _('  <b>Reconstructor may not work correctly.</b>\nThe following dependencies are not met: ')
-            lbl = gtk.Label(lblText)
+            lbl = Gtk.Label(lblText)
             lbl.set_use_markup(True)
-            lblInfo = gtk.Label(dependList)
+            lblInfo = Gtk.Label(dependList)
             lblFixText = _('Install the dependencies and restart reconstructor?')
-            lblFix = gtk.Label(lblFixText)
-            warnDlg.vbox.pack_start(lbl)
-            warnDlg.vbox.pack_start(lblInfo)
-            warnDlg.vbox.pack_start(lblFix)
+            lblFix = Gtk.Label(lblFixText)
+            warnDlg.vbox.pack_start(lbl, expand=True, fill=True, padding=0)
+            warnDlg.vbox.pack_start(lblInfo, expand=True, fill=True, padding=0)
+            warnDlg.vbox.pack_start(lblFix, expand=True, fill=True, padding=0)
             lbl.show()
             lblInfo.show()
             lblFix.show()
             #warnDlg.show()
             response = warnDlg.run()
-            if response == gtk.RESPONSE_OK:
+            if response == Gtk.ResponseType.OK:
                 warnDlg.destroy()
                 # use apt to install
-                #print 'apt-get install -y ' + dependList.replace('\n', ' ')
+                #print('apt-get install -y ' + dependList.replace('\n', ' '))
                 installTxt = _('Installing dependencies: ')
-                print installTxt + dependList.replace('\n', ' ')
-                os.popen('apt-get install -y ' + dependList.replace('\n', ' '))
+                print(installTxt + dependList.replace('\n', ' '))
+                subprocess.getoutput('apt-get install -y ' + dependList.replace('\n', ' '))
                 sys.exit(0)
             else:
                 warnDlg.destroy()
 
         else:
-            print _('Ok.')
+            print(_('Ok.'))
 
 
     # load live cd ubuntu version
@@ -552,20 +544,15 @@ class Reconstructor:
             self.cdUbuntuVersion = 'unknown'
             # build regex
             r = re.compile(self.regexUbuntuVersion, re.IGNORECASE)
-            f = file(os.path.join(self.customDir, "root/etc/lsb-release"), 'r')
+            f = open(os.path.join(self.customDir, "root/etc/lsb-release"), 'r')
             for l in f:
                 if r.match(l) != None:
                     self.cdUbuntuVersion = r.match(l).group(1)
             f.close()
 
-            print 'Ubuntu Version: ' + self.cdUbuntuVersion
+            print('Ubuntu Version: ' + self.cdUbuntuVersion)
             # BUGFIX - fixes string from getting longer and longer and longer...
-            self.wTree.get_widget("labelCustomizeUbuntuLiveVersion").set_text("Ubuntu Live CD Version: " + self.cdUbuntuVersion)
-            if self.cdUbuntuVersion == self.edgyVersion:
-                # HACK: hide optimization -- not working on edgy yet
-                self.wTree.get_widget("notebookCustomize").get_nth_page(self.pageLiveCustomizeOptimization).hide()
-            else:
-                self.wTree.get_widget("notebookCustomize").get_nth_page(self.pageLiveCustomizeOptimization).show()
+            self.builder.get_object("labelCustomizeUbuntuLiveVersion").set_text("Ubuntu Live CD Version: " + self.cdUbuntuVersion)
         return
 
     # Check for Updates (GUI)
@@ -579,45 +566,47 @@ class Reconstructor:
             fApp = int(self.updateId)
             fUpdate = int(updateVersion)
             if fUpdate > fApp:
-                updateDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_NO, gtk.RESPONSE_NO, gtk.STOCK_YES, gtk.RESPONSE_OK))
+                updateDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+                updateDlg.add_buttons(Gtk.STOCK_NO, Gtk.RESPONSE_NO, Gtk.STOCK_YES, Gtk.ResponseType.OK)
                 updateDlg.set_icon_from_file(self.iconFile)
                 updateDlg.vbox.set_spacing(10)
-                labelSpc = gtk.Label(" ")
-                updateDlg.vbox.pack_start(labelSpc)
+                labelSpc = Gtk.Label(" ")
+                updateDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
                 labelSpc.show()
-                lblNewVersion = gtk.Label('New version available...')
-                updateDlg.vbox.pack_start(lblNewVersion)
+                lblNewVersion = Gtk.Label('New version available...')
+                updateDlg.vbox.pack_start(lblNewVersion, expand=True, fill=True, padding=0)
                 lblNewVersion.show()
-                lblInfo = gtk.Label(updateInfo)
+                lblInfo = Gtk.Label(updateInfo)
                 lblInfo.set_use_markup(True)
-                updateDlg.vbox.pack_start(lblInfo)
+                updateDlg.vbox.pack_start(lblInfo, expand=True, fill=True, padding=0)
                 lblInfo.show()
-                lblConfirm = gtk.Label('Update?')
-                updateDlg.vbox.pack_start(lblConfirm)
+                lblConfirm = Gtk.Label('Update?')
+                updateDlg.vbox.pack_start(lblConfirm, expand=True, fill=True, padding=0)
                 lblConfirm.show()
 
                 response = updateDlg.run()
-                if response == gtk.RESPONSE_OK:
+                if response == Gtk.ResponseType.OK:
                     updateDlg.destroy()
                     self.setBusyCursor()
                     self.update(silent=True)
                     self.exitApp()
                 else:
-                    print _('Update cancelled...')
+                    print(_('Update cancelled...'))
                     updateDlg.destroy()
             else:
-                updateDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_OK, gtk.RESPONSE_OK))
+                updateDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+                updateDlg.add_buttons(Gtk.STOCK_OK, Gtk.ResponseType.OK)
                 updateDlg.set_icon_from_file(self.iconFile)
                 updateDlg.vbox.set_spacing(10)
-                labelSpc = gtk.Label(" ")
-                updateDlg.vbox.pack_start(labelSpc)
+                labelSpc = Gtk.Label(" ")
+                updateDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
                 labelSpc.show()
-                lblNewVersion = gtk.Label('Reconstructor is at the latest version.')
-                updateDlg.vbox.pack_start(lblNewVersion)
+                lblNewVersion = Gtk.Label('Reconstructor is at the latest version.')
+                updateDlg.vbox.pack_start(lblNewVersion, expand=True, fill=True, padding=0)
                 lblNewVersion.show()
 
                 response = updateDlg.run()
-                if response == gtk.RESPONSE_OK:
+                if response == Gtk.ResponseType.OK:
                     updateDlg.destroy()
                 else:
                     updateDlg.destroy()
@@ -625,34 +614,35 @@ class Reconstructor:
         self.setDefaultCursor()
         # cleanup
         if os.path.exists('.r-info'):
-            os.popen('rm -f .r-info')
+            subprocess.getoutput('rm -f .r-info')
         if os.path.exists('.update.tar.gz'):
-            os.popen('rm -f .update.tar.gz')
+            subprocess.getoutput('rm -f .update.tar.gz')
 
     # Gives the user the choice to reboot their computer
     def suggestReboot(self, reason):
-        rebootDlg = gtk.Dialog(title='Warning!', parent=None, flags=0, buttons=(gtk.STOCK_NO, gtk.RESPONSE_NO, gtk.STOCK_YES, gtk.RESPONSE_OK))
+        rebootDlg = Gtk.Dialog(title='Warning!', parent=None, flags=0)
+        rebootDlg.add_buttons=(Gtk.STOCK_NO, Gtk.RESPONSE_NO, Gtk.STOCK_YES, Gtk.ResponseType.OK)
         rebootDlg.set_icon_from_file(self.iconFile)
         rebootDlg.vbox.set_spacing(10)
-        labelSpc = gtk.Label(" ")
-        rebootDlg.vbox.pack_start(labelSpc)
+        labelSpc = Gtk.Label(" ")
+        rebootDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
         labelSpc.show()
-        lblReason = gtk.Label(reason)
-        rebootDlg.vbox.pack_start(lblReason)
+        lblReason = Gtk.Label(reason)
+        rebootDlg.vbox.pack_start(lblReason, expand=True, fill=True, padding=0)
         lblReason.show()
-        lblConfirm = gtk.Label('<b>Reboot Now?</b>')
+        lblConfirm = Gtk.Label('<b>Reboot Now?</b>')
         lblConfirm.set_use_markup(True)
-        rebootDlg.vbox.pack_start(lblConfirm)
+        rebootDlg.vbox.pack_start(lblConfirm, expand=True, fill=True, padding=0)
         lblConfirm.show()
 
-        print _('Warning! ' + reason + ' Reboot Now?')
+        print(_('Warning! ' + reason + ' Reboot Now?'))
 
         response = rebootDlg.run()
-        if response == gtk.RESPONSE_OK:
+        if response == Gtk.ResponseType.OK:
             rebootDlg.destroy()
-            os.popen('reboot')
+            subprocess.getoutput('reboot')
         else:
-            print _('User chose NOT to reboot...')
+            print(_('User chose NOT to reboot...'))
             rebootDlg.destroy()
 
     def showDownloadProgress(self, transferCount, blockSize, totalSize):
@@ -670,7 +660,7 @@ class Reconstructor:
     def update(self,silent=False):
         try:
             # update
-            #print _('Getting update info...')
+            #print(_('Getting update info...'))
             urllib.urlretrieve(self.updateInfo, ".r-info")
             if os.path.exists('.r-info'):
                 f = open('.r-info', 'r')
@@ -679,64 +669,46 @@ class Reconstructor:
                 f.close()
                 fApp = int(self.updateId)
                 fUpdate = int(updateVersion)
-                #print ('Current: ' + str(fApp) + ' -- Available: ' + str(fUpdate))
+                #print(('Current: ' + str(fApp) + ' -- Available: ' + str(fUpdate)))
                 if fUpdate > fApp:
                     if silent == False:
-                        print _('New version available...')
-                        print updateInfo
+                        print(_('New version available...'))
+                        print(updateInfo)
                         updateText = _('Download and Install Update (y/n):')
                         doUpdate = raw_input(updateText)
                         if doUpdate.lower() == 'y':
-                            print _('Getting update...')
+                            print(_('Getting update...'))
                             urllib.urlretrieve(self.updateFile, ".update.tar.gz", self.showDownloadProgress)
-                            print _('\nInstalling update...')
-                            os.popen('tar zxf .update.tar.gz')
-                            print _('Updated.  Please restart reconstructor.\n')
+                            print(_('\nInstalling update...'))
+                            subprocess.getoutput('tar zxf .update.tar.gz')
+                            print(_('Updated.  Please restart reconstructor.\n'))
                         else:
-                            print _('Update cancelled.')
+                            print(_('Update cancelled.'))
                     else:
                         # silent passed
-                        print _('Getting update...')
+                        print(_('Getting update...'))
                         urllib.urlretrieve(self.updateFile, ".update.tar.gz", self.showDownloadProgress)
-                        print _('\nInstalling update...')
-                        os.popen('tar zxf .update.tar.gz')
-                        print _('Updated.  Please restart reconstructor.\n')
+                        print(_('\nInstalling update...'))
+                        subprocess.getoutput('tar zxf .update.tar.gz')
+                        print(_('Updated.  Please restart reconstructor.\n'))
                 else:
-                    print _('Reconstructor is at the latest version.\n')
+                    print(_('Reconstructor is at the latest version.\n'))
                 # cleanup
                 if os.path.exists('.r-info'):
-                    os.popen('rm -f .r-info')
+                    subprocess.getoutput('rm -f .r-info')
                 if os.path.exists('.update.tar.gz'):
-                    os.popen('rm -f .update.tar.gz')
+                    subprocess.getoutput('rm -f .update.tar.gz')
             sys.exit(0)
-        except Exception, detail:
+        except Exception as detail:
             # HACK: nasty hack - update always throws exception, so ignore...
-            #print detail
+            #print(detail)
             sys.exit(0)
-
-    # Finds all available desktop environments and enables/disables options as needed
-    def loadAvailableDesktops(self):
-        try:
-            # find gnome
-            if os.path.exists(os.path.join(self.customDir, "root" + self.gnomeBinPath)):
-                print _('Found Gnome Desktop Environment...')
-                self.wTree.get_widget("notebookCustomize").get_nth_page(self.pageLiveCustomizeGnome).show()
-                # get current gdm background color
-                self.loadGdmBackgroundColor()
-                # load comboboxes for customization
-                self.loadGdmThemes()
-                self.loadGnomeThemes()
-            else:
-                # gnome not found
-                self.wTree.get_widget("notebookCustomize").get_nth_page(self.pageLiveCustomizeGnome).hide()
-        except Exception, detail:
-            print detail
 
     # Handle Module Properties
     def getModuleProperties(self, moduleName):
-        #print _('Loading module properties...')
+        #print(_('Loading module properties...'))
 
-        fMod = file(os.path.join(self.moduleDir, moduleName), 'r')
+        fMod = open(os.path.join(self.moduleDir, moduleName), 'r')
 
         properties = {}
 
@@ -807,11 +779,11 @@ class Reconstructor:
 
     # Loads modules
     def loadModules(self):
-        #print _('Loading modules...')
+        #print(_('Loading modules...'))
         # generate model for treeview
         # create treestore of (install(bool), modulename, version, author, description, runInChroot(hidden), filepath(hidden))
         self.treeModel = None
-        self.treeModel = gtk.TreeStore(gobject.TYPE_STRING, gobject.TYPE_BOOLEAN, gobject.TYPE_BOOLEAN, gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_BOOLEAN, gobject.TYPE_STRING, gobject.TYPE_STRING)
+        self.treeModel = Gtk.TreeStore(GObject.TYPE_STRING, GObject.TYPE_BOOLEAN, GObject.TYPE_BOOLEAN, GObject.TYPE_STRING, GObject.TYPE_STRING, GObject.TYPE_STRING, GObject.TYPE_STRING, GObject.TYPE_BOOLEAN, GObject.TYPE_STRING, GObject.TYPE_STRING)
         # load categories self.treeModel
         # root categories
         self.iterCategorySoftware = self.treeModel.insert_before(None, None)
@@ -852,7 +824,7 @@ class Reconstructor:
                 for f in files:
                     r, ext = os.path.splitext(f)
                     if ext == '.rmod':
-                        #print 'Module: ' + f.replace('.rmod', '') + ' found...'
+                        #print('Module: ' + f.replace('.rmod', '') + ' found...')
 
                         modPath = os.path.join(self.moduleDir, f)
 
@@ -861,7 +833,7 @@ class Reconstructor:
                         modSubCategory = modProps[self.modSubCategoryKey]
 
                         #if self.modules.has_key(modProps[self.modNameKey]):
-                        #    print "The module is already present"
+                        #    print("The module is already present")
 
                         self.modules[modProps[self.modNameKey]] = modProps
 
@@ -897,72 +869,72 @@ class Reconstructor:
                         self.treeModel.set_value(iter, self.moduleColumnRunInChroot, bool(modProps[self.modRunInChrootKey]))
                         self.treeModel.set_value(iter, self.moduleColumnUpdateUrl, modProps[self.modUpdateUrlKey])
                         self.treeModel.set_value(iter, self.moduleColumnPath, modPath)
-                        #print modName, modVersion, modAuthor, modDescription, modUseXterm, modRunInChroot, modPath
+                        #print(modName, modVersion, modAuthor, modDescription, modUseXterm, modRunInChroot, modPath)
                         # set default sort by category
-                        self.treeModel.set_sort_column_id(self.moduleColumnCategory, gtk.SORT_ASCENDING)
+                        self.treeModel.set_sort_column_id(self.moduleColumnCategory, Gtk.SortType.ASCENDING)
                         # build treeview
-                        view = self.treeView
-                        view = gtk.TreeView(self.treeModel)
-                        view.get_selection().set_mode(gtk.SELECTION_SINGLE)
+                        #view = self.treeView
+                        view = Gtk.TreeView.new_with_model(self.treeModel)
+                        view.get_selection().set_mode(Gtk.SelectionMode.SINGLE)
                         view.set_property('search-column', self.moduleColumnName)
                         view.set_reorderable(False)
                         view.set_enable_search(True)
                         view.set_headers_clickable(True)
-                        view.set_rules_hint(True)
+                        #view.set_rules_hint(True)
                         view.connect("row-activated", self.on_treeitem_row_activated)
-                        self.wTree.get_widget("buttonModulesViewModule").connect("clicked", self.on_buttonModulesViewModule_clicked, view)
-                        self.wTree.get_widget("buttonModulesUpdateModule").connect("clicked", self.on_buttonModulesUpdateModule_clicked, view)
+                        self.builder.get_object("buttonModulesViewModule").connect("clicked", self.on_buttonModulesViewModule_clicked, view)
+                        self.builder.get_object("buttonModulesUpdateModule").connect("clicked", self.on_buttonModulesUpdateModule_clicked, view)
                         #view.set_model(model)
                         # category column
-                        rendererCategory = gtk.CellRendererText()
+                        rendererCategory = Gtk.CellRendererText()
                         categoryText = _('Category')
-                        columnCategory = gtk.TreeViewColumn(categoryText, rendererCategory, text=self.moduleColumnCategory)
+                        columnCategory = Gtk.TreeViewColumn(categoryText, rendererCategory, text=self.moduleColumnCategory)
                         columnCategory.set_sort_column_id(self.moduleColumnCategory)
                         view.append_column(columnCategory)
                         # execute column
-                        rendererExecute = gtk.CellRendererToggle()
+                        rendererExecute = Gtk.CellRendererToggle()
                         rendererExecute.set_property('activatable', True)
                         rendererExecute.connect("toggled", self.on_treeitemExecute_toggled, self.treeModel)
                         executeText = _('Execute')
-                        columnExecute = gtk.TreeViewColumn(executeText, rendererExecute, active=self.moduleColumnExecute)
+                        columnExecute = Gtk.TreeViewColumn(executeText, rendererExecute, active=self.moduleColumnExecute)
                         view.append_column(columnExecute)
                         # run on boot
-                        rendererRunOnBoot = gtk.CellRendererToggle()
+                        rendererRunOnBoot = Gtk.CellRendererToggle()
                         rendererRunOnBoot.set_property('activatable', True)
                         rendererRunOnBoot.connect("toggled", self.on_treeitemRunOnBoot_toggled, self.treeModel)
                         runOnBootText = _('Run on boot')
-                        columnRunOnBoot = gtk.TreeViewColumn(runOnBootText, rendererRunOnBoot, active=self.moduleColumnRunOnBoot)
+                        columnRunOnBoot = Gtk.TreeViewColumn(runOnBootText, rendererRunOnBoot, active=self.moduleColumnRunOnBoot)
                         view.append_column(columnRunOnBoot)
                         # module name column
-                        rendererModName = gtk.CellRendererText()
+                        rendererModName = Gtk.CellRendererText()
                         modNameText = _('Module')
-                        columnModName = gtk.TreeViewColumn(modNameText, rendererModName, text=self.moduleColumnName)
+                        columnModName = Gtk.TreeViewColumn(modNameText, rendererModName, text=self.moduleColumnName)
                         columnModName.set_resizable(True)
                         columnModName.set_sort_column_id(self.moduleColumnName)
                         view.append_column(columnModName)
                         # module version column
-                        rendererModVersion = gtk.CellRendererText()
+                        rendererModVersion = Gtk.CellRendererText()
                         rendererModVersion.set_property('xalign', 0.5)
                         modVersionText = _(' Module Version')
-                        columnModVersion = gtk.TreeViewColumn(modVersionText, rendererModVersion, text=self.moduleColumnVersion)
+                        columnModVersion = Gtk.TreeViewColumn(modVersionText, rendererModVersion, text=self.moduleColumnVersion)
                         view.append_column(columnModVersion)
                         # module author column
-                        rendererModAuthor = gtk.CellRendererText()
+                        rendererModAuthor = Gtk.CellRendererText()
                         modAuthorText = _('Author')
-                        columnModAuthor = gtk.TreeViewColumn(modAuthorText, rendererModAuthor, text=self.moduleColumnAuthor)
+                        columnModAuthor = Gtk.TreeViewColumn(modAuthorText, rendererModAuthor, text=self.moduleColumnAuthor)
                         columnModAuthor.set_resizable(True)
                         columnModAuthor.set_sort_column_id(self.moduleColumnAuthor)
                         view.append_column(columnModAuthor)
                         # module description column
-                        rendererModDescription = gtk.CellRendererText()
+                        rendererModDescription = Gtk.CellRendererText()
                         modDescriptionText = _('Description')
-                        columnModDescription = gtk.TreeViewColumn(modDescriptionText, rendererModDescription, text=self.moduleColumnDescription)
+                        columnModDescription = Gtk.TreeViewColumn(modDescriptionText, rendererModDescription, text=self.moduleColumnDescription)
                         columnModDescription.set_resizable(True)
                         view.append_column(columnModDescription)
                         # module run in chroot column
-                        rendererModRunInChroot = gtk.CellRendererToggle()
+                        rendererModRunInChroot = Gtk.CellRendererToggle()
                         modRunInChrootText = _('Run in Chroot')
-                        columnModRunInChroot = gtk.TreeViewColumn(modRunInChrootText, rendererModRunInChroot, active=self.moduleColumnRunInChroot)
+                        columnModRunInChroot = Gtk.TreeViewColumn(modRunInChrootText, rendererModRunInChroot, active=self.moduleColumnRunInChroot)
                         # show column if running debug
                         if self.runningDebug == True:
                             columnModRunInChroot.set_property('visible', True)
@@ -970,9 +942,9 @@ class Reconstructor:
                             columnModRunInChroot.set_property('visible', False)
                         view.append_column(columnModRunInChroot)
                         # module update url column
-                        rendererModUpdateUrl = gtk.CellRendererText()
+                        rendererModUpdateUrl = Gtk.CellRendererText()
                         modUpdateUrlText = _('Update URL')
-                        columnModUpdateUrl = gtk.TreeViewColumn(modUpdateUrlText, rendererModUpdateUrl, text=self.moduleColumnUpdateUrl)
+                        columnModUpdateUrl = Gtk.TreeViewColumn(modUpdateUrlText, rendererModUpdateUrl, text=self.moduleColumnUpdateUrl)
                         # show column if running debug
                         if self.runningDebug == True:
                             columnModUpdateUrl.set_property('visible', True)
@@ -980,9 +952,9 @@ class Reconstructor:
                             columnModUpdateUrl.set_property('visible', False)
                         view.append_column(columnModUpdateUrl)
                         # module path column
-                        rendererModPath = gtk.CellRendererText()
+                        rendererModPath = Gtk.CellRendererText()
                         modPathText = _('Path')
-                        columnModPath = gtk.TreeViewColumn(modPathText, rendererModPath, text=self.moduleColumnPath)
+                        columnModPath = Gtk.TreeViewColumn(modPathText, rendererModPath, text=self.moduleColumnPath)
                         columnModPath.set_resizable(True)
                         # show column if running debug
                         if self.runningDebug == True:
@@ -990,10 +962,10 @@ class Reconstructor:
                         else:
                             columnModPath.set_property('visible', False)
                         view.append_column(columnModPath)
-                        #self.wTree.get_widget("scrolledwindowModules1").add(view)
+                        #self.builder.get_object("scrolledwindowModules1").add(view)
                         view.show()
                         # expand Software section
-                        view.expand_to_path('0')
+                        view.expand_to_path(Gtk.TreePath.new_from_string('0'))
                         self.setDefaultCursor()
 
     def addModule(self, modulePath, updating=False):
@@ -1003,9 +975,9 @@ class Reconstructor:
                 r, ext = os.path.splitext(modulePath)
                 if ext == '.rmod':
                     installText = _('Installing Module: ')
-                    print installText + os.path.basename(modulePath)
+                    print(installText + os.path.basename(modulePath))
                     shutil.copy(modulePath, self.moduleDir)
-                    os.popen('chmod -R 777 \"' + self.moduleDir + '\"')
+                    subprocess.getoutput('chmod -R 777 \"' + self.moduleDir + '\"')
                     # parse and add module to model
 
                     modPath = os.path.join(self.moduleDir, r)
@@ -1015,7 +987,7 @@ class Reconstructor:
                     modSubCategory = modProps[self.modSubCategoryKey]
 
                     if self.modules.has_key(modProps[self.modNameKey]):
-                        print "The module is already present"
+                        print("The module is already present")
 
                     if modSubCategory == 'Administration':
                         iter = self.treeModel.insert_before(self.iterCategoryAdministration, None)
@@ -1048,9 +1020,9 @@ class Reconstructor:
                     self.treeModel.set_value(iter, self.moduleColumnUpdateUrl, modProps[self.modUpdateUrlKey])
                     self.treeModel.set_value(iter, self.moduleColumnPath, modPath)
 
-        except Exception, detail:
+        except Exception as detail:
             errText = _('Error installing module: ')
-            print errText, modulePath + ': ', detail
+            print(errText, modulePath + ': ', detail)
 
     def updateModule(self, moduleName, moduleVersion, moduleFullPath, moduleUpdateUrl, treeview):
         try:
@@ -1060,11 +1032,11 @@ class Reconstructor:
             # check for update url
             if moduleUpdateUrl == '':
                 updTxt = _('Updating not available for module: ')
-                print updTxt, moduleName
+                print(updTxt, moduleName)
             # check for updates
             else:
                 updTxt = _('Checking updates for module: ')
-                print updTxt, moduleName + '...'
+                print(updTxt, moduleName + '...')
                 urllib.urlretrieve(moduleUpdateUrl + os.path.basename(moduleFullPath), "/tmp/r-mod-update.tmp")
                 if os.path.exists('/tmp/r-mod-update.tmp'):
                     f = open('/tmp/r-mod-update.tmp', 'r')
@@ -1077,79 +1049,84 @@ class Reconstructor:
                     if newModProps[self.modNameKey] != '':
                         fModVer = float(moduleVersion)
                         fModNewVer = float(newModProps[self.modVersionKey])
-                        #print ('Current Module Version: ' + str(fModVer) + ' -- Available: ' + str(fModNewVer))
+                        #print(('Current Module Version: ' + str(fModVer) + ' -- Available: ' + str(fModNewVer)))
                         if fModNewVer > fModVer:
                             # update module
                             verTxt = _('Found new version: ')
                             # prompt for installation
-                            updateDlg = gtk.Dialog(title="Module Update", parent=None, flags=0, buttons=(gtk.STOCK_NO, gtk.RESPONSE_NO, gtk.STOCK_YES, gtk.RESPONSE_OK))
+                            updateDlg = Gtk.Dialog(title="Module Update", parent=None, flags=0)
+                            updateDlg.add_buttons(Gtk.STOCK_NO, Gtk.RESPONSE_NO, Gtk.STOCK_YES, Gtk.ResponseType.OK)
                             updateDlg.set_icon_from_file(self.iconFile)
                             updateDlg.vbox.set_spacing(10)
-                            labelSpc = gtk.Label(" ")
-                            updateDlg.vbox.pack_start(labelSpc)
+                            labelSpc = Gtk.Label()
+                            updateDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
                             labelSpc.show()
                             # module name label
-                            lblModName = gtk.Label('Reconstructor Module: ' + '<b>' + moduleName + '</b>')
+                            lblModName = Gtk.Label()
+                            lblModName.set_text('Reconstructor Module: ' + '<b>' + moduleName + '</b>')
                             lblModName.set_use_markup(True)
-                            updateDlg.vbox.pack_start(lblModName)
+                            updateDlg.vbox.pack_start(lblModName, expand=True, fill=True, padding=0)
                             lblModName.show()
                             # module author label
-                            lblModAuthor = gtk.Label('Author: ' + newModProps[self.modAuthorKey])
+                            lblModAuthor = Gtk.Label()
+                            lblModAuthor.set_text('Author: ' + newModProps[self.modAuthorKey])
                             lblModAuthor.set_use_markup(True)
-                            updateDlg.vbox.pack_start(lblModAuthor)
+                            updateDlg.vbox.pack_start(lblModAuthor, expand=True, fill=True, padding=0)
                             lblModAuthor.show()
                             # module version label
                             lblNewVersionTxt = _('New version available: ')
-                            lblNewVersion = gtk.Label(lblNewVersionTxt + '<b>' + newModProps[self.modVersionKey] + '</b>')
+                            lblNewVersion = Gtk.Label()
+                            lblNowVersion.set_text(lblNewVersionTxt + '<b>' + newModProps[self.modVersionKey] + '</b>')
                             lblNewVersion.set_use_markup(True)
-                            updateDlg.vbox.pack_start(lblNewVersion)
+                            updateDlg.vbox.pack_start(lblNewVersion, expand=True, fill=True, padding=0)
                             lblNewVersion.show()
-                            #lblInfo = gtk.Label(updateInfo)
+                            #lblInfo = Gtk.Label(updateInfo)
                             #lblInfo.set_use_markup(True)
-                            #updateDlg.vbox.pack_start(lblInfo)
+                            #updateDlg.vbox.pack_start(lblInfo, expand=True, fill=True, padding=0)
                             #lblInfo.show()
-                            lblConfirm = gtk.Label('Update?')
-                            updateDlg.vbox.pack_start(lblConfirm)
+                            lblConfirm = Gtk.Label()
+                            lblConfirm.set_text('Update?')
+                            updateDlg.vbox.pack_start(lblConfirm, expand=True, fill=True, padding=0)
                             lblConfirm.show()
 
                             response = updateDlg.run()
-                            if response == gtk.RESPONSE_OK:
+                            if response == Gtk.ResponseType.OK:
                                 updateDlg.destroy()
                                 updateText = _('Updating...')
-                                print updateText
+                                print(updateText)
                                 # copy update to modules
-                                os.popen('cp -Rf /tmp/r-mod-update.tmp ' + '\"' + os.path.join(self.moduleDir, os.path.basename(moduleFullPath)) + '"')
+                                subprocess.getoutput('cp -Rf /tmp/r-mod-update.tmp ' + '\"' + os.path.join(self.moduleDir, os.path.basename(moduleFullPath)) + '"')
                                 # remove old from treemodel
                                 self.treeModel.remove(iter)
                                 # add new version to treemodel
                                 self.addModule(moduleFullPath, updating=True)
                                 modUpdatedTxt = _('Module updated.')
-                                print modUpdatedTxt
+                                print(modUpdatedTxt)
                             else:
-                                print _('Module update cancelled.')
+                                print(_('Module update cancelled.'))
                                 updateDlg.destroy()
                         else:
                             # latest version
-                            print _('Module is at the latest version.')
+                            print(_('Module is at the latest version.'))
                     else:
                         errUpdTxt = _('Could not find a valid update for module: ')
-                        print errUpdTxt, moduleName
+                        print(errUpdTxt, moduleName)
                 else:
-                    print 'Updating not available...'
+                    print('Updating not available...')
             # cleanup
             if os.path.exists('/tmp/r-mod-update.tmp'):
-                os.popen('rm -f /tmp/r-mod-update.tmp')
+                subprocess.getoutput('rm -f /tmp/r-mod-update.tmp')
             # set default cursor
             self.setDefaultCursor()
 
-        except Exception, detail:
+        except Exception as detail:
             # cleanup
             #if os.path.exists('/tmp/r-mod-update.tmp'):
-            #    os.popen('rm -f /tmp/r-mod-update.tmp')
+            #    subprocess.getoutput('rm -f /tmp/r-mod-update.tmp')
             # set default cursor
             self.setDefaultCursor()
             errText = _('Error updating module: ')
-            print errText, detail
+            print(errText, detail)
 
 
     def updateSelectedModule(self):
@@ -1170,8 +1147,8 @@ class Reconstructor:
             # check for valid module and update
             if modPath != None:
                 mTxt = _('Checking updates for module: ')
-                print mTxt, modName
-                print modUpdateUrl + os.path.basename(modPath)
+                print(mTxt, modName)
+                print(modUpdateUrl + os.path.basename(modPath))
                 urllib.urlretrieve(modUpdateUrl + os.path.basename(modPath), "/tmp/r-mod-update.tmp")
                 if os.path.exists('/tmp/r-mod-update.tmp'):
                     f = open('/tmp/r-mod-update.tmp', 'r')
@@ -1215,23 +1192,23 @@ class Reconstructor:
                     f.close()
                     fModVer = float(modVersion)
                     fModNewVer = float(newModVersion)
-                    print ('Current Module Version: ' + str(fModVer) + ' -- Available: ' + str(fModNewVer))
+                    print(('Current Module Version: ' + str(fModVer) + ' -- Available: ' + str(fModNewVer)))
                     if fUpdate > fApp:
                         # update module
                         updateText = _('Updating Module: ')
-                        print updateText, modName + '...'
+                        print(updateText, modName + '...')
                     else:
                         # latest version
-                        print _('Module is at the latest version.\n')
+                        print(_('Module is at the latest version.\n'))
                     # cleanup
                     if os.path.exists('/tmp/r-mod-update.tmp'):
-                        os.popen('rm -f /tmp/r-mod-update.tmp')
+                        subprocess.getoutput('rm -f /tmp/r-mod-update.tmp')
                 # set default cursor
                 self.setDefaultCursor()
 
-        except Exception, detail:
+        except Exception as detail:
             errText = _('Error updating module: ')
-            print errText, detail
+            print(errText, detail)
 
 
 
@@ -1295,29 +1272,30 @@ class Reconstructor:
                 modPath = model.get_value(iter, self.moduleColumnPath)
 
             if modPath:
-                f = file(modPath, 'r')
+                f = open(modPath, 'r')
                 scr = f.read()
                 f.close()
                 # create dialog
-                modDlg = gtk.Dialog(title="Module:  " + modName, parent=None, flags=0, buttons=(gtk.STOCK_CLOSE, gtk.RESPONSE_OK))
+                modDlg = Gtk.Dialog(title="Module:  " + modName, parent=None, flags=0)
+                modDlg.add_buttons=(Gtk.STOCK_CLOSE, Gtk.ResponseType.OK)
 
                 modDlg.set_default_size(512, 512)
                 modDlg.set_icon_from_file(self.iconFile)
                 modDlg.vbox.set_spacing(10)
-                labelSpc = gtk.Label(" ")
-                modDlg.vbox.pack_start(labelSpc, False, False)
+                labelSpc = Gtk.Label(" ")
+                modDlg.vbox.pack_start(labelSpc, expand=False, fill=False, padding=0)
                 labelSpc.show()
                 # scrolled window for module text
-                sw = gtk.ScrolledWindow()
-                sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-                sw.set_shadow_type(gtk.SHADOW_IN)
+                sw = Gtk.ScrolledWindow()
+                sw.set_policy(Gtk.POLICY_AUTOMATIC, Gtk.POLICY_AUTOMATIC)
+                sw.set_shadow_type(Gtk.SHADOW_IN)
                 # text buffer for module
-                tBuffer = gtk.TextBuffer()
+                tBuffer = Gtk.TextBuffer()
                 tBuffer.set_text(scr)
-                textviewModule = gtk.TextView(tBuffer)
+                textviewModule = Gtk.TextView(tBuffer)
                 textviewModule.set_editable(False)
                 sw.add(textviewModule)
-                modDlg.vbox.pack_start(sw, True, True)
+                modDlg.vbox.pack_start(sw, expand=True, fill=True, padding=0)
 
                 textviewModule.show()
                 sw.show()
@@ -1327,8 +1305,8 @@ class Reconstructor:
                     modDlg.destroy()
 
 
-        except Exception, detail:
-            print detail
+        except Exception as detail:
+            print(detail)
             pass
 
     def copyExecuteModule(self, model, path, iter):
@@ -1340,16 +1318,16 @@ class Reconstructor:
         if modPath != None:
             # check for execute
             if modExecute == True:
-                #print modName, modRunInChroot
+                #print(modName, modRunInChroot)
                 if modRunInChroot == True:
-                    #print modName + ' - Running in chroot...'
-                    os.popen('cp -R \"' + modPath + '\" \"' + os.path.join(self.customDir, "root/tmp/") + '\"')
-                    os.popen('chmod a+x \"' + os.path.join(self.customDir, "root/tmp/") + os.path.basename(modPath) + '\"')
+                    #print(modName + ' - Running in chroot...')
+                    subprocess.getoutput('cp -R \"' + modPath + '\" \"' + os.path.join(self.customDir, "root/tmp/") + '\"')
+                    subprocess.getoutput('chmod a+x \"' + os.path.join(self.customDir, "root/tmp/") + os.path.basename(modPath) + '\"')
 
                 else:
-                    print modName + ' - Running in custom directory...'
-                    os.popen('cp -R \"' + modPath + '\" \"' + self.customDir + '\"')
-                    os.popen('chmod a+x \"' + os.path.join(self.customDir, os.path.basename(modPath)) + '\"')
+                    print(modName + ' - Running in custom directory...')
+                    subprocess.getoutput('cp -R \"' + modPath + '\" \"' + self.customDir + '\"')
+                    subprocess.getoutput('chmod a+x \"' + os.path.join(self.customDir, os.path.basename(modPath)) + '\"')
 
     def copyRunOnBootModule(self, model, path, iter):
         modName = model.get_value(iter, self.moduleColumnName)
@@ -1361,12 +1339,12 @@ class Reconstructor:
             if modRunOnBoot == True:
                 # check for script dir
                 if os.path.exists(os.path.join(self.customDir, "root/usr/share/reconstructor/scripts/")) == False:
-                    os.popen('mkdir -p \"' + os.path.join(self.customDir, "root/usr/share/reconstructor/scripts/") + '\"')
+                    subprocess.getoutput('mkdir -p \"' + os.path.join(self.customDir, "root/usr/share/reconstructor/scripts/") + '\"')
                 # copy module
-                os.popen('cp -R \"' + modPath + '\" \"' + os.path.join(self.customDir, "root/usr/share/reconstructor/scripts/") + '\"')
-                os.popen('chmod a+x \"' + os.path.join(self.customDir, "root/usr/share/reconstructor/scripts/") + os.path.basename(modPath) + '\"')
+                subprocess.getoutput('cp -R \"' + modPath + '\" \"' + os.path.join(self.customDir, "root/usr/share/reconstructor/scripts/") + '\"')
+                subprocess.getoutput('chmod a+x \"' + os.path.join(self.customDir, "root/usr/share/reconstructor/scripts/") + os.path.basename(modPath) + '\"')
                 txt = _('Copied module: ')
-                print txt, modName
+                print(txt, modName)
 
     def checkExecModuleEnabled(self, model, path, iter):
         modExecute = model.get_value(iter, self.moduleColumnExecute)
@@ -1381,12 +1359,12 @@ class Reconstructor:
     def clearRunOnBootModules(self):
         try:
             # remove all run on boot modules and scripts
-            print _('Clearing all run on boot modules and scripts...')
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/skel/.gnomerc") + '\"')
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/usr/share/reconstructor/") + '\"')
-        except Exception, detail:
+            print(_('Clearing all run on boot modules and scripts...'))
+            subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/etc/skel/.gnomerc") + '\"')
+            subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/usr/share/reconstructor/") + '\"')
+        except Exception as detail:
             errText = _('Error clearing run on boot modules: ')
-            print errText, detail
+            print(errText, detail)
 
     def checkSetup(self):
         setup = False
@@ -1421,18 +1399,18 @@ class Reconstructor:
             return True
 
     def setPage(self, pageNum):
-        self.wTree.get_widget("notebookWizard").set_current_page(pageNum)
+        self.builder.get_object("notebookWizard").set_current_page(pageNum)
 
     def setBusyCursor(self):
         self.working = True
-        self.wTree.get_widget("windowMain").window.set_cursor(gtk.gdk.Cursor(gtk.gdk.WATCH))
+        self.builder.get_object("windowMain").get_window().set_cursor(Gdk.Cursor(Gdk.CursorType.WATCH))
 
     def setDefaultCursor(self):
         self.working = False
-        self.wTree.get_widget("windowMain").window.set_cursor(None)
+        self.builder.get_object("windowMain").get_window().set_cursor(None)
 
     def showWorking(self):
-        self.workingDlg = gtk.Dialog(title="Working")
+        self.workingDlg = Gtk.Dialog(title="Working")
         self.workingDlg.set_modal(True)
         self.workingDlg.show()
 
@@ -1451,7 +1429,7 @@ class Reconstructor:
 
     # checks if user entered custom password matches
     def checkUserPassword(self):
-        if self.wTree.get_widget("entryLiveCdUserPassword").get_text() == self.wTree.get_widget("entryLiveCdUserPasswordCheck").get_text():
+        if self.builder.get_object("entryLiveCdUserPassword").get_text() == self.builder.get_object("entryLiveCdUserPasswordCheck").get_text():
             return True
         else:
             return False
@@ -1459,67 +1437,67 @@ class Reconstructor:
     def checkSoftware(self):
         install = False
         # custom apt-get
-        if self.wTree.get_widget("entryCustomAptInstall").get_text() != "":
+        if self.builder.get_object("entryCustomAptInstall").get_text() != "":
             install = True
         # software removal
         # custom
-        if self.wTree.get_widget("entryCustomAptRemove").get_text() != "":
+        if self.builder.get_object("entryCustomAptRemove").get_text() != "":
             install = True
 
         return install
 
     def checkCustomRepos(self):
         customRepos = False
-        buf = self.wTree.get_widget("textviewAptCustomArchives").get_buffer()
-        if self.wTree.get_widget("checkbuttonAptRepoUbuntuOfficial").get_active() == True:
-            #print "Selected Ubuntu Official apt archive..."
+        buf = self.builder.get_object("textviewAptCustomArchives").get_buffer()
+        if self.builder.get_object("checkbuttonAptRepoUbuntuOfficial").get_active() == True:
+            #print("Selected Ubuntu Official apt archive...")
             customRepos = True
-        elif self.wTree.get_widget("checkbuttonAptRepoUbuntuRestricted").get_active() == True:
-            #print "Selected Ubuntu Restricted apt archive..."
+        elif self.builder.get_object("checkbuttonAptRepoUbuntuRestricted").get_active() == True:
+            #print("Selected Ubuntu Restricted apt archive...")
             customRepos = True
-        elif self.wTree.get_widget("checkbuttonAptRepoUbuntuUniverse").get_active() == True:
-            #print "Selected Ubuntu Universe apt archive..."
+        elif self.builder.get_object("checkbuttonAptRepoUbuntuUniverse").get_active() == True:
+            #print("Selected Ubuntu Universe apt archive...")
             customRepos = True
-        elif self.wTree.get_widget("checkbuttonAptRepoUbuntuMultiverse").get_active() == True:
-            #print "Selected Ubuntu Multiverse apt archive..."
+        elif self.builder.get_object("checkbuttonAptRepoUbuntuMultiverse").get_active() == True:
+            #print("Selected Ubuntu Multiverse apt archive...")
             customRepos = True
         elif buf.get_text(buf.get_start_iter(),buf.get_end_iter()) != '':
             customRepos = True
         else:
-            #print "No custom apt repos.  Using defaults."
+            #print("No custom apt repos.  Using defaults.")
             customRepos = False
         return customRepos
 
     def checkAltCustomRepos(self):
         customRepos = False
-        if self.wTree.get_widget("checkbuttonAltUbuntuOfficialRepo").get_active() == True:
-            #print "Selected Ubuntu Official apt archive..."
+        if self.builder.get_object("checkbuttonAltUbuntuOfficialRepo").get_active() == True:
+            #print("Selected Ubuntu Official apt archive...")
             customRepos = True
-        elif self.wTree.get_widget("checkbuttonAltUbuntuRestrictedRepo").get_active() == True:
-            #print "Selected Ubuntu Restricted apt archive..."
+        elif self.builder.get_object("checkbuttonAltUbuntuRestrictedRepo").get_active() == True:
+            #print("Selected Ubuntu Restricted apt archive...")
             customRepos = True
-        elif self.wTree.get_widget("checkbuttonAltUbuntuUniverseRepo").get_active() == True:
-            #print "Selected Ubuntu Universe apt archive..."
+        elif self.builder.get_object("checkbuttonAltUbuntuUniverseRepo").get_active() == True:
+            #print("Selected Ubuntu Universe apt archive...")
             customRepos = True
-        elif self.wTree.get_widget("checkbuttonAltUbuntuMultiverseRepo").get_active() == True:
-            #print "Selected Ubuntu Multiverse apt archive..."
+        elif self.builder.get_object("checkbuttonAltUbuntuMultiverseRepo").get_active() == True:
+            #print("Selected Ubuntu Multiverse apt archive...")
             customRepos = True
         else:
-            #print "No custom apt repos.  Using defaults."
+            #print("No custom apt repos.  Using defaults.")
             customRepos = False
         return customRepos
 
     def checkCustomGdm(self):
         customGdm = False
-        if self.wTree.get_widget("comboboxentryGnomeGdmTheme").get_active_text() != "":
+        if self.builder.get_object("comboboxentryGnomeGdmTheme").get_active_text() != "":
             customGdm = True
-        if self.wTree.get_widget("checkbuttonGdmSounds").get_active() == True:
+        if self.builder.get_object("checkbuttonGdmSounds").get_active() == True:
             customGdm = True
-        if self.wTree.get_widget("checkbuttonGdmRootLogin").get_active() == True:
+        if self.builder.get_object("checkbuttonGdmRootLogin").get_active() == True:
             customGdm = True
-        if self.wTree.get_widget("checkbuttonGdmXdmcp").get_active() == True:
+        if self.builder.get_object("checkbuttonGdmXdmcp").get_active() == True:
             customGdm = True
-        color = self.wTree.get_widget("colorbuttonBrowseGdmBackgroundColor").get_color()
+        color = self.builder.get_object("colorbuttonBrowseGdmBackgroundColor").get_color()
         rgbColor = color.red/255, color.green/255, color.blue/255
         hexColor = '%02x%02x%02x' % rgbColor
         if self.gdmBackgroundColor != str(hexColor):
@@ -1532,13 +1510,13 @@ class Reconstructor:
         rootExists = None
         initrdExists = None
         if os.path.exists(os.path.join(self.customDir, "remaster")) == False:
-            if self.wTree.get_widget("checkbuttonCreateRemaster").get_active() == False:
+            if self.builder.get_object("checkbuttonCreateRemaster").get_active() == False:
                 remasterExists = False
         if os.path.exists(os.path.join(self.customDir, "root")) == False:
-            if self.wTree.get_widget("checkbuttonCreateRoot").get_active() == False:
+            if self.builder.get_object("checkbuttonCreateRoot").get_active() == False:
                 rootExists = False
         if os.path.exists(os.path.join(self.customDir, "initrd")) == False:
-            if self.wTree.get_widget("checkbuttonCreateInitRd").get_active() == False:
+            if self.builder.get_object("checkbuttonCreateInitRd").get_active() == False:
                 initrdExists = False
         workingDirOk = True
         if remasterExists == False:
@@ -1548,29 +1526,34 @@ class Reconstructor:
         if initrdExists == False:
             workingDirOk = False
         if workingDirOk == False:
-            warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_OK, gtk.RESPONSE_OK))
+            warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+            warnDlg.add_buttons(Gtk.STOCK_OK, Gtk.ResponseType.OK)
             warnDlg.set_icon_from_file(self.iconFile)
             warnDlg.vbox.set_spacing(10)
-            labelSpc = gtk.Label(" ")
-            warnDlg.vbox.pack_start(labelSpc)
+            labelSpc = Gtk.Label()
+            warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
             labelSpc.show()
             lblWarningText = _("  <b>Please fix the errors below before continuing.</b>   ")
             lblRemasterText = _("  There is no remaster directory.  Please select create remaster option.  ")
             lblRootText = _("  There is no root directory.  Please select create root option.  ")
             lblInitrdText = _("  There is no initrd directory.  Please select create initrd option.  ")
-            labelWarning = gtk.Label(lblWarningText)
-            labelRemaster = gtk.Label(lblRemasterText)
-            labelRoot = gtk.Label(lblRootText)
-            labelInitrd = gtk.Label(lblInitrdText)
+            labelWarning = Gtk.Label()
+            labelWarning.set_text(lblWarningText)
+            labelRemaster = Gtk.Label()
+            labelRemaster.set_text(lblRemasterText)
+            labelRoot = Gtk.Label()
+            labelRoot.set_text(lblRootText)
+            labelInitrd = Gtk.Label()
+            labelInitrd.set_text(lblInitrdText)
 
             labelWarning.set_use_markup(True)
             labelRemaster.set_use_markup(True)
             labelRoot.set_use_markup(True)
             labelInitrd.set_use_markup(True)
-            warnDlg.vbox.pack_start(labelWarning)
-            warnDlg.vbox.pack_start(labelRemaster)
-            warnDlg.vbox.pack_start(labelRoot)
-            warnDlg.vbox.pack_start(labelInitrd)
+            warnDlg.vbox.pack_start(labelWarning, expand=True, fill=True, padding=0)
+            warnDlg.vbox.pack_start(labelRemaster, expand=True, fill=True, padding=0)
+            warnDlg.vbox.pack_start(labelRoot, expand=True, fill=True, padding=0)
+            warnDlg.vbox.pack_start(labelInitrd, expand=True, fill=True, padding=0)
             labelWarning.show()
 
             if remasterExists == False:
@@ -1583,7 +1566,7 @@ class Reconstructor:
             #warnDlg.show()
             response = warnDlg.run()
             # HACK: return False no matter what
-            if response == gtk.RESPONSE_OK:
+            if response == Gtk.ResponseType.OK:
                 warnDlg.destroy()
             else:
                 warnDlg.destroy()
@@ -1594,10 +1577,10 @@ class Reconstructor:
         remasterExists = None
         initrdExists = None
         if os.path.exists(os.path.join(self.customDir, self.altRemasterDir)) == False:
-            if self.wTree.get_widget("checkbuttonAltCreateRemasterDir").get_active() == False:
+            if self.builder.get_object("checkbuttonAltCreateRemasterDir").get_active() == False:
                 remasterExists = False
         if os.path.exists(os.path.join(self.customDir, self.altInitrdRoot)) == False:
-            if self.wTree.get_widget("checkbuttonAltCreateInitrdDir").get_active() == False:
+            if self.builder.get_object("checkbuttonAltCreateInitrdDir").get_active() == False:
                 initrdExists = False
         workingDirOk = True
         if remasterExists == False:
@@ -1605,25 +1588,29 @@ class Reconstructor:
         if initrdExists == False:
             workingDirOk = False
         if workingDirOk == False:
-            warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_OK, gtk.RESPONSE_OK))
+            warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+            warnDlg.add_buttons(Gtk.STOCK_OK, Gtk.ResponseType.OK)
             warnDlg.set_icon_from_file(self.iconFile)
             warnDlg.vbox.set_spacing(10)
-            labelSpc = gtk.Label(" ")
-            warnDlg.vbox.pack_start(labelSpc)
+            labelSpc = Gtk.Label()
+            warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
             labelSpc.show()
             lblWarningText = _("  <b>Please fix the errors below before continuing.</b>   ")
             lblRemasterText = _("  There is no remaster directory.  Please select create remaster option.  ")
             lblInitrdText = _("  There is no initrd directory.  Please select create initrd option.  ")
-            labelWarning = gtk.Label(lblWarningText)
-            labelRemaster = gtk.Label(lblRemasterText)
-            labelInitrd = gtk.Label(lblInitrdText)
+            labelWarning = Gtk.Label()
+            labelWarning.set_text(lblWarningText)
+            labelRemaster = Gtk.Label()
+            labelRemaster.set_text(lblRemasterText)
+            labelInitrd = Gtk.Label()
+            labelInitrd.set_text(lblInitrdText)
 
             labelWarning.set_use_markup(True)
             labelRemaster.set_use_markup(True)
             labelInitrd.set_use_markup(True)
-            warnDlg.vbox.pack_start(labelWarning)
-            warnDlg.vbox.pack_start(labelRemaster)
-            warnDlg.vbox.pack_start(labelInitrd)
+            warnDlg.vbox.pack_start(labelWarning, expand=True, fill=True, padding=0)
+            warnDlg.vbox.pack_start(labelRemaster, expand=True, fill=True, padding=0)
+            warnDlg.vbox.pack_start(labelInitrd, expand=True, fill=True, padding=0)
             labelWarning.show()
 
             if remasterExists == False:
@@ -1634,14 +1621,14 @@ class Reconstructor:
             #warnDlg.show()
             response = warnDlg.run()
             # HACK: return False no matter what
-            if response == gtk.RESPONSE_OK:
+            if response == Gtk.ResponseType.OK:
                 warnDlg.destroy()
             else:
                 warnDlg.destroy()
         return workingDirOk
 
     def readConfig(self):
-        config = ConfigParser.ConfigParser()
+        config = configparser.ConfigParser()
         config.optionxform = str
         config.read(os.path.join(self.customDir, ".reconstructor.conf"))
         if not config.has_section('global'):
@@ -1677,7 +1664,7 @@ class Reconstructor:
                 self.cdArchIndex = 0
 
     def saveConfig(self):
-        config = ConfigParser.ConfigParser()
+        config = configparser.ConfigParser()
         config.optionxform = str
         if not config.has_section('global'):
             config.add_section('global')
@@ -1689,39 +1676,41 @@ class Reconstructor:
             config.add_section('ISO')
         config.set('ISO','discType',self.discType)
         if self.discType == 'live':
-            config.set('ISO','isofilename',self.wTree.get_widget("entryLiveIsoFilename").get_text())
-            config.set('ISO','cddesc',self.wTree.get_widget("entryLiveCdDescription").get_text())
-            config.set('ISO','cdarchidx',self.wTree.get_widget("comboboxLiveCdArch").get_active())
+            config.set('ISO','isofilename',self.builder.get_object("entryLiveIsoFilename").get_text())
+            config.set('ISO','cddesc',self.builder.get_object("entryLiveCdDescription").get_text())
+            config.set('ISO','cdarchidx',str(self.builder.get_object("comboboxLiveCdArch").get_active()))
         else:
-            config.set('ISO','isofilename',self.wTree.get_widget("entryAltIsoFilename").get_text())
-            config.set('ISO','cddesc',self.wTree.get_widget("entryAltCdDescription").get_text())
-            config.set('ISO','cdarchidx',self.wTree.get_widget("comboboxAltCdArch").get_active())
+            config.set('ISO','isofilename',self.builder.get_object("entryAltIsoFilename").get_text())
+            config.set('ISO','cddesc',self.builder.get_object("entryAltCdDescription").get_text())
+            config.set('ISO','cdarchidx',str(self.builder.get_object("comboboxAltCdArch").get_active()))
         config.write(open(os.path.join(self.customDir, ".reconstructor.conf"),'wt'))
 
 
     def checkPage(self, pageNum):
         if self.runningDebug == True:
-            print "CheckPage: " + str(pageNum)
-            #print " "
+            print("CheckPage: " + str(pageNum))
+            #print(" ")
         if pageNum == self.pageWelcome:
             # intro
             if self.customDir:
-                self.wTree.get_widget("entryWorkingDir").set_text(self.customDir)
+                self.builder.get_object("entryWorkingDir").set_text(self.customDir)
             self.setPage(self.pageDiscType)
             return True
         elif pageNum == self.pageDiscType:
             typeText = _("Disc Type:")
             # continue based on disc type (live/alt)
-            if self.wTree.get_widget("radiobuttonDiscTypeLive").get_active() == True:
+            if self.builder.get_object("radiobuttonDiscTypeLive").get_active() == True:
                 # set disc type
                 self.discType = "live"
-                print typeText, " " + self.discType
+                print(typeText, " " + self.discType)
                 self.setPage(self.pageLiveSetup)
-            elif self.wTree.get_widget("radiobuttonDiscTypeAlt").get_active() == True:
+            elif self.builder.get_object("radiobuttonDiscTypeAlt").get_active() == True:
                 # set disc type
                 self.discType = "alt"
-                print typeText, " " + self.discType
+                print(typeText, " " + self.discType)
                 self.setPage(self.pageAltSetup)
+            else:
+                print(typeText, " is None")
         elif pageNum == self.pageLiveSetup:
             # setup
             self.saveSetupInfo()
@@ -1733,29 +1722,32 @@ class Reconstructor:
                 self.doneTerminal(forceMode=True,silentMode=False,justUmount=True)
                 if self.checkSetup() == True:
                     if self.checkWorkingDir() == True:
-                        warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=    (gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_YES, gtk.RESPONSE_OK))
+                        warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+                        warnDlg.add_buttons(Gtk.STOCK_NO, Gtk.ResponseType.CANCEL, Gtk.STOCK_YES, Gtk.ResponseType.OK)
                         warnDlg.set_icon_from_file(self.iconFile)
                         warnDlg.vbox.set_spacing(10)
-                        labelSpc = gtk.Label(" ")
-                        warnDlg.vbox.pack_start(labelSpc)
+                        labelSpc = Gtk.Label()
+                        warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
                         labelSpc.show()
                         lblContinueText = _("  <b>Continue?</b>  ")
                         lblContinueInfo = _("     This may take a few minutes.  Please wait...     ")
-                        label = gtk.Label(lblContinueText)
-                        lblInfo = gtk.Label(lblContinueInfo)
+                        label = Gtk.Label()
+                        label.set_text(lblContinueText)
+                        lblInfo = Gtk.Label()
+                        lblInfo.set_text(lblContinueInfo)
                         label.set_use_markup(True)
-                        warnDlg.vbox.pack_start(label)
-                        warnDlg.vbox.pack_start(lblInfo)
+                        warnDlg.vbox.pack_start(label, expand=True, fill=True, padding=0)
+                        warnDlg.vbox.pack_start(lblInfo, expand=True, fill=True, padding=0)
                         lblInfo.show()
                         label.show()
                         #warnDlg.show()
                         response = warnDlg.run()
-                        if response == gtk.RESPONSE_OK:
+                        if response == Gtk.ResponseType.OK:
                             warnDlg.destroy()
                             self.setBusyCursor()
-                            gobject.idle_add(self.setupWorkingDirectory().next)
+                            self.run_generator(self.setupWorkingDirectory)
                             # load modules
-                            gobject.idle_add(self.loadModules)
+                            GLib.idle_add(self.loadModules)
                             self.setBusyCursor()
                             return True
                         else:
@@ -1770,72 +1762,76 @@ class Reconstructor:
                         # get current boot options menu text color
                         self.loadBootMenuColor()
                         # load desktop environments
-                        self.loadAvailableDesktops()
                         self.setBusyCursor()
                         # load modules
-                        gobject.idle_add(self.loadModules)
+                        #GLib.idle_add(self.loadModules)
 
                         self.CheckChrootKernel()
 
                         # calculate iso size in the background
-                        gobject.idle_add(self.calculateIsoSize().next)
+                        self.run_generator(self.calculateIsoSize)
                         #self.calculateIsoSize()
                         return True
                     else:
                         return False
             else:
-                warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_OK, gtk.RESPONSE_OK))
+                warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+                warnDlg.add_buttons(Gtk.STOCK_OK, Gtk.ResponseType.OK)
                 warnDlg.set_icon_from_file(self.iconFile)
                 warnDlg.vbox.set_spacing(10)
-                labelSpc = gtk.Label(" ")
-                warnDlg.vbox.pack_start(labelSpc)
+                labelSpc = Gtk.Label()
+                warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
                 labelSpc.show()
                 lblWorkingDirText = _("  <b>You must enter a working directory.</b>  ")
-                label = gtk.Label(lblWorkingDirText)
-                #lblInfo = gtk.Label("     This may take a few minutes.  Please     wait...     ")
+                label = Gtk.Label()
+                label.set_text(lblWorkingDirText)
+                #lblInfo = Gtk.Label("     This may take a few minutes.  Please     wait...     ")
                 label.set_use_markup(True)
-                warnDlg.vbox.pack_start(label)
-                #warnDlg.vbox.pack_start(lblInfo)
+                warnDlg.vbox.pack_start(label, expand=True, fill=True, padding=0)
+                #warnDlg.vbox.pack_start(lblInfo, expand=True, fill=True, padding=0)
                 #lblInfo.show()
                 label.show()
                 #warnDlg.show()
                 response = warnDlg.run()
                 # HACK: return False no matter what
-                if response == gtk.RESPONSE_OK:
+                if response == Gtk.ResponseType.OK:
                     warnDlg.destroy()
                     return False
                 else:
                     warnDlg.destroy()
                     return False
         elif pageNum == self.pageLiveCustomize:
-            warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_YES, gtk.RESPONSE_OK))
+            warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+            warnDlg.add_buttons(Gtk.STOCK_NO, Gtk.ResponseType.CANCEL, Gtk.STOCK_YES, Gtk.ResponseType.OK)
             warnDlg.set_icon_from_file(self.iconFile)
             warnDlg.vbox.set_spacing(10)
-            labelSpc = gtk.Label(" ")
-            warnDlg.vbox.pack_start(labelSpc)
+            labelSpc = Gtk.Label()
+            warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
             labelSpc.show()
             lblContinueText = _("  <b>Continue?</b>  ")
-            label = gtk.Label(lblContinueText)
+            label = Gtk.Label()
+            label.set_text(lblContinueText)
             label.set_use_markup(True)
             lblApplyText = _("Be sure to click <b>Apply</b> to apply changes before continuing.")
-            lblApply = gtk.Label(lblApplyText)
+            lblApply = Gtk.Label()
+            lblApply.set_text(lblApplyText)
             lblApply.set_use_markup(True)
-            warnDlg.vbox.pack_start(label)
-            warnDlg.vbox.pack_start(lblApply)
+            warnDlg.vbox.pack_start(label, expand=True, fill=True, padding=0)
+            warnDlg.vbox.pack_start(lblApply, expand=True, fill=True, padding=0)
             label.show()
             lblApply.show()
             #warnDlg.show()
             # set iso filenames
             if self.buildLiveCdFilename and self.buildLiveCdFilename != "":
-                self.wTree.get_widget("entryLiveIsoFilename").set_text(self.buildLiveCdFilename)
+                self.builder.get_object("entryLiveIsoFilename").set_text(self.buildLiveCdFilename)
             # set descriptions
             if self.cdDesc and self.cdDesc != "":
-                self.wTree.get_widget("entryLiveCdDescription").set_text(self.cdDesc)
+                self.builder.get_object("entryLiveCdDescription").set_text(self.cdDesc)
 
-            self.wTree.get_widget("comboboxLiveCdArch").set_active(self.cdArchIndex)
+            self.builder.get_object("comboboxLiveCdArch").set_active(self.cdArchIndex)
 
             response = warnDlg.run()
-            if response == gtk.RESPONSE_OK:
+            if response == Gtk.ResponseType.OK:
                 warnDlg.destroy()
                 self.doneTerminal(forceMode=False,silentMode=False,justUmount=False)
                 self.showProgress('Customized Live CD.',0.50)
@@ -1843,9 +1839,9 @@ class Reconstructor:
                 self.setPage(self.pageLiveBuild)
                 # check for windows apps and enable/disable checkbox as necessary
                 if self.checkWindowsPrograms() == True:
-                    self.wTree.get_widget("checkbuttonLiveCdRemoveWin32Programs").set_sensitive(True)
+                    self.builder.get_object("checkbuttonLiveCdRemoveWin32Programs").set_sensitive(True)
                 else:
-                    self.wTree.get_widget("checkbuttonLiveCdRemoveWin32Programs").set_sensitive(False)
+                    self.builder.get_object("checkbuttonLiveCdRemoveWin32Programs").set_sensitive(False)
                 # HACK: check in case "create iso" option is unchecked
                 # enable/disable iso burn
                 self.checkEnableBurnIso()
@@ -1859,31 +1855,34 @@ class Reconstructor:
             self.saveConfig()
 
             # build
-            warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_YES, gtk.RESPONSE_OK))
+            warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+            warnDlg.add_buttons(Gtk.STOCK_NO, Gtk.ResponseType.CANCEL, Gtk.STOCK_YES, Gtk.ResponseType.OK)
             warnDlg.set_icon_from_file(self.iconFile)
             warnDlg.vbox.set_spacing(10)
-            labelSpc = gtk.Label(" ")
-            warnDlg.vbox.pack_start(labelSpc)
+            labelSpc = Gtk.Label()
+            warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
             labelSpc.show()
             lblBuildText = _("  <b>Build Live CD?</b>  ")
             lblBuildInfo = _("     This may take a few minutes.  Please wait...     ")
-            label = gtk.Label(lblBuildText)
-            lblInfo = gtk.Label(lblBuildInfo)
+            label = Gtk.Label()
+            label.set_text(lblBuildText)
+            lblInfo = Gtk.Label()
+            lblInfo.set_text(lblBuildInfo)
             label.set_use_markup(True)
-            warnDlg.vbox.pack_start(label)
-            warnDlg.vbox.pack_start(lblInfo)
+            warnDlg.vbox.pack_start(label, expand=True, fill=True, padding=0)
+            warnDlg.vbox.pack_start(lblInfo, expand=True, fill=True, padding=0)
             lblInfo.show()
             label.show()
             #warnDlg.show()
 
             response = warnDlg.run()
-            if response == gtk.RESPONSE_OK:
+            if response == Gtk.ResponseType.OK:
                 warnDlg.destroy()
                 self.setBusyCursor()
                 self.doneTerminal(forceMode=True,silentMode=False,justUmount=False)
-                gobject.idle_add(self.build().next)
+                self.run_generator(self.build)
                 # change Next text to Finish
-                self.wTree.get_widget("buttonNext").set_label("Finish")
+                self.builder.get_object("buttonNext").set_label("Finish")
                 return True
             else:
                 warnDlg.destroy()
@@ -1897,27 +1896,30 @@ class Reconstructor:
                 self.readConfig()
                 if self.checkAltSetup() == True:
                     if self.checkAltWorkingDir() == True:
-                        warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=    (gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_YES, gtk.RESPONSE_OK))
+                        warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+                        warnDlg.add_buttons(Gtk.STOCK_NO, Gtk.ResponseType.CANCEL, Gtk.STOCK_YES, Gtk.ResponseType.OK)
                         warnDlg.set_icon_from_file(self.iconFile)
                         warnDlg.vbox.set_spacing(10)
-                        labelSpc = gtk.Label(" ")
-                        warnDlg.vbox.pack_start(labelSpc)
+                        labelSpc = Gtk.Label()
+                        warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
                         labelSpc.show()
                         lblContinueText = _("  <b>Continue?</b>  ")
                         lblContinueInfo = _("     This may take a few minutes.  Please wait...     ")
-                        label = gtk.Label(lblContinueText)
-                        lblInfo = gtk.Label(lblContinueInfo)
+                        label = Gtk.Label()
+                        label.set_text(lblContinueText)
+                        lblInfo = Gtk.Label()
+                        lblInfo.set_text(lblContinueInfo)
                         label.set_use_markup(True)
-                        warnDlg.vbox.pack_start(label)
-                        warnDlg.vbox.pack_start(lblInfo)
+                        warnDlg.vbox.pack_start(label, expand=True, fill=True, padding=0)
+                        warnDlg.vbox.pack_start(lblInfo, expand=True, fill=True, padding=0)
                         lblInfo.show()
                         label.show()
                         #warnDlg.show()
                         response = warnDlg.run()
-                        if response == gtk.RESPONSE_OK:
+                        if response == Gtk.ResponseType.OK:
                             warnDlg.destroy()
                             self.setBusyCursor()
-                            gobject.idle_add(self.setupAltWorkingDirectory().next)
+                            self.run_generator(self.setupAltWorkingDirectory)
                             return True
                         else:
                             warnDlg.destroy()
@@ -1929,64 +1931,69 @@ class Reconstructor:
                     if self.checkAltWorkingDir() == True:
                         self.setBusyCursor()
                         # calculate iso size in the background
-                        gobject.idle_add(self.calculateAltIsoSize().next)
+                        self.run_generator(self.calculateAltIsoSize)
                         return True
                     else:
                         return False
             else:
-                warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_OK, gtk.RESPONSE_OK))
+                warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+                warnDlg.add_buttons(Gtk.STOCK_OK, Gtk.ResponseType.OK)
                 warnDlg.set_icon_from_file(self.iconFile)
                 warnDlg.vbox.set_spacing(10)
-                labelSpc = gtk.Label(" ")
-                warnDlg.vbox.pack_start(labelSpc)
+                labelSpc = Gtk.Label()
+                warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
                 labelSpc.show()
                 lblWorkingDirText = _("  <b>You must enter a working directory.</b>  ")
-                label = gtk.Label(lblWorkingDirText)
-                #lblInfo = gtk.Label("     This may take a few minutes.  Please     wait...     ")
+                label = Gtk.Label()
+                label.set_text(lblWorkingDirText)
+                #lblInfo = Gtk.Label("     This may take a few minutes.  Please     wait...     ")
                 label.set_use_markup(True)
-                warnDlg.vbox.pack_start(label)
-                #warnDlg.vbox.pack_start(lblInfo)
+                warnDlg.vbox.pack_start(label, expand=True, fill=True, padding=0)
+                #warnDlg.vbox.pack_start(lblInfo, expand=True, fill=True, padding=0)
                 #lblInfo.show()
                 label.show()
                 #warnDlg.show()
                 response = warnDlg.run()
                 # HACK: return False no matter what
-                if response == gtk.RESPONSE_OK:
+                if response == Gtk.ResponseType.OK:
                     warnDlg.destroy()
                     return False
                 else:
                     warnDlg.destroy()
                     return False
         elif pageNum == self.pageAltCustomize:
-            warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_YES, gtk.RESPONSE_OK))
+            warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+            warnDlg.add_buttons(Gtk.STOCK_NO, Gtk.ResponseType.CANCEL, Gtk.STOCK_YES, Gtk.ResponseType.OK)
             warnDlg.set_icon_from_file(self.iconFile)
             warnDlg.vbox.set_spacing(10)
-            labelSpc = gtk.Label(" ")
-            warnDlg.vbox.pack_start(labelSpc)
+            labelSpc = Gtk.Label()
+            warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
             labelSpc.show()
             lblContinueText = _("  <b>Continue?</b>  ")
-            label = gtk.Label(lblContinueText)
+            label = Gtk.Label()
+            label.set_text(lblContinueText)
             label.set_use_markup(True)
             lblApplyText = _("Be sure to click <b>Apply</b> to apply changes before continuing.")
-            lblApply = gtk.Label(lblApplyText)
+            lblApply = Gtk.Label()
+            lblApply.set_text(lblApplyText)
             lblApply.set_use_markup(True)
-            warnDlg.vbox.pack_start(label)
-            warnDlg.vbox.pack_start(lblApply)
+            warnDlg.vbox.pack_start(label, expand=True, fill=True, padding=0)
+            warnDlg.vbox.pack_start(lblApply, expand=True, fill=True, padding=0)
             label.show()
             lblApply.show()
             #warnDlg.show()
 
             # set iso filenames
             if self.buildAltCdFilename and self.buildAltCdFilename != "":
-                self.wTree.get_widget("entryAltIsoFilename").set_text(self.buildAltCdFilename)
+                self.builder.get_object("entryAltIsoFilename").set_text(self.buildAltCdFilename)
             # set descriptions
             if self.cdDesc and self.cdDesc != "":
-                self.wTree.get_widget("entryAltCdDescription").set_text(self.cdDesc)
+                self.builder.get_object("entryAltCdDescription").set_text(self.cdDesc)
 
-            self.wTree.get_widget("comboboxAltBuildArch").set_active(self.cdArchIndex)
+            self.builder.get_object("comboboxAltBuildArch").set_active(self.cdArchIndex)
 
             response = warnDlg.run()
-            if response == gtk.RESPONSE_OK:
+            if response == Gtk.ResponseType.OK:
                 warnDlg.destroy()
                 self.showProgress(False,0.60)
                 self.setPage(self.pageAltBuild)
@@ -2003,31 +2010,34 @@ class Reconstructor:
             #write config 
             self.saveConfig()
             # build
-            warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_YES, gtk.RESPONSE_OK))
+            warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+            warnDlg.add_buttons(Gtk.STOCK_NO, Gtk.ResponseType.CANCEL, Gtk.STOCK_YES, Gtk.ResponseType.OK)
             warnDlg.set_icon_from_file(self.iconFile)
             warnDlg.vbox.set_spacing(10)
-            labelSpc = gtk.Label(" ")
-            warnDlg.vbox.pack_start(labelSpc)
+            labelSpc = Gtk.Label()
+            warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
             labelSpc.show()
             lblBuildText = _("  <b>Build Alternate CD?</b>  ")
             lblBuildInfo = _("     This may take a few minutes.  Please wait...     ")
-            label = gtk.Label(lblBuildText)
-            lblInfo = gtk.Label(lblBuildInfo)
+            label = Gtk.Label()
+            label.set_text(lblBuildText)
+            lblInfo = Gtk.Label()
+            lblInfo.set_text(lblBuildInfo)
             label.set_use_markup(True)
-            warnDlg.vbox.pack_start(label)
-            warnDlg.vbox.pack_start(lblInfo)
+            warnDlg.vbox.pack_start(label, expand=True, fill=True, padding=0)
+            warnDlg.vbox.pack_start(lblInfo, expand=True, fill=True, padding=0)
             lblInfo.show()
             label.show()
             #warnDlg.show()
             response = warnDlg.run()
 
-            if response == gtk.RESPONSE_OK:
+            if response == Gtk.ResponseType.OK:
                 warnDlg.destroy()
                 self.setBusyCursor()
                 self.showProgress(_('Building Alternate CD...'),0.72)
-                gobject.idle_add(self.buildAlternate().next)
+                self.run_generator(self.buildAlternate)
                 # change Next text to Finish
-                self.wTree.get_widget("buttonNext").set_label("Finish")
+                self.builder.get_object("buttonNext").set_label("Finish")
                 return True
             else:
                 warnDlg.destroy()
@@ -2035,124 +2045,124 @@ class Reconstructor:
 
         elif pageNum == self.pageFinish:
             # finished... exit
-            print _("Exiting...")
-            gtk.main_quit()
+            print(_("Exiting..."))
+            Gtk.main_quit()
             sys.exit(0)
 
     def checkEnableBurnIso(self):
         # show burn iso button if nautilus-cd-burner exists
-        if commands.getoutput('which nautilus-cd-burner') != '':
+        if subprocess.getoutput('which nautilus-cd-burner') != '':
             # make sure iso isn't blank
-            if os.path.exists(self.wTree.get_widget("entryLiveIsoFilename").get_text()):
-                self.wTree.get_widget("buttonBurnIso").show()
+            if os.path.exists(self.builder.get_object("entryLiveIsoFilename").get_text()):
+                self.builder.get_object("buttonBurnIso").show()
             else:
-                self.wTree.get_widget("buttonBurnIso").hide()
+                self.builder.get_object("buttonBurnIso").hide()
         else:
-            self.wTree.get_widget("buttonBurnIso").hide()
+            self.builder.get_object("buttonBurnIso").hide()
 
     def checkEnableBurnAltIso(self):
         # show burn iso button if nautilus-cd-burner exists
-        if commands.getoutput('which nautilus-cd-burner') != '':
+        if subprocess.getoutput('which nautilus-cd-burner') != '':
             # make sure iso isn't blank
-            if os.path.exists(self.wTree.get_widget("entryAltBuildIsoFilename").get_text()):
-                self.wTree.get_widget("buttonBurnIso").show()
+            if os.path.exists(self.builder.get_object("entryAltBuildIsoFilename").get_text()):
+                self.builder.get_object("buttonBurnIso").show()
             else:
-                self.wTree.get_widget("buttonBurnIso").hide()
+                self.builder.get_object("buttonBurnIso").hide()
         else:
-            self.wTree.get_widget("buttonBurnIso").hide()
+            self.builder.get_object("buttonBurnIso").hide()
 
     def exitApp(self,widget, data=None):
         self.doneTerminal(forceMode=True,silentMode=False,justUmount=True)
-        gtk.main_quit()
+        Gtk.main_quit()
         sys.exit(0)
 
     # VMWare Player installation
     def installVmwarePlayer(self):
         try:
-            print _("Installing VMWare Player...")
+            print(_("Installing VMWare Player..."))
             # tar archive for install
             vmfile = 'VMware-player-1.0.1-19317.tar.gz'
             # check for previously downloaded archive
             if os.path.exists(os.path.join(self.customDir, "root/tmp/vmware-player.tar.gz")) == False:
                 # download file
-                print _("Downloading VMWare Player archive...")
+                print(_("Downloading VMWare Player archive..."))
                 # HACK: using wget to download file
-                os.popen('wget http://download3.vmware.com/software/vmplayer/' + vmfile + ' -O ' + os.path.join(self.customDir, "root/tmp/vmware-player.tar.gz"))
+                subprocess.getoutput('wget http://download3.vmware.com/software/vmplayer/' + vmfile + ' -O ' + os.path.join(self.customDir, "root/tmp/vmware-player.tar.gz"))
             # extract
-            print _("Extracting VMWare Player archive...")
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' tar zxf /tmp/vmware-player.tar.gz -C /tmp/ 1>&2 2>/dev/null')
-            print _("Installing dependencies for VMWare Player...")
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get install --assume-yes --force-yes -d gcc make linux-headers-$(uname -r)')
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' dpkg -i -R /var/cache/apt/archives/ 1>&2 2>/dev/null')
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get clean')
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get autoclean')
+            print(_("Extracting VMWare Player archive..."))
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' tar zxf /tmp/vmware-player.tar.gz -C /tmp/ 1>&2 2>/dev/null')
+            print(_("Installing dependencies for VMWare Player..."))
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get install --assume-yes --force-yes -d gcc make linux-headers-$(uname -r)')
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' dpkg -i -R /var/cache/apt/archives/ 1>&2 2>/dev/null')
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get clean')
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get autoclean')
             # create symlink /usr/src/linux
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' ln -sf /usr/src/linux-headers-$(uname -r) /usr/src/linux')
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' ln -sf /usr/src/linux-headers-$(uname -r) /usr/src/linux')
             # install (launch xterm for installation/configuration)
             # HACK: write temporary script for chroot & install
             scr = '#!/bin/sh\ncd /tmp/vmware-player-distrib/\n\n/tmp/vmware-player-distrib/vmware-install.pl -d\n'
             f=open(os.path.join(self.customDir, "root/tmp/vmware-player-install.sh"), 'w')
             f.write(scr)
             f.close()
-            os.popen('chmod a+x ' + os.path.join(self.customDir, "root/tmp/vmware-player-install.sh"))
-            os.popen('xterm -title \'VMWare Player Installation\' -e chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/vmware-player-install.sh')
+            subprocess.getoutput('chmod a+x ' + os.path.join(self.customDir, "root/tmp/vmware-player-install.sh"))
+            subprocess.getoutput('xterm -title \'VMWare Player Installation\' -e chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/vmware-player-install.sh')
 
             # cleanup if not running debug
             if self.runningDebug == False:
-                print _("Cleaning Up Temporary Files...")
-                os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/") + 'tmp/vmware-player-distrib/\"')
-                os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/") + 'tmp/vmware-player-install.sh\"')
-                os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/") + 'tmp/vmware-player.tar.gz\"')
-        except Exception, detail:
+                print(_("Cleaning Up Temporary Files..."))
+                subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/") + 'tmp/vmware-player-distrib/\"')
+                subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/") + 'tmp/vmware-player-install.sh\"')
+                subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/") + 'tmp/vmware-player.tar.gz\"')
+        except Exception as detail:
             errText = _('Error installing VMWare Player: ')
-            print errText, detail
+            print(errText, detail)
             pass
 
     # Qemu installation
     def installQemu(self):
         try:
-            print _('Installing Qemu Emulator with KQemu Accelerator module...')
+            print(_('Installing Qemu Emulator with KQemu Accelerator module...'))
             qemuFile = 'qemu-0.8.2-i386.tar.gz'
             kqemuFile = 'kqemu-1.3.0pre9.tar.gz'
             kqemuDir = 'kqemu-1.3.0pre9'
             # check for previously downloaded archive
             if os.path.exists(os.path.join(self.customDir, "root/tmp/qemu.tar.gz")) == False:
                 # download file
-                print _('Downloading Qemu archive...')
+                print(_('Downloading Qemu archive...'))
                 # HACK: using wget to download file
-                os.popen('wget http://fabrice.bellard.free.fr/qemu/' + qemuFile + ' -O ' + os.path.join(self.customDir, "root/tmp/qemu.tar.gz"))
+                subprocess.getoutput('wget http://fabrice.bellard.free.fr/qemu/' + qemuFile + ' -O ' + os.path.join(self.customDir, "root/tmp/qemu.tar.gz"))
             # check for previously downloaded archive
             if os.path.exists(os.path.join(self.customDir, "root/tmp/kqemu.tar.gz")) == False:
                 # download file
-                print _('Downloading KQemu module archive...')
+                print(_('Downloading KQemu module archive...'))
                 # HACK: using wget to download file
-                os.popen('wget http://fabrice.bellard.free.fr/qemu/' + kqemuFile + ' -O ' + os.path.join(self.customDir, "root/tmp/kqemu.tar.gz"))
+                subprocess.getoutput('wget http://fabrice.bellard.free.fr/qemu/' + kqemuFile + ' -O ' + os.path.join(self.customDir, "root/tmp/kqemu.tar.gz"))
 
             # extract to root dir
-            print _('Extracting Qemu into /usr/local...')
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' tar zxf /tmp/qemu.tar.gz -C / 1>&2 2>/dev/null')
-            print _('Extracting KQemu module...')
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' tar zxf /tmp/kqemu.tar.gz -C /tmp/ 1>&2 2>/dev/null')
-            print _("Installing dependencies for KQemu Compilation...")
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get install --assume-yes --force-yes -d gcc make linux-headers-$(uname -r)')
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' dpkg -i -R /var/cache/apt/archives/ 1>&2 2>/dev/null')
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get clean')
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get autoclean')
+            print(_('Extracting Qemu into /usr/local...'))
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' tar zxf /tmp/qemu.tar.gz -C / 1>&2 2>/dev/null')
+            print(_('Extracting KQemu module...'))
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' tar zxf /tmp/kqemu.tar.gz -C /tmp/ 1>&2 2>/dev/null')
+            print(_("Installing dependencies for KQemu Compilation..."))
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get install --assume-yes --force-yes -d gcc make linux-headers-$(uname -r)')
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' dpkg -i -R /var/cache/apt/archives/ 1>&2 2>/dev/null')
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get clean')
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get autoclean')
             # create symlink /usr/src/linux
             # compile kqemu
-            print _('Installing KQemu module...')
+            print(_('Installing KQemu module...'))
             # HACK: write temporary script for chroot & install
             scr = '#!/bin/sh\ncd /tmp/' + kqemuDir + '/\n\n./configure 1>&2 2>/dev/null\n make install\n'
             f=open(os.path.join(self.customDir, "root/tmp/kqemu-install.sh"), 'w')
             f.write(scr)
             f.close()
-            os.popen('chmod a+x ' + os.path.join(self.customDir, "root/tmp/kqemu-install.sh"))
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/kqemu-install.sh')
+            subprocess.getoutput('chmod a+x ' + os.path.join(self.customDir, "root/tmp/kqemu-install.sh"))
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/kqemu-install.sh')
 
             # add module load to sys startup
-            print _("Setting KQemu module to load on startup...")
+            print(_("Setting KQemu module to load on startup..."))
             modExists = False
-            f = file(os.path.join(self.customDir, "root/etc/modules"), 'r')
+            f = open(os.path.join(self.customDir, "root/etc/modules"), 'r')
             lines = []
             r = re.compile('kqemu', re.IGNORECASE)
             # find config string
@@ -2165,59 +2175,59 @@ class Reconstructor:
             f.close()
             # rewrite if necessary
             if modExists == False:
-                f = file(os.path.join(self.customDir, "root/etc/modules"), 'w')
+                f = open(os.path.join(self.customDir, "root/etc/modules"), 'w')
                 f.writelines(lines)
                 f.write('kqemu\n')
                 f.close()
 
             # cleanup if not running debug
             if self.runningDebug == False:
-                print _("Cleaning Up Temporary Files...")
-                os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/") + 'tmp/*\"')
+                print(_("Cleaning Up Temporary Files..."))
+                subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/") + 'tmp/*\"')
 
-        except Exception, detail:
+        except Exception as detail:
             errText = _('Error Installing QEmu: ')
-            print errText, detail
+            print(errText, detail)
             pass
 
     # Java installation
     def installJava(self):
         try:
-            print _('Installing Java...')
+            print(_('Installing Java...'))
             # HACK: write temporary script for chroot & install
             scr = '#!/bin/sh\napt-get install -y j2re1.4\napt-get clean\napt-get autoclean\nsleep 3\n'
             f=open(os.path.join(self.customDir, "root/tmp/java-install.sh"), 'w')
             f.write(scr)
             f.close()
-            os.popen('chmod a+x ' + os.path.join(self.customDir, "root/tmp/java-install.sh"))
-            os.popen('xterm -title \'Java Installation\' -e chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/java-install.sh')
+            subprocess.getoutput('chmod a+x ' + os.path.join(self.customDir, "root/tmp/java-install.sh"))
+            subprocess.getoutput('xterm -title \'Java Installation\' -e chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/java-install.sh')
             # cleanup
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/") + 'tmp/java-install.sh\"')
+            subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/") + 'tmp/java-install.sh\"')
 
-        except Exception, detail:
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/") + 'tmp/java-install.sh\"')
+        except Exception as detail:
+            subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/") + 'tmp/java-install.sh\"')
             errText = _('Error installing Java: ')
-            print errText, detail
+            print(errText, detail)
             pass
 
     # Flash installation
     def installFlash(self):
         try:
-            print _('Installing Flash...')
+            print(_('Installing Flash...'))
             # HACK: write temporary script for chroot & install
             scr = '#!/bin/sh\napt-get install -y flashplugin-nonfree\napt-get clean\napt-get autoclean\nsleep 3\n'
             f=open(os.path.join(self.customDir, "root/tmp/flash-install.sh"), 'w')
             f.write(scr)
             f.close()
-            os.popen('chmod a+x ' + os.path.join(self.customDir, "root/tmp/flash-install.sh"))
-            os.popen('xterm -title \'Flash Installation\' -e chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/flash-install.sh')
+            subprocess.getoutput('chmod a+x ' + os.path.join(self.customDir, "root/tmp/flash-install.sh"))
+            subprocess.getoutput('xterm -title \'Flash Installation\' -e chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/flash-install.sh')
             # cleanup
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/") + 'tmp/flash-install.sh\"')
+            subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/") + 'tmp/flash-install.sh\"')
 
-        except Exception, detail:
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/") + 'tmp/flash-install.sh\"')
+        except Exception as detail:
+            subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/") + 'tmp/flash-install.sh\"')
             errText = _('Error installing Flash: ')
-            print errText, detail
+            print(errText, detail)
             pass
 
 
@@ -2227,150 +2237,151 @@ class Reconstructor:
             if self.TerminalInitialized == False:
                 # setup environment
                 # add current user to the access control list
-                user = commands.getoutput('echo $USER')
-                print _("Adding user " + user + " to access control list...")
-                os.popen('xhost +local:' + user)
+                user = subprocess.getoutput('echo $USER')
+                print(_("Adding user " + user + " to access control list..."))
+                subprocess.getoutput('xhost +local:' + user)
                 # copy dns info
                 #if os.path.exists(os.path.join(self.customDir, "root/etc/resolv.conf")):
                 if os.path.exists("/etc/resolv.conf"):
-                    print _("Copying DNS info...")
-                    os.popen('cp -L --remove-destination /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                    print(_("Copying DNS info..."))
+                    subprocess.getoutput('cp -L --remove-destination /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
                 elif os.path.exists("/run/resolvconf/resolv.conf"):
-                    print _("Copying DNS info...")
-                    os.popen('cp -L --remove-destination /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                    print(_("Copying DNS info..."))
+                    subprocess.getoutput('cp -L --remove-destination /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
                 #mount /run/dbus
-                print _("Mounting /run/dbus filesystem...")
+                print(_("Mounting /run/dbus filesystem..."))
                 if not os.path.exists(os.path.join(self.customDir, "root/run/dbus")):
-                    os.popen("mkdir " + (os.path.join(self.customDir, "root/run/dbus")))
-                os.popen('mount --bind /run/dbus \"' + os.path.join(self.customDir, "root/run/dbus") + '\"')
+                    subprocess.getoutput("mkdir " + (os.path.join(self.customDir, "root/run/dbus")))
+                subprocess.getoutput('mount --bind /run/dbus \"' + os.path.join(self.customDir, "root/run/dbus") + '\"')
                 #mount /dev
-                print _("Mounting /dev filesystem...")
-                os.popen('mount --bind /dev \"' + os.path.join(self.customDir, "root/dev") + '\"')
+                print(_("Mounting /dev filesystem..."))
+                subprocess.getoutput('mount --bind /dev \"' + os.path.join(self.customDir, "root/dev") + '\"')
                 # mount /proc
-                print _("Mounting /proc filesystem...")
-                os.popen('mount none -t proc \"' + os.path.join(self.customDir, "root/proc") + '\"')
+                print(_("Mounting /proc filesystem..."))
+                subprocess.getoutput('mount none -t proc \"' + os.path.join(self.customDir, "root/proc") + '\"')
                 #mount /sys
-                print _("Mounting /sys filesystem...")
-                os.popen('mount none -t sysfs \"' + os.path.join(self.customDir, "root/sys") + '\"')
+                print(_("Mounting /sys filesystem..."))
+                subprocess.getoutput('mount none -t sysfs \"' + os.path.join(self.customDir, "root/sys") + '\"')
                 #mount /dev/pts
-                print _("Mounting /dev/pts filesystem...")
-                os.popen('mount none -t devpts \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
+                print(_("Mounting /dev/pts filesystem..."))
+                subprocess.getoutput('mount none -t devpts \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
                 # copy apt.conf
-                print _("Copying apt configuration...")
+                print(_("Copying apt configuration..."))
                 if not os.path.exists(os.path.join(self.customDir, "root/etc/apt/apt.conf.d/")):
                     os.makedirs(os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
-                os.popen('cp -f /etc/apt/apt.conf.d/* ' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
+                subprocess.getoutput('cp -f /etc/apt/apt.conf.d/* ' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
                 # copy wgetrc
-                print _("Copying wgetrc configuration...")
+                print(_("Copying wgetrc configuration..."))
                 # backup
-                os.popen('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\"')
-                os.popen('cp -f /etc/wgetrc ' + os.path.join(self.customDir, "root/etc/wgetrc"))
+                subprocess.getoutput('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\"')
+                subprocess.getoutput('cp -f /etc/wgetrc ' + os.path.join(self.customDir, "root/etc/wgetrc"))
                 # HACK: create temporary script for chrooting
                 scr = '#!/bin/bash\n#\n#\t(c) reconstructor, 2006\n#\nchroot ' + os.path.join(self.customDir, "root/") + '\n'
                 f=open('/tmp/reconstructor-terminal.sh', 'w')
                 f.write(scr)
                 f.close()
-                os.popen('chmod a+x ' + os.path.join(self.customDir, "/tmp/reconstructor-terminal.sh"))
+                subprocess.getoutput('chmod a+x ' + os.path.join(self.customDir, "/tmp/reconstructor-terminal.sh"))
                 self.TerminalInitialized = True
             # TODO: replace default terminal title with "Reconstructor Terminal"
             # use COLORTERM if available -- more features
             # get COLORTERM
             terminal = self.getTerminal()
-            if terminal != '' and commands.getoutput('which '+ terminal) != '':
-                print _('Launching ' + terminal +' for advanced customization...')
-                commands.getoutput('export HOME=/root ; ' + terminal + ' --hide-menubar -t \"Reconstructor Terminal\" -e \"/tmp/reconstructor-terminal.sh\" >/tmp/terminal-reconstructor.log')
-                if commands.getoutput('cat /tmp/terminal-reconstructor.log | grep fail') != '':
-                    print _(failed + '\nLaunching Xterm for advanced customization...')
-                    os.popen('export HOME=/root ; xterm -bg black -fg white -rightbar -title \"Reconstructor Terminal\" -e /tmp/reconstructor-terminal.sh')
-                os.popen('rm -f /tmp/terminal-reconstructor.log')
+            if terminal != '' and subprocess.getoutput('which '+ terminal) != '':
+                print(_('Launching ' + terminal +' for advanced customization...'))
+                subprocess.getoutput('export HOME=/root ; ' + terminal + ' --hide-menubar -t \"Reconstructor Terminal\" -e \"/tmp/reconstructor-terminal.sh\" >/tmp/terminal-reconstructor.log')
+                if subprocess.getoutput('cat /tmp/terminal-reconstructor.log | grep fail') != '':
+                    print(_(failed + '\nLaunching Xterm for advanced customization...'))
+                    subprocess.getoutput('export HOME=/root ; xterm -bg black -fg white -rightbar -title \"Reconstructor Terminal\" -e /tmp/reconstructor-terminal.sh')
+                subprocess.getoutput('rm -f /tmp/terminal-reconstructor.log')
             else:
-                print _('Launching Xterm for advanced customization...')
+                print(_('Launching Xterm for advanced customization...'))
                 # use xterm if COLORTERM isn't available
-                os.popen('export HOME=/root ; xterm -bg black -fg white -rightbar -title \"Reconstructor Terminal\" -e /tmp/reconstructor-terminal.sh')
-        except Exception, detail:
+                subprocess.getoutput('export HOME=/root ; xterm -bg black -fg white -rightbar -title \"Reconstructor Terminal\" -e /tmp/reconstructor-terminal.sh')
+        except Exception as detail:
             self.doneTerminal(forceMode=True,silentMode=False,justUmount=False)
             errText = _('Error launching terminal: ')
-            print errText, detail
+            print(errText, detail)
             pass
 
         return
 
     def doneTerminal(self,forceMode=False,silentMode=False,justUmount=False):
             if self.customDir != '' and ( self.TerminalInitialized == True or forceMode == True ):
-                os.popen('rm -f ' + os.path.join(self.customDir, "root/var/lib/dpkg/lock"))   
-                os.popen('rm -f ' + os.path.join(self.customDir, "root/var/lib/apt/lists/lock"))   
+                subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/var/lib/dpkg/lock"))   
+                subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/var/lib/apt/lists/lock"))   
                 # umount /proc
                 if self.isMounted(os.path.join(self.customDir, "root/proc")):
                     if silentMode == False:
-                        print _("Umounting /proc...")
-                    error = commands.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/proc") + '\"')
+                        print(_("Umounting /proc..."))
+                    error = subprocess.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/proc") + '\"')
                     if(error != ''):
-                        print "error=\""+error+"\""
+                        print("error=\""+error+"\"")
                         self.suggestReboot('/proc could not be unmounted. It must be unmounted before you can build an ISO.')
                 # umount /sys
                 if self.isMounted(os.path.join(self.customDir, "root/sys")):
                     if silentMode == False:
-                        print _("Umounting /sys...")
-                    error = commands.getoutput('umount   -lf \"' + os.path.join(self.customDir, "root/sys") + '\"')
+                        print(_("Umounting /sys..."))
+                    error = subprocess.getoutput('umount   -lf \"' + os.path.join(self.customDir, "root/sys") + '\"')
                     if(error != ''):
-                        print "error=\""+error+"\""
+                        print("error=\""+error+"\"")
                         self.suggestReboot('/sys could not be unmounted. It must be unmounted before you can build an ISO.')
                 # umount /dev/pts
                 if self.isMounted(os.path.join(self.customDir, "root/dev/pts")):
                     if silentMode == False:
-                        print _("Umounting /dev/pts...")
-                    error = commands.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
+                        print(_("Umounting /dev/pts..."))
+                    error = subprocess.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
                     if(error != ''):
-                        print "error=\""+error+"\""
+                        print("error=\""+error+"\"")
                         self.suggestReboot('/dev/pts could not be unmounted. It must be unmounted before you can build an ISO.')
                 # umount /dev
                 if self.isMounted(os.path.join(self.customDir, "root/dev")):
                     if silentMode == False:
-                        print _("Umounting /dev...")
-                    error = commands.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/dev") + '\"')
+                        print(_("Umounting /dev..."))
+                    error = subprocess.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/dev") + '\"')
                     if(error != ''):
-                        print "error=\""+error+"\""
+                        print("error=\""+error+"\"")
                         self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
                 # umount /run/dbus
                 if self.isMounted(os.path.join(self.customDir, "root/run/dbus")):
                     if silentMode == False:
-                        print _("Umounting /run/dbus...")
-                    error = commands.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/run/dbus") + '\"')
+                        print(_("Umounting /run/dbus..."))
+                    error = subprocess.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/run/dbus") + '\"')
                     if(error != ''):
-                        print "error=\""+error+"\""
+                        print("error=\""+error+"\"")
                         self.suggestReboot('/run/dbus could not be unmounted. It must be unmounted before you can build an ISO.')
                 if justUmount == False:
                     # restore wgetrc
                     if silentMode == False:
-                        print _("Restoring wgetrc configuration...")
-                    os.popen('[ -f \"' +os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" ] && ' + ' mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\"')
+                        print(_("Restoring wgetrc configuration..."))
+                    subprocess.getoutput('[ -f \"' +os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" ] && ' + ' mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\"')
                     # remove apt.conf
-                    #print _("Removing apt.conf configuration...")
-                    #os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf") + '\"')
+                    #print(_("Removing apt.conf configuration..."))
+                    #subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf") + '\"')
                     # remove dns info
                     # remove some locks
                     if silentMode == False:
-                        print _("Removing DNS info...")
-                    os.popen('rm -f ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
-                    os.popen('ln -s /run/resolvconf/resolv.conf  ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                        print(_("Removing DNS info..."))
+                    subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                    subprocess.getoutput('ln -s /run/resolvconf/resolv.conf  ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
 
                     #clean /run
                     if silentMode == False:
-                        print _("Clean /run ...")
-                    os.popen('rm -rf  \"' + os.path.join(self.customDir, "root/run/*") + '\"')   
+                        print(_("Clean /run ..."))
+                    subprocess.getoutput('rm -rf  \"' + os.path.join(self.customDir, "root/run/*") + '\"')   
                 # remove temp script
-                os.popen('rm -Rf /tmp/reconstructor-terminal.sh')
+                subprocess.getoutput('rm -Rf /tmp/reconstructor-terminal.sh')
                 self.TerminalInitialized = False
 
     def genericDialog(self,text):
-        genericDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_OK, gtk.RESPONSE_OK))
+        genericDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+        genericDlg.add_buttons(Gtk.STOCK_OK, Gtk.ResponseType.OK)
         genericDlg.set_icon_from_file(self.iconFile)
         genericDlg.vbox.set_spacing(10)
-        labelSpc = gtk.Label(" ")
-        genericDlg.vbox.pack_start(labelSpc)
+        labelSpc = Gtk.Label(" ")
+        genericDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
         labelSpc.show()
-        lblgenericInfo = gtk.Label(text)
-        genericDlg.vbox.pack_start(lblgenericInfo)
+        lblgenericInfo = Gtk.Label(text)
+        genericDlg.vbox.pack_start(lblgenericInfo, expand=True, fill=True, padding=0)
         lblgenericInfo.show()
         genericDlg.run()
         genericDlg.destroy()
@@ -2381,14 +2392,15 @@ class Reconstructor:
         BUT3 = 3
         BUT4 = 4
         BUT5 = 5
-        resDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(but1, BUT1, but2, BUT2, but3, BUT3, but4, BUT4, but5, BUT5, gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL))
+        resDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+        resDlg.add_buttons(but1, BUT1, but2, BUT2, but3, BUT3, but4, BUT4, but5, BUT5, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
         resDlg.set_icon_from_file(self.iconFile)
         resDlg.vbox.set_spacing(10)
-        labelSpc = gtk.Label(" ")
-        resDlg.vbox.pack_start(labelSpc)
+        labelSpc = Gtk.Label(" ")
+        resDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
         labelSpc.show()
-        lblresInfo = gtk.Label(text)
-        resDlg.vbox.pack_start(lblresInfo)
+        lblresInfo = Gtk.Label(text)
+        resDlg.vbox.pack_start(lblresInfo, expand=True, fill=True, padding=0)
         lblresInfo.show()
         response = resDlg.run()
         resDlg.destroy()
@@ -2411,43 +2423,43 @@ class Reconstructor:
         butlist = list()
         cmdlist = list()
 
-        deskenv = commands.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which startkde')
+        deskenv = subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which startkde')
         if (deskenv != ""): print("KDE Found in Chroot Environment!"); butlist.append("KDE"); cmdlist.append(deskenv)
-        deskenv = commands.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which /opt/kde3/bin/startkde')
+        deskenv = subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which /opt/kde3/bin/startkde')
         if (deskenv != ""): print("KDE3 Found in Chroot Environment!"); butlist.append("KDE3"); cmdlist.append(deskenv)
-        deskenv = commands.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which xfce4-session')
+        deskenv = subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which xfce4-session')
         if (deskenv != ""): print("XFCE4 Found in Chroot Environment!"); butlist.append("XFCE4"); cmdlist.append(deskenv)
-        deskenv = commands.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which gnome-session')
+        deskenv = subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which gnome-session')
         if (deskenv != ""): print("GNOME Found in Chroot Environment!"); butlist.append("GNOME"); cmdlist.append(deskenv)
-        deskenv = commands.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which startlxde')
+        deskenv = subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which startlxde')
         if (deskenv != ""): print("LXDE Found in Chroot Environment!"); butlist.append("LXDE"); cmdlist.append(deskenv)
-        deskenv = commands.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which icewm-session')
+        deskenv = subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which icewm-session')
         if (deskenv != ""): print("IceWM Found in Chroot Environment!"); butlist.append("IceWM"); cmdlist.append(deskenv)
-        deskenv = commands.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which startfluxbox')
+        deskenv = subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which startfluxbox')
         if (deskenv != ""): print("Fluxbox Found in Chroot Environment!"); butlist.append("Fluxbox"); cmdlist.append(deskenv)
-        deskenv = commands.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which wmaker')
+        deskenv = subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which wmaker')
         if (deskenv != ""): print("WindowMaker Found in Chroot Environment!"); butlist.append("WindowMaker"); cmdlist.append(deskenv)
-        deskenv = commands.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which twm')
+        deskenv = subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which twm')
         if (deskenv != ""): print("TWM Found in Chroot Environment!"); butlist.append("TWM"); cmdlist.append(deskenv)
-        deskenv = commands.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which /usr/share/e16/misc/starte16')
+        deskenv = subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which /usr/share/e16/misc/starte16')
         if (deskenv != ""): print("Enlightenment (E16) Found in Chroot Environment!"); butlist.append("Enlightenment E16"); cmdlist.append(deskenv)
-        deskenv = commands.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which /usr/share/e16/misc/starte16-kde')
-        deskenv2 = commands.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which startkde')
+        deskenv = subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which /usr/share/e16/misc/starte16-kde')
+        deskenv2 = subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which startkde')
         if (deskenv != "" and deskenv2 != ""): print("Enlightenment (E16-KDE) Found in Chroot Environment!"); butlist.append("E16-KDE"); cmdlist.append(deskenv)
-        deskenv = commands.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which /usr/share/e16/misc/starte16-gnome')
-        deskenv2 = commands.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which gnome-session')
+        deskenv = subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which /usr/share/e16/misc/starte16-gnome')
+        deskenv2 = subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" which gnome-session')
         if (deskenv != "" and deskenv2 != ""): print("Enlightenment (E16-GNOME) Found in Chroot Environment!"); butlist.append("E16-GNOME"); cmdlist.append(deskenv)
 
-        deskenvDlg = gtk.Dialog(title=self.appName, parent=None, flags=0)
+        deskenvDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
         deskenvDlg.set_icon_from_file(self.iconFile)
         deskenvDlg.vbox.set_spacing(10)
-        labelSpc = gtk.Label(" ")
-        deskenvDlg.vbox.pack_start(labelSpc)
+        labelSpc = Gtk.Label(" ")
+        deskenvDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
         labelSpc.show()
-        lbldeskenvInfo = gtk.Label("Choose Environment to customize.")
-        deskenvDlg.vbox.pack_start(lbldeskenvInfo)
-        setsession = gtk.CheckButton("Set as default session")
-        deskenvDlg.vbox.pack_start(setsession)
+        lbldeskenvInfo = Gtk.Label("Choose Environment to customize.")
+        deskenvDlg.vbox.pack_start(lbldeskenvInfo, expand=True, fill=True, padding=0)
+        setsession = Gtk.CheckButton("Set as default session")
+        deskenvDlg.vbox.pack_start(setsession, expand=True, fill=True, padding=0)
         setsession.show()
 
         lbldeskenvInfo.show()
@@ -2461,14 +2473,14 @@ class Reconstructor:
         if setsession.get_active() == True:
             print("Setting LiveCD Default Session...")
             # if the session alternative doesn't exist add it before setting it as the default session
-            alternative = commands.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" update-alternatives --list x-session-manager | grep -i ' + cmdlist[response] )
+            alternative = subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" update-alternatives --list x-session-manager | grep -i ' + cmdlist[response] )
             if (alternative != ""):
-                os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\" update-alternatives --set x-session-manager ' + cmdlist[response] )
+                subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" update-alternatives --set x-session-manager ' + cmdlist[response] )
             else:
-                os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\" update-alternatives --install /usr/bin/x-window-manager x-window-manager ' + cmdlist[response] +' 50' )
-                os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\" update-alternatives --set x-session-manager ' + cmdlist[response] )
+                subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" update-alternatives --install /usr/bin/x-window-manager x-window-manager ' + cmdlist[response] +' 50' )
+                subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" update-alternatives --set x-session-manager ' + cmdlist[response] )
             # confirm it was set properly
-            print('Default Session set to: ' + commands.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" update-alternatives --list x-session-manager | grep -i ' + cmdlist[response] ) )
+            print('Default Session set to: ' + subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" update-alternatives --list x-session-manager | grep -i ' + cmdlist[response] ) )
 
         deskenvDlg.destroy()
         return cmdlist[response]
@@ -2476,7 +2488,7 @@ class Reconstructor:
     # Launches a chrooted xserver in Xephyr
     def launchChrootXephyr(self):
         try:
-            if (commands.getoutput('which Xephyr') == ''):
+            if (subprocess.getoutput('which Xephyr') == ''):
                 self.genericDialog("You must have Xephyr installed. Install Xephyr and try again." )
                 return
 
@@ -2500,191 +2512,191 @@ class Reconstructor:
             f=open('/tmp/xephyr-chroot.sh', 'w')
             f.write(scr)
             f.close()
-            os.popen('chmod a+x ' + '/tmp/xephyr-chroot.sh')
+            subprocess.getoutput('chmod a+x ' + '/tmp/xephyr-chroot.sh')
 
             # setup environment
             # add current user to the access control list
-            user = commands.getoutput('echo $USER')
-            print _("Adding user " + user + " to access control list...")
-            os.popen('xhost +local:' + user)
+            user = subprocess.getoutput('echo $USER')
+            print(_("Adding user " + user + " to access control list..."))
+            subprocess.getoutput('xhost +local:' + user)
 
             # make temp backup of /etc/skel files
-            os.popen('cp -f ' + os.path.join(self.customDir, "root/etc/skel/.bashrc") + ' ' + os.path.join(self.customDir, ".bashrc") )
-            os.popen('cp -f ' + os.path.join(self.customDir, "root/etc/skel/.bash_logout") + ' ' + os.path.join(self.customDir, ".bash_logout")  )
-            os.popen('cp -f ' + os.path.join(self.customDir, "root/etc/skel/.profile") + ' ' + os.path.join(self.customDir, ".profile") )
+            subprocess.getoutput('cp -f ' + os.path.join(self.customDir, "root/etc/skel/.bashrc") + ' ' + os.path.join(self.customDir, ".bashrc") )
+            subprocess.getoutput('cp -f ' + os.path.join(self.customDir, "root/etc/skel/.bash_logout") + ' ' + os.path.join(self.customDir, ".bash_logout")  )
+            subprocess.getoutput('cp -f ' + os.path.join(self.customDir, "root/etc/skel/.profile") + ' ' + os.path.join(self.customDir, ".profile") )
 
             # copy hosts
-            os.popen('cp -f /etc/hosts ' + os.path.join(self.customDir, "root/etc/hosts"))
+            subprocess.getoutput('cp -f /etc/hosts ' + os.path.join(self.customDir, "root/etc/hosts"))
 
             # copy Xauthority
-            os.popen('cp -f ~/.Xauthority ' + os.path.join(self.customDir, "root/root/.Xauthority"))
+            subprocess.getoutput('cp -f ~/.Xauthority ' + os.path.join(self.customDir, "root/root/.Xauthority"))
 
             #Fire up Xephyr on DISPLAY :2
             print('Launching Xephyr...')
-            os.popen('Xephyr -ac -screen ' + res + ' 2> /dev/null :2 &')  #+extension GLX, -extension GLX,
-            os.popen('export DISPLAY=:2')
+            subprocess.getoutput('Xephyr -ac -screen ' + res + ' 2> /dev/null :2 &')  #+extension GLX, -extension GLX,
+            subprocess.getoutput('export DISPLAY=:2')
 
             #Mount /tmp
-            print _("Mounting /tmp...")
-            os.popen('mount --bind /tmp \"' + os.path.join(self.customDir, "root/tmp") + '\"')
+            print(_("Mounting /tmp..."))
+            subprocess.getoutput('mount --bind /tmp \"' + os.path.join(self.customDir, "root/tmp") + '\"')
             # copy dns info
             if os.path.exists("/etc/resolv.conf"):
-                print _("Copying DNS info...")
-                os.popen('cp -L --remove-destination /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                print(_("Copying DNS info..."))
+                subprocess.getoutput('cp -L --remove-destination /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             elif os.path.exists("/run/resolvconf/resolv.conf"):
-                print _("Copying DNS info...")
-                os.popen('cp -L --remove-destination /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                print(_("Copying DNS info..."))
+                subprocess.getoutput('cp -L --remove-destination /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             #mount /run/dbus
-            print _("Mounting /run/dbus filesystem...")
+            print(_("Mounting /run/dbus filesystem..."))
             if not os.path.exists(os.path.join(self.customDir, "root/run/dbus")):
-                os.popen("mkdir " + (os.path.join(self.customDir, "root/run/dbus")))
-            os.popen('mount --bind /run/dbus \"' + os.path.join(self.customDir, "root/run/dbus") + '\"')
+                subprocess.getoutput("mkdir " + (os.path.join(self.customDir, "root/run/dbus")))
+            subprocess.getoutput('mount --bind /run/dbus \"' + os.path.join(self.customDir, "root/run/dbus") + '\"')
             # mount /dev
-            print _("Mounting /dev filesystem...")
-            os.popen('mount --bind /dev \"' + os.path.join(self.customDir, "root/dev") + '\"')
+            print(_("Mounting /dev filesystem..."))
+            subprocess.getoutput('mount --bind /dev \"' + os.path.join(self.customDir, "root/dev") + '\"')
             # mount devpts
-            print _("Mounting devpts...")
-            os.popen('mount -t devpts none \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
+            print(_("Mounting devpts..."))
+            subprocess.getoutput('mount -t devpts none \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
             # mount /proc
-            print _("Mounting /proc filesystem...")
-            os.popen('mount -t proc none \"' + os.path.join(self.customDir, "root/proc") + '\"')
+            print(_("Mounting /proc filesystem..."))
+            subprocess.getoutput('mount -t proc none \"' + os.path.join(self.customDir, "root/proc") + '\"')
             # mount sysfs
-            print _("Mounting /sys filesystem...")
-            os.popen('mount -t sysfs none \"' + os.path.join(self.customDir, "root/sys") + '\"')
+            print(_("Mounting /sys filesystem..."))
+            subprocess.getoutput('mount -t sysfs none \"' + os.path.join(self.customDir, "root/sys") + '\"')
             # copy apt.conf
-            print _("Copying apt configuration...")
+            print(_("Copying apt configuration..."))
             if not os.path.exists(os.path.join(self.customDir, "root/etc/apt/apt.conf.d/")):
                 os.makedirs(os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
-            os.popen('cp -f /etc/apt/apt.conf.d/* ' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
+            subprocess.getoutput('cp -f /etc/apt/apt.conf.d/* ' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
             # copy wgetrc
-            print _("Copying wgetrc configuration...")
+            print(_("Copying wgetrc configuration..."))
             # backup
-            os.popen('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\"')
-            os.popen('cp -f /etc/wgetrc ' + os.path.join(self.customDir, "root/etc/wgetrc"))
+            subprocess.getoutput('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\"')
+            subprocess.getoutput('cp -f /etc/wgetrc ' + os.path.join(self.customDir, "root/etc/wgetrc"))
 
             # create temporary script for chrooting
-            os.popen('export HOME="/root" ; chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/xephyr-chroot.sh')
+            subprocess.getoutput('export HOME="/root" ; chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/xephyr-chroot.sh')
 
             # restore wgetrc
-            print _("Restoring wgetrc configuration...")
-            os.popen('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\"')
+            print(_("Restoring wgetrc configuration..."))
+            subprocess.getoutput('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\"')
             # remove apt.conf
-            #print _("Removing apt.conf configuration...")
-            #os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf") + '\"')
+            #print(_("Removing apt.conf configuration..."))
+            #subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf") + '\"')
             # remove Xauthority
-            os.popen('rm -f ' + os.path.join(self.customDir, "root/root/.Xauthority"))
+            subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/root/.Xauthority"))
             # remove hosts
-            os.popen('rm -f ' + os.path.join(self.customDir, "root/etc/hosts"))
+            subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/etc/hosts"))
 
             # umount /tmp
-            print _("Umounting /tmp...")
-            error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/tmp") + '\"')
+            print(_("Umounting /tmp..."))
+            error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/tmp") + '\"')
             if(error != ''):
                 self.suggestReboot('/tmp could not be unmounted. It must be unmounted before you can build an ISO.')
             # remove dns info
-            print _("Removing DNS info...")
-            os.popen('rm -f \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
-            os.popen('ln -s /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+            print(_("Removing DNS info..."))
+            subprocess.getoutput('rm -f \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
+            subprocess.getoutput('ln -s /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             # umount /proc
-            print _("Umounting /proc...")
-            error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/proc/") + '\"')
+            print(_("Umounting /proc..."))
+            error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/proc/") + '\"')
             if(error != ''):
                 self.suggestReboot('/proc could not be unmounted. It must be unmounted before you can build an ISO.')
             # umount /sys
-            print _("Umounting /sys...")
-            error = commands.getoutput('umount -fR \"' + os.path.join(self.customDir, "root/sys/") + '\"')
+            print(_("Umounting /sys..."))
+            error = subprocess.getoutput('umount -fR \"' + os.path.join(self.customDir, "root/sys/") + '\"')
             if(error != ''):
                 self.suggestReboot('/sys could not be unmounted. It must be unmounted before you can build an ISO.')
             # umount devpts
-            print _("Umounting devpts...")
-            error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
+            print(_("Umounting devpts..."))
+            error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
             if(error != ''):
                 self.suggestReboot('/dev/pts could not be unmounted. It must be unmounted before you can build an ISO.')
             # umount /dev
-            print _("Umounting /dev...")
-            error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/dev/") + '\"')
+            print(_("Umounting /dev..."))
+            error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/dev/") + '\"')
             if(error != ''):
                 self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
             # umount /run/dbus
-            print _("Umounting /run/dbus...")
-            error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/run/dbus") + '\"')
+            print(_("Umounting /run/dbus..."))
+            error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/run/dbus") + '\"')
             if(error != ''):
                 self.suggestReboot('/run/dbus could not be unmounted. It must be unmounted before you can build an ISO.')
             # remove temp script
-            os.popen('rm -Rf /tmp/xephyr-chroot.sh')
+            subprocess.getoutput('rm -Rf /tmp/xephyr-chroot.sh')
             # startx complains about suspicious activity sometimes:P
-            os.popen('rm -Rf ' + os.path.join(self.customDir, "root/tmp/.X11-unix") )
+            subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/tmp/.X11-unix") )
             # return the display to :0
-            os.popen('export DISPLAY=:0')
+            subprocess.getoutput('export DISPLAY=:0')
             # copy /root to /etc/skel
-            print _("Customizing /etc/skel...")
-            os.popen('rm -rf ' + os.path.join(self.customDir, "root/etc/skel"))
-            os.popen('cp -rf ' + os.path.join(self.customDir, "root/root") + ' ' + os.path.join(self.customDir, "root/etc/skel") )
+            print(_("Customizing /etc/skel..."))
+            subprocess.getoutput('rm -rf ' + os.path.join(self.customDir, "root/etc/skel"))
+            subprocess.getoutput('cp -rf ' + os.path.join(self.customDir, "root/root") + ' ' + os.path.join(self.customDir, "root/etc/skel") )
             # Set proper permissions
-            print _("Setting /etc/skel permissions...")
-            os.popen('chmod --recursive 755 ' + os.path.join(self.customDir, "root/etc/skel"))                        # All folders need to be drwxr-xr-x
-            os.popen('cd ' + os.path.join(self.customDir, "root/etc/skel") + '; ' + ' chmod 644 $(find . ! -type d)') # All files need to be -rw-r--r--
+            print(_("Setting /etc/skel permissions..."))
+            subprocess.getoutput('chmod --recursive 755 ' + os.path.join(self.customDir, "root/etc/skel"))                        # All folders need to be drwxr-xr-x
+            subprocess.getoutput('cd ' + os.path.join(self.customDir, "root/etc/skel") + '; ' + ' chmod 644 $(find . ! -type d)') # All files need to be -rw-r--r--
             # restore /etc/skel files
-            os.popen('mv -f ' + os.path.join(self.customDir, ".bashrc") + ' ' + os.path.join(self.customDir, "root/etc/skel/.bashrc"))
-            os.popen('mv -f ' + os.path.join(self.customDir, ".bash_logout") + ' ' + os.path.join(self.customDir, "root/etc/skel/.bash_logout"))
-            os.popen('mv -f ' + os.path.join(self.customDir, ".profile") + ' ' + os.path.join(self.customDir, "root/etc/skel/.profile"))
+            subprocess.getoutput('mv -f ' + os.path.join(self.customDir, ".bashrc") + ' ' + os.path.join(self.customDir, "root/etc/skel/.bashrc"))
+            subprocess.getoutput('mv -f ' + os.path.join(self.customDir, ".bash_logout") + ' ' + os.path.join(self.customDir, "root/etc/skel/.bash_logout"))
+            subprocess.getoutput('mv -f ' + os.path.join(self.customDir, ".profile") + ' ' + os.path.join(self.customDir, "root/etc/skel/.profile"))
             # close the Xephyr window if it is still open
-            os.popen('pkill Xephyr')
+            subprocess.getoutput('pkill Xephyr')
 
-        except Exception, detail:
+        except Exception as detail:
             # restore settings
             # restore wgetrc
-            print _("Restoring wgetrc configuration...")
-            os.popen('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\"')
+            print(_("Restoring wgetrc configuration..."))
+            subprocess.getoutput('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\"')
             # remove apt.conf
-            #print _("Removing apt.conf configuration...")
-            #os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf") + '\"')
+            #print(_("Removing apt.conf configuration..."))
+            #subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf") + '\"')
             # remove dns info
             # remove Xauthority
-            os.popen('rm -f ' + os.path.join(self.customDir, "root/root/.Xauthority"))
+            subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/root/.Xauthority"))
             # remove hosts
-            os.popen('rm -f ' + os.path.join(self.customDir, "root/etc/hosts"))
+            subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/etc/hosts"))
             # umount /tmp
-            print _("Umounting /tmp...")
-            error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/tmp") + '\"')
+            print(_("Umounting /tmp..."))
+            error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/tmp") + '\"')
             if(error != ''):
                 self.suggestReboot('/tmp could not be unmounted. It must be unmounted before you can build an ISO.')
             # remove dns info
-            print _("Removing DNS info...")
-            os.popen('rm -f \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
-            os.popen('ln -s /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+            print(_("Removing DNS info..."))
+            subprocess.getoutput('rm -f \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
+            subprocess.getoutput('ln -s /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             # umount /proc
-            print _("Umounting /proc...")
-            error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/proc/") + '\"')
+            print(_("Umounting /proc..."))
+            error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/proc/") + '\"')
             if(error != ''):
                 self.suggestReboot('/proc could not be unmounted. It must be unmounted before you can build an ISO.')
             # umount /sys
-            print _("Umounting /sys...")
-            error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/sys/") + '\"')
+            print(_("Umounting /sys..."))
+            error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/sys/") + '\"')
             if(error != ''):
                 self.suggestReboot('/sys could not be unmounted. It must be unmounted before you can build an ISO.')
             # umount devpts
-            print _("Umounting devpts...")
-            error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
+            print(_("Umounting devpts..."))
+            error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
             if(error != ''):
                 self.suggestReboot('/dev/pts could not be unmounted. It must be unmounted before you can build an ISO.')
             # umount /dev
-            print _("Umounting /dev...")
-            error = commands.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/dev/") + '\"')
+            print(_("Umounting /dev..."))
+            error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/dev/") + '\"')
             if(error != ''):
                 self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
             # remove temp script
-            os.popen('rm -Rf /tmp/xephyr-chroot.sh')
+            subprocess.getoutput('rm -Rf /tmp/xephyr-chroot.sh')
             # startx complains about suspicious activity sometimes:P
-            os.popen('rm -Rf ' + os.path.join(self.customDir, "root/tmp/.X11-unix") )
+            subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/tmp/.X11-unix") )
             # return the display to :0
-            os.popen('export DISPLAY=:0')
+            subprocess.getoutput('export DISPLAY=:0')
             # close the Xephyr window if it is still open
-            os.popen('pkill Xephyr')
+            subprocess.getoutput('pkill Xephyr')
 
-            print _("/etc/skel was not customized!")
+            print(_("/etc/skel was not customized!"))
             errText = _('Error launching chrooted Xephyr: ')
-            print errText, detail
+            print(errText, detail)
             pass
 
         return
@@ -2710,21 +2722,21 @@ class Reconstructor:
                 for l in f:
                     if reUsername.search(l) != None:
                         if username != '':
-                            #print ('Username: ' + l)
+                            #print(('Username: ' + l))
                             usernameText = _('Live CD Username: ')
-                            print usernameText + username
+                            print(usernameText + username)
                             l = 'USERNAME=\"' + username + '\"\n'
                     if reFullname.search(l) != None:
                         if userFullname != '':
-                            #print ('User Full Name: ' + l)
+                            #print(('User Full Name: ' + l))
                             userFullnameText = _('Live CD User Full name: ')
-                            print userFullnameText + userFullname
+                            print(userFullnameText + userFullname)
                             l = 'USERFULLNAME=\"' + userFullname + '\"\n'
                     if reHost.search(l) != None:
                         if hostname != '':
-                            #print ('Hostname: ' + l)
+                            #print(('Hostname: ' + l))
                             hostnameText = _('Live CD Hostname: ')
-                            print hostnameText + hostname
+                            print(hostnameText + hostname)
                             l = 'HOST=\"' + hostname + '\"\n'
 
                     conf += l
@@ -2742,21 +2754,21 @@ class Reconstructor:
                 for l in f:
                     if reUsername.search(l) != None:
                         if username != '':
-                            #print ('Username: ' + l)
+                            #print(('Username: ' + l))
                             usernameText = _('Live CD Username: ')
-                            print usernameText + username
+                            print(usernameText + username)
                             l = 'export USERNAME=\"' + username + '\"\n'
                     if reFullname.search(l) != None:
                         if userFullname != '':
-                            #print ('User Full Name: ' + l)
+                            #print(('User Full Name: ' + l))
                             userFullnameText = _('Live CD User Full name: ')
-                            print userFullnameText + userFullname
+                            print(userFullnameText + userFullname)
                             l = 'export USERFULLNAME=\"' + userFullname + '\"\n'
                     if reHost.search(l) != None:
                         if hostname != '':
-                            #print ('Hostname: ' + l)
+                            #print(('Hostname: ' + l))
                             hostnameText = _('Live CD Hostname: ')
-                            print hostnameText + hostname
+                            print(hostnameText + hostname)
                             l = 'export HOST=\"' + hostname + '\"\n'
 
                     conf += l
@@ -2771,7 +2783,7 @@ class Reconstructor:
                 fc.write(conf)
                 fc.close()
                 # set execute bit for script
-                os.popen('chmod a+x \"' + os.path.join(self.customDir, "initrd/scripts/casper") + '\"')
+                subprocess.getoutput('chmod a+x \"' + os.path.join(self.customDir, "initrd/scripts/casper") + '\"')
             # edgy/feisty/gutsy
             elif self.cdUbuntuVersion == self.edgyVersion or self.cdUbuntuVersion == self.feistyVersion or self.cdUbuntuVersion == self.gutsyVersion or self.cdUbuntuVersion == self.hardyVersion or self.cdUbuntuVersion == self.intrepidVersion or self.cdUbuntuVersion == self.jauntyVersion  or self.cdUbuntuVersion == self.karmicVersion:
                 # re-write new file
@@ -2779,10 +2791,10 @@ class Reconstructor:
                 fc.write(conf)
                 fc.close()
                 # set execute bit for script
-                os.popen('chmod a+x \"' + os.path.join(self.customDir, "initrd/etc/casper.conf") + '\"')
+                subprocess.getoutput('chmod a+x \"' + os.path.join(self.customDir, "initrd/etc/casper.conf") + '\"')
             # unknown
             else:
-                print _('Unknown Ubuntu Version.  Cannot set user/host info.')
+                print(_('Unknown Ubuntu Version.  Cannot set user/host info.'))
 
             # set password
             fp = open(os.path.join(self.customDir, "initrd/scripts/casper-bottom/10adduser"), 'r')
@@ -2793,11 +2805,11 @@ class Reconstructor:
             for l in fp:
                 if rePassword.search(l) != None:
                     if userPassword != '':
-                        #print ('Password: ' + l)
+                        #print(('Password: ' + l))
                         passwordText = _('Setting Live CD Password... ')
-                        print passwordText
-                        #print "DEBUG: Password: " + userPassword + " des Hash: " + commands.getoutput('echo ' + userPassword + ' | mkpasswd -s -H des')
-                        l = 'set passwd/user-password-crypted ' + commands.getoutput('echo ' + userPassword + ' | mkpasswd -s -H des') + '\n'
+                        print(passwordText)
+                        #print("DEBUG: Password: " + userPassword + " des Hash: " + subprocess.getoutput('echo ' + userPassword + ' | mkpasswd -s -H des'))
+                        l = 'set passwd/user-password-crypted ' + subprocess.getoutput('echo ' + userPassword + ' | mkpasswd -s -H des') + '\n'
 
                 conf += l
             # close file
@@ -2808,49 +2820,49 @@ class Reconstructor:
             fpc.write(conf)
             fpc.close()
             # set execute bit for script
-            os.popen('chmod a+x \"' + os.path.join(self.customDir, "initrd/scripts/casper-bottom/10adduser") + '\"')
+            subprocess.getoutput('chmod a+x \"' + os.path.join(self.customDir, "initrd/scripts/casper-bottom/10adduser") + '\"')
 
-        except Exception, detail:
+        except Exception as detail:
             errText = _('Error setting user info: ')
-            print errText, detail
+            print(errText, detail)
             pass
 
     # Burns ISO
     def burnIso(self):
         try:
-            if commands.getoutput('which nautilus-cd-burner') != '':
-                print _('Burning ISO...')
-                os.popen('nautilus-cd-burner --source-iso=\"' + self.buildLiveCdFilename + '\"')
+            if subprocess.getoutput('which nautilus-cd-burner') != '':
+                print(_('Burning ISO...'))
+                subprocess.getoutput('nautilus-cd-burner --source-iso=\"' + self.buildLiveCdFilename + '\"')
             else:
-                print _('Error: nautilus-cd-burner is needed for burning iso files... ')
+                print(_('Error: nautilus-cd-burner is needed for burning iso files... '))
 
-        except Exception, detail:
+        except Exception as detail:
             errText = _('Error burning ISO: ')
-            print errText, detail
+            print(errText, detail)
             pass
 
     def burnAltIso(self):
         try:
-            if commands.getoutput('which nautilus-cd-burner') != '':
-                print _('Burning ISO...')
-                os.popen('nautilus-cd-burner --source-iso=\"' + self.buildAltCdFilename + '\"')
+            if subprocess.getoutput('which nautilus-cd-burner') != '':
+                print(_('Burning ISO...'))
+                subprocess.getoutput('nautilus-cd-burner --source-iso=\"' + self.buildAltCdFilename + '\"')
             else:
-                print _('Error: nautilus-cd-burner is needed for burning iso files... ')
+                print(_('Error: nautilus-cd-burner is needed for burning iso files... '))
 
-        except Exception, detail:
+        except Exception as detail:
             errText = _('Error burning ISO: ')
-            print errText, detail
+            print(errText, detail)
             pass
 
     def loadBootMenuColor(self):
         try:
-            print _("Loading Boot Menu Color...")
+            print(_("Loading Boot Menu Color..."))
             if os.path.exists(os.path.join(self.customDir, "remaster/isolinux/isolinux.cfg")):
-                #color = self.wTree.get_widget("colorbuttonBrowseLiveCdTextColor").get_color()
+                #color = self.builder.get_object("colorbuttonBrowseLiveCdTextColor").get_color()
                 #rgbColor = color.red/255, color.green/255, color.blue/255
                 #hexColor = '%02x%02x%02x' % rgbColor
                 # find text color config line in isolinux.cfg
-                f = file(os.path.join(self.customDir, "remaster/isolinux/isolinux.cfg"), 'r')
+                f = open(os.path.join(self.customDir, "remaster/isolinux/isolinux.cfg"), 'r')
                 color = ''
                 line = ''
                 # config line regex
@@ -2866,20 +2878,20 @@ class Reconstructor:
                 m = r.match(line)
                 if m != None:
                     color = m.group(1)
-                    print _('Live CD Text Color: ') + color
+                    print(_('Live CD Text Color: ') + color)
                     # set colorbutton to color
-                    self.wTree.get_widget("colorbuttonBrowseLiveCdTextColor").set_color(gtk.gdk.color_parse('#' + color))
-        except Exception, detail:
+                    self.builder.get_object("colorbuttonBrowseLiveCdTextColor").set_color(Gdk.color_parse('#' + color))
+        except Exception as detail:
             errText = _("Error getting boot menu color: ")
-            print errText, detail
+            print(errText, detail)
             pass
 
     def loadGdmBackgroundColor(self):
         try:
-            print _("Loading GDM Background Color...")
+            print(_("Loading GDM Background Color..."))
             if os.path.exists(os.path.join(self.customDir, "root/etc/gdm/gdm.conf-custom")):
                 # find text color config line in gdm.conf-custom
-                f = file(os.path.join(self.customDir, "root/etc/gdm/gdm.conf-custom"), 'r')
+                f = open(os.path.join(self.customDir, "root/etc/gdm/gdm.conf-custom"), 'r')
                 color = ''
                 line = ''
                 # config line regex
@@ -2891,10 +2903,10 @@ class Reconstructor:
 
                 f.close()
                 if line == '':
-                    print _('GDM background color not found in gdm.conf-custom. Using gdm.conf...')
+                    print(_('GDM background color not found in gdm.conf-custom. Using gdm.conf...'))
                     # get from gdm.conf
                     # find text color config line in gdm.conf
-                    f = file(os.path.join(self.customDir, "root/etc/gdm/gdm.conf"), 'r')
+                    f = open(os.path.join(self.customDir, "root/etc/gdm/gdm.conf"), 'r')
                     color = ''
                     line = ''
                     # config line regex
@@ -2910,136 +2922,136 @@ class Reconstructor:
                 m = r.match(line)
                 if m != None:
                     color = m.group(1)
-                    print _('GDM Background Color: ') + color
+                    print(_('GDM Background Color: ') + color)
                     # set var & colorbutton to color
                     self.gdmBackgroundColor = color
-                    self.wTree.get_widget("colorbuttonBrowseGdmBackgroundColor").set_color(gtk.gdk.color_parse('#' + color))
+                    self.builder.get_object("colorbuttonBrowseGdmBackgroundColor").set_color(Gdk.color_parse('#' + color))
 
-        except Exception, detail:
+        except Exception as detail:
             errText = _("Error getting GDM background color: ")
-            print errText, detail
+            print(errText, detail)
             pass
 
     # startup optimization
     def optimizeStartup(self):
         try:
-            print _('Optimizing Startup...')
+            print(_('Optimizing Startup...'))
             # HACK: create temp script to set links...
             scr = '#!/bin/sh\n#\n# startup-optimize.sh\n#\t(c) reconstructor team, 2006\n\n'
             # get startup daemons and set accordingly
             # ppp
-            if self.wTree.get_widget("checkbuttonStartupPpp").get_active() == True:
-                print _('Enabling Startup Daemon: ppp')
+            if self.builder.get_object("checkbuttonStartupPpp").get_active() == True:
+                print(_('Enabling Startup Daemon: ppp'))
                 scr += 'cd /etc/rc2.d ; ln -s ../init.d/ppp S14ppp 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc3.d ; ln -s ../init.d/ppp S14ppp 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc4.d ; ln -s ../init.d/ppp S14ppp 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc5.d ; ln -s ../init.d/ppp S14ppp 1>&2 2>/dev/null\n'
             else:
-                print _('Disabling Startup Daemon: ppp')
+                print(_('Disabling Startup Daemon: ppp'))
                 scr += 'rm /etc/rc2.d/S14ppp 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc3.d/S14ppp 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc4.d/S14ppp 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc5.d/S14ppp 1>&2 2>/dev/null\n'
             # hplip
-            if self.wTree.get_widget("checkbuttonStartupHplip").get_active() == True:
-                print _('Enabling Startup Daemon: hplip')
+            if self.builder.get_object("checkbuttonStartupHplip").get_active() == True:
+                print(_('Enabling Startup Daemon: hplip'))
                 scr += 'cd /etc/rc2.d ; ln -s ../init.d/hplip S18hplip 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc3.d ; ln -s ../init.d/hplip S18hplip 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc4.d ; ln -s ../init.d/hplip S18hplip 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc5.d ; ln -s ../init.d/hplip S18hplip 1>&2 2>/dev/null\n'
             else:
-                print _('Disabling Startup Daemon: hplip')
+                print(_('Disabling Startup Daemon: hplip'))
                 scr += 'rm /etc/rc2.d/S18hplip 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc3.d/S18hplip 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc4.d/S18hplip 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc5.d/S18hplip 1>&2 2>/dev/null\n'
             # cupsys
-            if self.wTree.get_widget("checkbuttonStartupCupsys").get_active() == True:
-                print _('Enabling Startup Daemon: cupsys')
+            if self.builder.get_object("checkbuttonStartupCupsys").get_active() == True:
+                print(_('Enabling Startup Daemon: cupsys'))
                 scr += 'cd /etc/rc2.d ; ln -s ../init.d/cupsys S19cupsys 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc3.d ; ln -s ../init.d/cupsys S19cupsys 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc4.d ; ln -s ../init.d/cupsys S19cupsys 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc5.d ; ln -s ../init.d/cupsys S19cupsys 1>&2 2>/dev/null\n'
             else:
-                print _('Disabling Startup Daemon: cupsys')
+                print(_('Disabling Startup Daemon: cupsys'))
                 scr += 'rm /etc/rc2.d/S19cupsys 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc3.d/S19cupsys 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc4.d/S19cupsys 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc5.d/S19cupsys 1>&2 2>/dev/null\n'
             # festival
-            if self.wTree.get_widget("checkbuttonStartupFestival").get_active() == True:
-                print _('Enabling Startup Daemon: festival')
+            if self.builder.get_object("checkbuttonStartupFestival").get_active() == True:
+                print(_('Enabling Startup Daemon: festival'))
                 scr += 'cd /etc/rc2.d ; ln -s ../init.d/festival S20festival 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc3.d ; ln -s ../init.d/festival S20festival 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc4.d ; ln -s ../init.d/festival S20festival 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc5.d ; ln -s ../init.d/festival S20festival 1>&2 2>/dev/null\n'
             else:
-                print _('Disabling Startup Daemon: festival')
+                print(_('Disabling Startup Daemon: festival'))
                 scr += 'rm /etc/rc2.d/S20festival 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc3.d/S20festival 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc4.d/S20festival 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc5.d/S20festival 1>&2 2>/dev/null\n'
             # laptop-mode
-            if self.wTree.get_widget("checkbuttonStartupLaptopMode").get_active() == True:
-                print _('Enabling Startup Daemon: laptop-mode')
+            if self.builder.get_object("checkbuttonStartupLaptopMode").get_active() == True:
+                print(_('Enabling Startup Daemon: laptop-mode'))
                 scr += 'cd /etc/rc2.d ; ln -s ../init.d/laptop-mode S20laptop-mode 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc3.d ; ln -s ../init.d/laptop-mode S20laptop-mode 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc4.d ; ln -s ../init.d/laptop-mode S20laptop-mode 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc5.d ; ln -s ../init.d/laptop-mode S20laptop-mode 1>&2 2>/dev/null\n'
             else:
-                print _('Disabling Startup Daemon: laptop-mode')
+                print(_('Disabling Startup Daemon: laptop-mode'))
                 scr += 'rm /etc/rc2.d/S20laptop-mode 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc3.d/S20laptop-mode 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc4.d/S20laptop-mode 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc5.d/S20laptop-mode 1>&2 2>/dev/null\n'
             # nvidia-kernel
-            if self.wTree.get_widget("checkbuttonStartupNvidiaKernel").get_active() == True:
-                print _('Enabling Startup Daemon: nvidia-kernel')
+            if self.builder.get_object("checkbuttonStartupNvidiaKernel").get_active() == True:
+                print(_('Enabling Startup Daemon: nvidia-kernel'))
                 scr += 'cd /etc/rc2.d ; ln -s ../init.d/nvidia-kernel S20nvidia-kernel 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc3.d ; ln -s ../init.d/nvidia-kernel S20nvidia-kernel 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc4.d ; ln -s ../init.d/nvidia-kernel S20nvidia-kernel 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc5.d ; ln -s ../init.d/nvidia-kernel S20nvidia-kernel 1>&2 2>/dev/null\n'
             else:
-                print _('Disabling Startup Daemon: nvidia-kernel')
+                print(_('Disabling Startup Daemon: nvidia-kernel'))
                 scr += 'rm /etc/rc2.d/S20nvidia-kernel 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc3.d/S20nvidia-kernel 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc4.d/S20nvidia-kernel 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc5.d/S20nvidia-kernel 1>&2 2>/dev/null\n'
             # rsync
-            if self.wTree.get_widget("checkbuttonStartupRsync").get_active() == True:
-                print _('Enabling Startup Daemon: rsync')
+            if self.builder.get_object("checkbuttonStartupRsync").get_active() == True:
+                print(_('Enabling Startup Daemon: rsync'))
                 scr += 'cd /etc/rc2.d ; ln -s ../init.d/rsync S20rsync 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc3.d ; ln -s ../init.d/rsync S20rsync 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc4.d ; ln -s ../init.d/rsync S20rsync 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc5.d ; ln -s ../init.d/rsync S20rsync 1>&2 2>/dev/null\n'
             else:
-                print _('Disabling Startup Daemon: rsync')
+                print(_('Disabling Startup Daemon: rsync'))
                 scr += 'rm /etc/rc2.d/S20rsync 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc3.d/S20rsync 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc4.d/S20rsync 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc5.d/S20rsync 1>&2 2>/dev/null\n'
             # bluez-utils
-            if self.wTree.get_widget("checkbuttonStartupBluezUtils").get_active() == True:
-                print _('Enabling Startup Daemon: bluez-utils')
+            if self.builder.get_object("checkbuttonStartupBluezUtils").get_active() == True:
+                print(_('Enabling Startup Daemon: bluez-utils'))
                 scr += 'cd /etc/rc2.d ; ln -s ../init.d/bluez-utils S25bluez-utils 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc3.d ; ln -s ../init.d/bluez-utils S25bluez-utils 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc4.d ; ln -s ../init.d/bluez-utils S25bluez-utils 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc5.d ; ln -s ../init.d/bluez-utils S25bluez-utils 1>&2 2>/dev/null\n'
             else:
-                print _('Disabling Startup Daemon: bluez-utils')
+                print(_('Disabling Startup Daemon: bluez-utils'))
                 scr += 'rm /etc/rc2.d/S25bluez-utils 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc3.d/S25bluez-utils 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc4.d/S25bluez-utils 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc5.d/S25bluez-utils 1>&2 2>/dev/null\n'
             # mdadm
-            if self.wTree.get_widget("checkbuttonStartupMdadm").get_active() == True:
-                print _('Enabling Startup Daemon: mdadm')
+            if self.builder.get_object("checkbuttonStartupMdadm").get_active() == True:
+                print(_('Enabling Startup Daemon: mdadm'))
                 scr += 'cd /etc/rc2.d ; ln -s ../init.d/mdadm S25mdadm 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc3.d ; ln -s ../init.d/mdadm S25mdadm 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc4.d ; ln -s ../init.d/mdadm S25mdadm 1>&2 2>/dev/null\n'
                 scr += 'cd /etc/rc5.d ; ln -s ../init.d/mdadm S25mdadm 1>&2 2>/dev/null\n'
             else:
-                print _('Disabling Startup Daemon: mdadm')
+                print(_('Disabling Startup Daemon: mdadm'))
                 scr += 'rm /etc/rc2.d/S25mdadm 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc3.d/S25mdadm 1>&2 2>/dev/null\n'
                 scr += 'rm /etc/rc4.d/S25mdadm 1>&2 2>/dev/null\n'
@@ -3050,48 +3062,48 @@ class Reconstructor:
             f=open(os.path.join(self.customDir, "root/tmp/startup-optimize.sh"), 'w')
             f.write(scr)
             f.close()
-            os.popen('chmod a+x \"' + os.path.join(self.customDir, "root/tmp/startup-optimize.sh") + '\"')
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/startup-optimize.sh')
+            subprocess.getoutput('chmod a+x \"' + os.path.join(self.customDir, "root/tmp/startup-optimize.sh") + '\"')
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/startup-optimize.sh')
             # cleanup
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/tmp/startup-optimize.sh") + '\"')
+            subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/tmp/startup-optimize.sh") + '\"')
 
-        except Exception, detail:
+        except Exception as detail:
             self.setDefaultCursor()
             errText = _('Error setting startup daemons: ')
-            print errText, detail
+            print(errText, detail)
             pass
 
     # shutdown optimization
     def optimizeShutdown(self):
         try:
-            print _('Optimizing shutdown scripts...')
+            print(_('Optimizing shutdown scripts...'))
             for s in self.shutdownScripts:
                 # rename script to make inactive
-                os.popen('mv ' + os.path.join(self.customDir, "root/etc/rc0.d/") + 'K' + s + ' ' + os.path.join(self.customDir, "root/etc/rc0.d/") + '_' + s + ' 1>&2 2>/dev/null')
-        except Exception, detail:
+                subprocess.getoutput('mv ' + os.path.join(self.customDir, "root/etc/rc0.d/") + 'K' + s + ' ' + os.path.join(self.customDir, "root/etc/rc0.d/") + '_' + s + ' 1>&2 2>/dev/null')
+        except Exception as detail:
             errText = _('Error optimizing shutdown scripts: ')
-            print errText, detail
+            print(errText, detail)
             pass
 
     # restore original shutdown
     def restoreShutdown(self):
         try:
-            print _('Restoring original shutdown scripts...')
+            print(_('Restoring original shutdown scripts...'))
             for s in self.shutdownScripts:
                 # rename script to make active
-                os.popen('mv ' + os.path.join(self.customDir, "root/etc/rc0.d/") + '_' + s + ' ' + os.path.join(self.customDir, "root/etc/rc0.d/") + 'K' + s + ' 1>&2 2>/dev/null')
+                subprocess.getoutput('mv ' + os.path.join(self.customDir, "root/etc/rc0.d/") + '_' + s + ' ' + os.path.join(self.customDir, "root/etc/rc0.d/") + 'K' + s + ' 1>&2 2>/dev/null')
             # unselect optimization
-            self.wTree.get_widget("checkbuttonOptimizationShutdown").set_active(False)
+            self.builder.get_object("checkbuttonOptimizationShutdown").set_active(False)
             self.setDefaultCursor()
-        except Exception, detail:
+        except Exception as detail:
             self.setDefaultCursor()
             errText = _('Error restoring original shutdown scripts: ')
-            print errText, detail
+            print(errText, detail)
             pass
 
     def loadGdmThemes(self):
         try:
-            print _("Loading GDM Themes...")
+            print(_("Loading GDM Themes..."))
             themesDir = None
             if os.path.exists(os.path.join(self.customDir, "root/usr/share/gdm/themes/")):
                 themesDir = os.path.join(self.customDir, "root/usr/share/gdm/themes/")
@@ -3108,19 +3120,19 @@ class Reconstructor:
                             themes.append(themeItem)
 
             # add items to combobox
-            themeList = gtk.ListStore(gobject.TYPE_STRING)
+            themeList = Gtk.ListStore(GObject.TYPE_STRING)
             for theme in themes:
                 themeList.append([theme])
 
-            self.wTree.get_widget("comboboxentryGnomeGdmTheme").set_model(themeList)
-            self.wTree.get_widget("comboboxentryGnomeGdmTheme").set_text_column(0)
-        except Exception, detail:
+            self.builder.get_object("comboboxentryGnomeGdmTheme").set_model(themeList)
+            self.builder.get_object("comboboxentryGnomeGdmTheme").set_text_column(0)
+        except Exception as detail:
             errText = _("Error loading GDM Themes: ")
-            print errText, detail
+            print(errText, detail)
             pass
     def loadGnomeThemes(self):
         try:
-            print _("Loading Gnome Themes and Icons...")
+            print(_("Loading Gnome Themes and Icons..."))
             themesDir = None
             iconsDir = None
             if os.path.exists(os.path.join(self.customDir, "root/usr/share/themes/")):
@@ -3156,9 +3168,9 @@ class Reconstructor:
                             icons.append(iconItem)
 
             # add items to comboboxes
-            themeList = gtk.ListStore(gobject.TYPE_STRING)
-            borderList = gtk.ListStore(gobject.TYPE_STRING)
-            iconList = gtk.ListStore(gobject.TYPE_STRING)
+            themeList = Gtk.ListStore(GObject.TYPE_STRING)
+            borderList = Gtk.ListStore(GObject.TYPE_STRING)
+            iconList = Gtk.ListStore(GObject.TYPE_STRING)
             for theme in themes:
                 themeList.append([theme])
             for border in borders:
@@ -3166,19 +3178,19 @@ class Reconstructor:
             for icon in icons:
                 iconList.append([icon])
 
-            self.wTree.get_widget("comboboxentryGnomeTheme").set_model(themeList)
-            self.wTree.get_widget("comboboxentryGnomeTheme").set_text_column(0)
-            self.wTree.get_widget("comboboxentryGnomeThemeWindowBorders").set_model(borderList)
-            self.wTree.get_widget("comboboxentryGnomeThemeWindowBorders").set_text_column(0)
-            self.wTree.get_widget("comboboxentryGnomeThemeIcons").set_model(iconList)
-            self.wTree.get_widget("comboboxentryGnomeThemeIcons").set_text_column(0)
-        except Exception, detail:
+            self.builder.get_object("comboboxentryGnomeTheme").set_model(themeList)
+            self.builder.get_object("comboboxentryGnomeTheme").set_text_column(0)
+            self.builder.get_object("comboboxentryGnomeThemeWindowBorders").set_model(borderList)
+            self.builder.get_object("comboboxentryGnomeThemeWindowBorders").set_text_column(0)
+            self.builder.get_object("comboboxentryGnomeThemeIcons").set_model(iconList)
+            self.builder.get_object("comboboxentryGnomeThemeIcons").set_text_column(0)
+        except Exception as detail:
             errText = _("Error loading Gnome themes: ")
-            print errText, detail
+            print(errText, detail)
             pass
 
     def FileSize(self,path):
-        size = 0L
+        size = 0
         for root , dirs, files in os.walk(path, True):
             for name in files:
                 if os.path.exists(os.path.join(root, name)) :
@@ -3192,12 +3204,12 @@ class Reconstructor:
             self.doneTerminal(forceMode=True,silentMode=True,justUmount=False)
 
             # reset current size
-            self.wTree.get_widget("labelSoftwareIsoSize").set_text("")
+            self.builder.get_object("labelSoftwareIsoSize").set_text("")
             totalSize = None
             remasterSize = 0
             rootSize = 0
             squashSize = 0
-            print _('Calculating Live ISO Size...')
+            print(_('Calculating Live ISO Size...'))
             self.showProgress(_('Calculating Live ISO Size...'),0.20)
             yield True
 
@@ -3212,15 +3224,15 @@ class Reconstructor:
             rootSize = self.FileSize(os.path.join(self.customDir, "root/"))
             # divide root size to simulate squash compression
             SoftwareIsoSize = int(round((remasterSize + (rootSize/3.55))/1024))
-            self.wTree.get_widget("labelSoftwareIsoSize").set_text( '~ ' + str(SoftwareIsoSize) + ' MB')
+            self.builder.get_object("labelSoftwareIsoSize").set_text( '~ ' + str(SoftwareIsoSize) + ' MB')
             self.showProgress(_("Finished Calculating Live ISO Size."),0.25)
             #self.setDefaultCursor()
             # set page here - since this is run on a background thread,
             # the next page will show too quickly if set in self.checkPage()
             self.setPage(self.pageLiveCustomize)
-        except Exception, detail:
+        except Exception as detail:
             errText = _("Error calculating estimated iso size: ")
-            print errText, detail
+            print(errText, detail)
             pass
         self.setDefaultCursor()
         yield False
@@ -3228,119 +3240,120 @@ class Reconstructor:
     def calculateAltIsoSize(self):
         try:
             # reset current size
-            self.wTree.get_widget("labelAltIsoSize").set_text("")
+            self.builder.get_object("labelAltIsoSize").set_text("")
             totalSize = None
             remasterSize = 0
-            print _('Calculating Alternate ISO Size...')
+            print(_('Calculating Alternate ISO Size...'))
             self.showProgress(_('Calculating Alternate ISO Size...'))
             yield True
             self.setBusyCursor()
             remasterSize = self.FileSize(os.path.join(self.customDir, self.altRemasterDir))
 
-            self.wTree.get_widget("labelAltIsoSize").set_text( '~ ' + str(int(round(remasterSize/1024))) + ' MB')
+            self.builder.get_object("labelAltIsoSize").set_text( '~ ' + str(int(round(remasterSize/1024))) + ' MB')
             self.setDefaultCursor()
             self.showProgress(_("Finished Calculating Altername ISO Size."),0.35)
             # set page here - since this is run on a background thread,
             # the next page will show too quickly if set in self.checkPage()
             self.setPage(self.pageAltCustomize)
-        except Exception, detail:
+        except Exception as detail:
             errText = _("Error calculating estimated iso size: ")
-            print errText, detail
+            print(errText, detail)
             pass
         self.setDefaultCursor()
         yield False
 
     def startInteractiveEdit(self):
-        print _('Beginning Interactive Editing...')
+        print(_('Beginning Interactive Editing...'))
         # set interactive edit tag
         self.interactiveEdit = True
         # check for template user home directory; create if necessary
-        #print ('useradd -d /home/reconstructor -m -s /bin/bash -p ' + str(os.urandom(8)))
+        #print(('useradd -d /home/reconstructor -m -s /bin/bash -p ' + str(os.urandom(8))))
         if os.path.exists('/home/reconstructor') == False:
             # create user with random password
             password = 'r0714'
-            os.popen('useradd -d /home/reconstructor -s /bin/bash -p ' + password +' reconstructor')
+            subprocess.getoutput('useradd -d /home/reconstructor -s /bin/bash -p ' + password +' reconstructor')
             # create home dir
-            os.popen('mkdir -p /home/reconstructor')
+            subprocess.getoutput('mkdir -p /home/reconstructor')
             # change owner of home
-            os.popen('chown -R reconstructor /home/reconstructor')
+            subprocess.getoutput('chown -R reconstructor /home/reconstructor')
         # launch Xnest in background
         try:
-            print _('Starting Xnest in the background...')
-            os.popen('Xnest :1 -ac -once & 1>&2 2>/dev/null')
-        except Exception, detail:
+            print(_('Starting Xnest in the background...'))
+            subprocess.getoutput('Xnest :1 -ac -once & 1>&2 2>/dev/null')
+        except Exception as detail:
             errXnest = _("Error starting Xnest: ")
-            print errXnest, detail
+            print(errXnest, detail)
             return
         # try to start gnome-session with template user
         try:
-            print _('Starting Gnome-Session....')
-            #os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\" ' + 'su -c \"export DISPLAY=localhost:1 ; gnome-session\" 1>&2 2>/dev/null\"')
-            #os.popen("chroot /home/ehazlett/reconstructor/root \"/tmp/test.sh\"")
-            os.popen('su reconstructor -c \"export DISPLAY=:1 ; gnome-session\" 1>&2 2>/dev/null')
-        except Exception, detail:
+            print(_('Starting Gnome-Session....'))
+            #subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\" ' + 'su -c \"export DISPLAY=localhost:1 ; gnome-session\" 1>&2 2>/dev/null\"')
+            #subprocess.getoutput("chroot /home/ehazlett/reconstructor/root \"/tmp/test.sh\"")
+            subprocess.getoutput('su reconstructor -c \"export DISPLAY=:1 ; gnome-session\" 1>&2 2>/dev/null')
+        except Exception as detail:
             errGnome = _("Error starting Gnome-Session: ")
-            print errGnome, detail
+            print(errGnome, detail)
             return
 
     def clearInteractiveSettings(self):
         try:
-            print _('Clearing Interactive Settings...')
-            print _('Removing \'reconstructor\' user...')
-            os.popen('userdel reconstructor')
-            print _('Removing \'reconstructor\' home directory...')
-            os.popen('rm -Rf /home/reconstructor')
+            print(_('Clearing Interactive Settings...'))
+            print(_('Removing \'reconstructor\' user...'))
+            subprocess.getoutput('userdel reconstructor')
+            print(_('Removing \'reconstructor\' home directory...'))
+            subprocess.getoutput('rm -Rf /home/reconstructor')
             self.setDefaultCursor()
-        except Exception, detail:
+        except Exception as detail:
             self.setDefaultCursor()
             errText = _('Error clearing interactive settings: ')
-            print errText, detail
+            print(errText, detail)
             pass
 
     def getGpgKeyInfo(self):
         # show dialog for key info
-        keyDlg = gtk.Dialog(title="Installation Key", parent=None, flags=0, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))
+        keyDlg = Gtk.Dialog(title="Installation Key", parent=None)
+        keyDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK)
         keyDlg.set_icon_from_file('glade/app.png')
         keyDlg.vbox.set_spacing(10)
-        labelSpc = gtk.Label(" ")
-        keyDlg.vbox.pack_start(labelSpc)
+        labelSpc = Gtk.Label(" ")
+        keyDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
         labelSpc.show()
         infoText = _("<b>GPG Installation Key Information</b>")
-        lblInfo = gtk.Label(infoText)
+        lblInfo = Gtk.Label(infoText)
         lblInfo.set_use_markup(True)
         # email entry
-        hboxEmail = gtk.HBox()
+        hboxEmail = Gtk.HBox()
         emailText = _("Email:")
-        labelEmail = gtk.Label(emailText)
+        labelEmail = Gtk.Label(emailText)
         hboxEmail.pack_start(labelEmail, expand=False, fill=False, padding=5)
-        entryEmail = gtk.Entry()
-        hboxEmail.pack_start(entryEmail, expand=True, fill=True)
+        entryEmail = Gtk.Entry()
+        hboxEmail.pack_start(entryEmail, expand=True, fill=True, padding=0)
         # password entry
-        hboxPassword = gtk.HBox()
+        hboxPassword = Gtk.HBox()
         passText = _("Password:")
-        labelPassword = gtk.Label(passText)
+        labelPassword = Gtk.Label(passText)
         hboxPassword.pack_start(labelPassword, expand=False, fill=False, padding=5)
-        entryPassword = gtk.Entry()
+        entryPassword = Gtk.Entry()
         entryPassword.set_visibility(False)
-        hboxPassword.pack_start(entryPassword, expand=True, fill=True)
+        hboxPassword.pack_start(entryPassword, expand=True, fill=True, padding=0)
         # password confirm entry
-        hboxPasswordConfirm = gtk.HBox()
+        hboxPasswordConfirm = Gtk.HBox()
         passConfirmText = _("Confirm:")
-        labelPasswordConfirm = gtk.Label(passConfirmText)
+        labelPasswordConfirm = Gtk.Label(passConfirmText)
         hboxPasswordConfirm.pack_start(labelPasswordConfirm, expand=False, fill=False, padding=11)
-        entryPasswordConfirm = gtk.Entry()
+        entryPasswordConfirm = Gtk.Entry()
         entryPasswordConfirm.set_visibility(False)
-        hboxPasswordConfirm.pack_start(entryPasswordConfirm, expand=True, fill=True)
+        hboxPasswordConfirm.pack_start(entryPasswordConfirm, expand=True, fill=True, padding=0)
 
-        keyDlg.vbox.pack_start(lblInfo, expand=False, fill=False)
-        #keyDlg.vbox.pack_start(labelEmail)
-        #keyDlg.vbox.pack_start(entryEmail)
-        keyDlg.vbox.pack_start(hboxEmail)
-        keyDlg.vbox.pack_start(hboxPassword)
-        keyDlg.vbox.pack_start(hboxPasswordConfirm)
-        #keyDlg.vbox.pack_start(labelPassword)
-        #keyDlg.vbox.pack_start(entryPassword)
-        #keyDlg.vbox.pack_start(entryPasswordConfirm)
+        keyDlg.vbox.pack_start(lblInfo, expand=False, fill=False, padding=0)
+        #keyDlg.vbox.pack_start(labelEmail, expand=True, fill=True, padding=0)
+        #keyDlg.vbox.pack_start(entryEmail, expand=True, fill=True, padding=0)
+        keyDlg.vbox.pack_start(hboxEmail, expand=True, fill=True, padding=0)
+        keyDlg.vbox.pack_start(hboxPassword, expand=True, fill=True, padding=0)
+        keyDlg.vbox.pack_start(hboxPasswordConfirm, expand=True, fill=True, padding=0)
+        #keyDlg.vbox.pack_start(labelPassword, expand=True, fill=True, padding=0)
+        #keyDlg.vbox.pack_start(entryPassword, expand=True, fill=True, padding=0)
+        #keyDlg.vbox.pack_start(entryPasswordConfirm, expand=True, fill=True, padding=0)
         lblInfo.show()
         labelEmail.show()
         entryEmail.show()
@@ -3353,131 +3366,135 @@ class Reconstructor:
         hboxPasswordConfirm.show()
         response = keyDlg.run()
         info = None
-        if response == gtk.RESPONSE_OK :
+        if response == Gtk.ResponseType.OK :
             if entryPassword.get_text() == entryPasswordConfirm.get_text():
                 info = (entryEmail.get_text(), entryPasswordConfirm.get_text())
             else:
-                print _("Passwords do not match...")
+                print(_("Passwords do not match..."))
         else:
-            print _("GPG generation cancelled...")
+            print(_("GPG generation cancelled..."))
 
         keyDlg.destroy()
         return info
 
     def on_buttonBack_clicked(self, widget):
         # HACK: back pressed so change buttonNext text
-        self.wTree.get_widget("buttonNext").set_label("Next")
+        self.builder.get_object("buttonNext").set_label("Next")
         # HACK: get_current_page() returns after the click, so check for 1 page ahead
         # check for first step; disable if needed
-        if self.wTree.get_widget("notebookWizard").get_current_page() == 1:
-            self.wTree.get_widget("buttonBack").hide()
+        if self.builder.get_object("notebookWizard").get_current_page() == 1:
+            self.builder.get_object("buttonBack").hide()
         # check for disc type and move to proper locations
-        if self.wTree.get_widget("notebookWizard").get_current_page() == self.pageAltSetup:
+        if self.builder.get_object("notebookWizard").get_current_page() == self.pageAltSetup:
             self.setPage(self.pageDiscType)
-        elif self.wTree.get_widget("notebookWizard").get_current_page() == self.pageFinish:
+        elif self.builder.get_object("notebookWizard").get_current_page() == self.pageFinish:
             # on finish page; move to proper disc type build
             if self.discType == "live":
                 self.setPage(self.pageLiveBuild)
             elif self.discType == "alt":
                 self.setPage(self.pageAltBuild)
         else:
-            self.wTree.get_widget("notebookWizard").prev_page()
+            self.builder.get_object("notebookWizard").prev_page()
 
     def on_buttonNext_clicked(self, widget):
-        page = self.wTree.get_widget("notebookWizard").get_current_page()
+        page = self.builder.get_object("notebookWizard").get_current_page()
         # HACK: show back button
-        self.wTree.get_widget("buttonBack").show()
+        self.builder.get_object("buttonBack").show()
         #if (self.checkPage(page)):
-        #    self.wTree.get_widget("notebookWizard").next_page()
+        #    self.builder.get_object("notebookWizard").next_page()
         self.checkPage(page)
 
     def on_buttonBrowseWorkingDir_clicked(self, widget):
         dlgTitle = _('Select Working Directory')
-        workingDlg = gtk.FileChooserDialog(title=dlgTitle, parent=self.wTree.get_widget("windowMain"), action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK), backend=None)
+        workingDlg = Gtk.FileChooserDialog(title=dlgTitle, parent=self.builder.get_object("windowMain"), action=Gtk.FileChooserAction.SELECT_FOLDER)
+        workingDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
         workingDlg.set_uri(os.environ['HOME'] + '/reconstructor')
         response = workingDlg.run()
-        if response == gtk.RESPONSE_OK :
+        if response == Gtk.ResponseType.OK :
             filename = workingDlg.get_current_folder()
-            self.wTree.get_widget("entryWorkingDir").set_text(workingDlg.get_filename())
+            self.builder.get_object("entryWorkingDir").set_text(workingDlg.get_filename())
             self.customDir = workingDlg.get_filename()
             self.readConfig()
             workingDlg.hide()
-        elif response == gtk.RESPONSE_CANCEL :
+        elif response == Gtk.ResponseType.CANCEL :
             workingDlg.destroy()
 
     def on_buttonBrowseIsoFilename_clicked(self, widget):
         # filter only iso files
-        isoFilter = gtk.FileFilter()
+        isoFilter = Gtk.FileFilter()
         isoFilter.set_name("ISO Files (.iso)")
         isoFilter.add_pattern("*.iso")
         # create dialog
         dlgTitle = _('Select Live CD ISO')
-        isoDlg = gtk.FileChooserDialog(title=dlgTitle, parent=self.wTree.get_widget("windowMain"), action=gtk.FILE_CHOOSER_ACTION_OPEN, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK), backend=None)
+        isoDlg = Gtk.FileChooserDialog(title=dlgTitle, parent=self.builder.get_object("windowMain"), action=Gtk.FileChooserAction.OPEN)
+        isoDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
         isoDlg.add_filter(isoFilter)
         isoDlg.set_current_folder(os.environ['HOME'])
         response = isoDlg.run()
-        if response == gtk.RESPONSE_OK :
-            self.wTree.get_widget("entryIsoFilename").set_text(isoDlg.get_filename())
+        if response == Gtk.ResponseType.OK :
+            self.builder.get_object("entryIsoFilename").set_text(isoDlg.get_filename())
             isoDlg.hide()
-        elif response == gtk.RESPONSE_CANCEL :
+        elif response == Gtk.ResponseType.CANCEL :
             isoDlg.destroy()
 
     def on_buttonBrowseLiveCdFilename_clicked(self, widget):
         # filter only iso files
-        isoFilter = gtk.FileFilter()
+        isoFilter = Gtk.FileFilter()
         isoFilter.set_name("ISO Files")
         isoFilter.add_pattern("*.iso")
         # create dialog
         dlgTitle = _('Select Live CD Filename')
-        isoDlg = gtk.FileChooserDialog(title=dlgTitle, parent=self.wTree.get_widget("windowMain"), action=gtk.FILE_CHOOSER_ACTION_SAVE, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_SAVE, gtk.RESPONSE_OK), backend=None)
+        isoDlg = Gtk.FileChooserDialog(title=dlgTitle, parent=self.builder.get_object("windowMain"), action=Gtk.FileChooserAction.SAVE)
+        isoDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_SAVE, Gtk.ResponseType.OK)
         isoDlg.add_filter(isoFilter)
         isoDlg.set_select_multiple(False)
         isoDlg.set_current_folder(os.environ['HOME'])
         response = isoDlg.run()
-        if response == gtk.RESPONSE_OK :
-            self.wTree.get_widget("entryLiveIsoFilename").set_text(isoDlg.get_filename())
+        if response == Gtk.ResponseType.OK :
+            self.builder.get_object("entryLiveIsoFilename").set_text(isoDlg.get_filename())
             isoDlg.hide()
-        elif response == gtk.RESPONSE_CANCEL :
+        elif response == Gtk.ResponseType.CANCEL :
             isoDlg.destroy()
 
     def on_buttonBrowseAltCdFilename_clicked(self, widget):
         # filter only iso files
-        isoFilter = gtk.FileFilter()
+        isoFilter = Gtk.FileFilter()
         isoFilter.set_name("ISO Files")
         isoFilter.add_pattern("*.iso")
         # create dialog
         dlgTitle = _('Select Alternate CD Filename')
-        isoDlg = gtk.FileChooserDialog(title=dlgTitle, parent=self.wTree.get_widget("windowMain"), action=gtk.FILE_CHOOSER_ACTION_SAVE, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_SAVE, gtk.RESPONSE_OK), backend=None)
+        isoDlg = Gtk.FileChooserDialog(title=dlgTitle, parent=self.builder.get_object("windowMain"), action=Gtk.FileChooserAction.SAVE)
+        isoDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_SAVE, Gtk.ResponseType.OK)
         isoDlg.add_filter(isoFilter)
         isoDlg.set_select_multiple(False)
         isoDlg.set_current_folder(os.environ['HOME'])
         response = isoDlg.run()
-        if response == gtk.RESPONSE_OK :
-            self.wTree.get_widget("entryAltBuildIsoFilename").set_text(isoDlg.get_filename())
+        if response == Gtk.ResponseType.OK :
+            self.builder.get_object("entryAltBuildIsoFilename").set_text(isoDlg.get_filename())
             isoDlg.hide()
-        elif response == gtk.RESPONSE_CANCEL :
+        elif response == Gtk.ResponseType.CANCEL :
             isoDlg.destroy()
 
     def on_checkbuttonBuildIso_toggled(self, widget):
-        if self.wTree.get_widget("checkbuttonBuildIso").get_active() == True:
+        if self.builder.get_object("checkbuttonBuildIso").get_active() == True:
             # show filename, description, etc. entry
-            self.wTree.get_widget("tableLiveCd").show()
+            self.builder.get_object("tableLiveCd").show()
         else:
             # hide filename entry
-            self.wTree.get_widget("tableLiveCd").hide()
+            self.builder.get_object("tableLiveCd").hide()
 
     def on_checkbuttonAltBuildIso_toggled(self, widget):
-        if self.wTree.get_widget("checkbuttonAltBuildIso").get_active() == True:
+        if self.builder.get_object("checkbuttonAltBuildIso").get_active() == True:
             # show filename, description, etc. entry
-            self.wTree.get_widget("tableAltCd").show()
+            self.builder.get_object("tableAltCd").show()
         else:
             # hide filename entry
-            self.wTree.get_widget("tableAltCd").hide()
+            self.builder.get_object("tableAltCd").hide()
 
 
     def on_buttonBrowseGnomeDesktopWallpaper_clicked(self, widget):
         # filter only image files
-        imgFilter = gtk.FileFilter()
+        imgFilter = Gtk.FileFilter()
         imgFilter.set_name("Images (.jpg, .png, .bmp)")
         imgFilter.add_pattern("*jpeg")
         imgFilter.add_pattern("*.jpg")
@@ -3485,23 +3502,24 @@ class Reconstructor:
         imgFilter.add_pattern("*.bmp")
         # create dialog
         dlgTitle = _('Select Wallpaper')
-        imgDlg = gtk.FileChooserDialog(title=dlgTitle, parent=self.wTree.get_widget("windowMain"), action=gtk.FILE_CHOOSER_ACTION_OPEN, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK), backend=None)
+        imgDlg = Gtk.FileChooserDialog(title=dlgTitle, parent=self.builder.get_object("windowMain"), action=Gtk.FileChooserAction.OPEN)
+        imgDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
         imgDlg.add_filter(imgFilter)
         imgDlg.set_select_multiple(False)
         response = imgDlg.run()
-        if response == gtk.RESPONSE_OK :
-            self.wTree.get_widget("entryGnomeDesktopWallpaperFilename").set_text(imgDlg.get_filename())
+        if response == Gtk.ResponseType.OK :
+            self.builder.get_object("entryGnomeDesktopWallpaperFilename").set_text(imgDlg.get_filename())
             imgDlg.hide()
-        elif response == gtk.RESPONSE_CANCEL :
+        elif response == Gtk.ResponseType.CANCEL :
             imgDlg.destroy()
 
 
     def on_buttonBrowseGnomeFont_clicked(self, widget):
         # font selection dialog
-        fontDialog = gtk.FontSelectionDialog(title="Select Font")
+        fontDialog = Gtk.FontSelectionDialog(title="Select Font")
         response = fontDialog.run()
-        if response == gtk.RESPONSE_OK :
-            self.wTree.get_widget("labelGnomeDesktopApplicationFontValue").set_text(fontDialog.get_font_name())
+        if response == Gtk.ResponseType.OK :
+            self.builder.get_object("labelGnomeDesktopApplicationFontValue").set_text(fontDialog.get_font_name())
             fontDialog.destroy()
         else:
             fontDialog.destroy()
@@ -3509,10 +3527,10 @@ class Reconstructor:
     def on_buttonBrowseGnomeDocumentFont_clicked(self, widget):
         # font selection dialog
         dlgTitle = _('Select Font')
-        fontDialog = gtk.FontSelectionDialog(title=dlgTitle)
+        fontDialog = Gtk.FontSelectionDialog(title=dlgTitle)
         response = fontDialog.run()
-        if response == gtk.RESPONSE_OK :
-            self.wTree.get_widget("labelGnomeDesktopDocumentFontValue").set_text(fontDialog.get_font_name())
+        if response == Gtk.ResponseType.OK :
+            self.builder.get_object("labelGnomeDesktopDocumentFontValue").set_text(fontDialog.get_font_name())
             fontDialog.destroy()
         else:
             fontDialog.destroy()
@@ -3520,10 +3538,10 @@ class Reconstructor:
     def on_buttonBrowseGnomeDesktopFont_clicked(self, widget):
         # font selection dialog
         dlgTitle = _('Select Font')
-        fontDialog = gtk.FontSelectionDialog(title=dlgTitle)
+        fontDialog = Gtk.FontSelectionDialog(title=dlgTitle)
         response = fontDialog.run()
-        if response == gtk.RESPONSE_OK :
-            self.wTree.get_widget("labelGnomeDesktopFontValue").set_text(fontDialog.get_font_name())
+        if response == Gtk.ResponseType.OK :
+            self.builder.get_object("labelGnomeDesktopFontValue").set_text(fontDialog.get_font_name())
             fontDialog.destroy()
         else:
             fontDialog.destroy()
@@ -3531,10 +3549,10 @@ class Reconstructor:
     def on_buttonBrowseGnomeDesktopTitleBarFont_clicked(self, widget):
         # font selection dialog
         dlgTitle = _('Select Font')
-        fontDialog = gtk.FontSelectionDialog(title=dlgTitle)
+        fontDialog = Gtk.FontSelectionDialog(title=dlgTitle)
         response = fontDialog.run()
-        if response == gtk.RESPONSE_OK :
-            self.wTree.get_widget("labelGnomeDesktopTitleBarFontValue").set_text(fontDialog.get_font_name())
+        if response == Gtk.ResponseType.OK :
+            self.builder.get_object("labelGnomeDesktopTitleBarFontValue").set_text(fontDialog.get_font_name())
             fontDialog.destroy()
         else:
             fontDialog.destroy()
@@ -3542,178 +3560,183 @@ class Reconstructor:
     def on_buttonBrowseGnomeFixedFont_clicked(self, widget):
         # font selection dialog
         dlgTitle = _('Select Font')
-        fontDialog = gtk.FontSelectionDialog(title=dlgTitle)
+        fontDialog = Gtk.FontSelectionDialog(title=dlgTitle)
         response = fontDialog.run()
-        if response == gtk.RESPONSE_OK :
-            self.wTree.get_widget("labelGnomeDesktopFixedFontValue").set_text(fontDialog.get_font_name())
+        if response == Gtk.ResponseType.OK :
+            self.builder.get_object("labelGnomeDesktopFixedFontValue").set_text(fontDialog.get_font_name())
             fontDialog.destroy()
         else:
             fontDialog.destroy()
 
     def on_buttonImportGnomeTheme_clicked(self, widget):
-        print _("Importing Theme...")
+        print(_("Importing Theme..."))
         # filter only tar.gz files
-        dlgFilter = gtk.FileFilter()
+        dlgFilter = Gtk.FileFilter()
         dlgFilter.set_name("Archives (.tar.gz, .tar.bz2)")
         dlgFilter.add_pattern("*tar.gz")
         dlgFilter.add_pattern("*tar.bz2")
         # create dialog
         dlgTitle = _('Select Theme Package')
-        dlg = gtk.FileChooserDialog(title=dlgTitle, parent=self.wTree.get_widget("windowMain"), action=gtk.FILE_CHOOSER_ACTION_OPEN, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK), backend=None)
+        dlg = Gtk.FileChooserDialog(title=dlgTitle, parent=self.builder.get_object("windowMain"), action=Gtk.FileChooserAction.OPEN)
+        dlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
         dlg.add_filter(dlgFilter)
         dlg.set_select_multiple(False)
         response = dlg.run()
-        if response == gtk.RESPONSE_OK :
+        if response == Gtk.ResponseType.OK :
             # extract theme into root
             # check for bzip or gzip
             fname, ext = os.path.splitext(dlg.get_filename())
             if ext == ".gz":
                 # gzip
-                os.popen('tar zxf \"' + dlg.get_filename() + '\" -C \"' + os.path.join(self.customDir, "root/usr/share/themes/") + '\"')
+                subprocess.getoutput('tar zxf \"' + dlg.get_filename() + '\" -C \"' + os.path.join(self.customDir, "root/usr/share/themes/") + '\"')
             elif ext == ".bz2":
                 # bzip
-                os.popen('tar jxf \"' + dlg.get_filename() + '\" -C \"' + os.path.join(self.customDir, "root/usr/share/themes/") + '\"')
+                subprocess.getoutput('tar jxf \"' + dlg.get_filename() + '\" -C \"' + os.path.join(self.customDir, "root/usr/share/themes/") + '\"')
 
             # reload gnome themes
             self.loadGnomeThemes()
             dlg.hide()
-        elif response == gtk.RESPONSE_CANCEL :
-            print _("Import Cancelled...")
+        elif response == Gtk.ResponseType.CANCEL :
+            print(_("Import Cancelled..."))
             dlg.destroy()
 
     def on_buttonImportGnomeThemeIcons_clicked(self, widget):
-        print _("Importing Icons...")
+        print(_("Importing Icons..."))
         # filter only tar.gz files
-        dlgFilter = gtk.FileFilter()
+        dlgFilter = Gtk.FileFilter()
         dlgFilter.set_name("Archives (.tar.gz, .tar.bz2)")
         dlgFilter.add_pattern("*tar.gz")
         dlgFilter.add_pattern("*tar.bz2")
         # create dialog
         dlgTitle = _('Select Icon Package')
-        dlg = gtk.FileChooserDialog(title=dlgTitle, parent=self.wTree.get_widget("windowMain"), action=gtk.FILE_CHOOSER_ACTION_OPEN, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK), backend=None)
+        dlg = Gtk.FileChooserDialog(title=dlgTitle, parent=self.builder.get_object("windowMain"), action=Gtk.FileChooserAction.OPEN)
+        dlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
         dlg.add_filter(dlgFilter)
         dlg.set_select_multiple(False)
         response = dlg.run()
-        if response == gtk.RESPONSE_OK :
+        if response == Gtk.ResponseType.OK :
             # extract theme into root
             # check for bzip or gzip
             fname, ext = os.path.splitext(dlg.get_filename())
             if ext == ".gz":
                 # gzip
-                os.popen('tar zxf \"' + dlg.get_filename() + '\" -C \"' + os.path.join(self.customDir, "root/usr/share/icons/") + '\"')
+                subprocess.getoutput('tar zxf \"' + dlg.get_filename() + '\" -C \"' + os.path.join(self.customDir, "root/usr/share/icons/") + '\"')
             elif ext == ".bz2":
                 # bzip
-                os.popen('tar jxf \"' + dlg.get_filename() + '\" -C \"' + os.path.join(self.customDir, "root/usr/share/icons/") + '\"')
+                subprocess.getoutput('tar jxf \"' + dlg.get_filename() + '\" -C \"' + os.path.join(self.customDir, "root/usr/share/icons/") + '\"')
 
             # reload gnome themes
             self.loadGnomeThemes()
             dlg.hide()
-        elif response == gtk.RESPONSE_CANCEL :
-            print _("Import Cancelled...")
+        elif response == Gtk.ResponseType.CANCEL :
+            print(_("Import Cancelled..."))
             dlg.destroy()
 
     def on_buttonImportGdmTheme_clicked(self, widget):
-        print _("Importing GDM Theme...")
+        print(_("Importing GDM Theme..."))
         # filter only tar.gz files
-        dlgFilter = gtk.FileFilter()
+        dlgFilter = Gtk.FileFilter()
         dlgFilter.set_name("Archives (.tar.gz, .tar.bz2)")
         dlgFilter.add_pattern("*tar.gz")
         dlgFilter.add_pattern("*tar.bz2")
         # create dialog
         dlgTitle = _('Select GDM Theme Package')
-        dlg = gtk.FileChooserDialog(title=dlgTitle, parent=self.wTree.get_widget("windowMain"), action=gtk.FILE_CHOOSER_ACTION_OPEN, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK), backend=None)
+        dlg = Gtk.FileChooserDialog(title=dlgTitle, parent=self.builder.get_object("windowMain"), action=Gtk.FileChooserAction.OPEN)
+        dlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
         dlg.add_filter(dlgFilter)
         dlg.set_select_multiple(False)
         response = dlg.run()
-        if response == gtk.RESPONSE_OK :
+        if response == Gtk.ResponseType.OK :
             # extract theme into root
             # check for bzip or gzip
             fname, ext = os.path.splitext(dlg.get_filename())
             if ext == ".gz":
                 # gzip
-                os.popen('tar zxf \"' + dlg.get_filename() + '\" -C \"' + os.path.join(self.customDir, "root/usr/share/gdm/themes/") + '\"')
+                subprocess.getoutput('tar zxf \"' + dlg.get_filename() + '\" -C \"' + os.path.join(self.customDir, "root/usr/share/gdm/themes/") + '\"')
             elif ext == ".bz2":
                 # bzip
-                os.popen('tar jxf \"' + dlg.get_filename() + '\" -C \"' + os.path.join(self.customDir, "root/usr/share/gdm/themes/") + '\"')
+                subprocess.getoutput('tar jxf \"' + dlg.get_filename() + '\" -C \"' + os.path.join(self.customDir, "root/usr/share/gdm/themes/") + '\"')
             # reload gnome themes
             self.loadGdmThemes()
             dlg.hide()
-        elif response == gtk.RESPONSE_CANCEL :
-            print _("Import Cancelled...")
+        elif response == Gtk.ResponseType.CANCEL :
+            print(_("Import Cancelled..."))
             dlg.destroy()
 
     def on_buttonSoftwareApply_clicked(self, widget):
         # customize distro
-        warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))
+        warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+        warnDlg.add_buttons(Gtk.STOCK_NO, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK)
         warnDlg.set_icon_from_file(self.iconFile)
         warnDlg.vbox.set_spacing(10)
-        labelSpc = gtk.Label(" ")
-        warnDlg.vbox.pack_start(labelSpc)
+        labelSpc = Gtk.Label(" ")
+        warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
         labelSpc.show()
         lblContinueText = _("  <b>Continue?</b>  ")
         lblContinueInfo = _("     This may take a few minutes.  Please wait...     ")
-        label = gtk.Label(lblContinueText)
-        lblInfo = gtk.Label(lblContinueInfo)
+        label = Gtk.Label(lblContinueText)
+        lblInfo = Gtk.Label(lblContinueInfo)
         label.set_use_markup(True)
-        warnDlg.vbox.pack_start(label)
-        warnDlg.vbox.pack_start(lblInfo)
+        warnDlg.vbox.pack_start(label, expand=True, fill=True, padding=0)
+        warnDlg.vbox.pack_start(lblInfo, expand=True, fill=True, padding=0)
         lblInfo.show()
         label.show()
         #warnDlg.show()
         response = warnDlg.run()
-        if response == gtk.RESPONSE_OK:
+        if response == Gtk.ResponseType.OK:
             warnDlg.destroy()
             self.setBusyCursor()
-            gobject.idle_add(self.customize)
-            gobject.idle_add(self.calculateIsoSize().next)
+            GLib.idle_add(self.customize)
+            self.run_generator(self.calculateIsoSize)
         else:
             warnDlg.destroy()
 
     def on_buttonSoftwareCalculateIsoSize_clicked(self, widget):
         self.setBusyCursor()
-        gobject.idle_add(self.calculateIsoSize().next)
+        self.run_generator(self.calculateIsoSize)
 
     def on_buttonAltIsoCalculate_clicked(self, widget):
         self.setBusyCursor()
-        gobject.idle_add(self.calculateAltIsoSize().next)
+        self.run_generator(self.calculateAltIsoSize)
 
     def on_buttonInteractiveEditLaunch_clicked(self, widget):
         self.startInteractiveEdit()
 
     def on_buttonInteractiveClear_clicked(self, widget):
-        warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))
+        warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+        warnDlg.add_buttons(Gtk.STOCK_NO, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK)
         warnDlg.set_icon_from_file(self.iconFile)
         warnDlg.vbox.set_spacing(10)
-        labelSpc = gtk.Label(" ")
-        warnDlg.vbox.pack_start(labelSpc)
+        labelSpc = Gtk.Label(" ")
+        warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
         labelSpc.show()
         lblContinueText = _("  <b>Delete?</b>  ")
-        label = gtk.Label(lblContinueText)
+        label = Gtk.Label(lblContinueText)
         label.set_use_markup(True)
-        warnDlg.vbox.pack_start(label)
+        warnDlg.vbox.pack_start(label, expand=True, fill=True, padding=0)
         label.show()
         #warnDlg.show()
         response = warnDlg.run()
-        if response == gtk.RESPONSE_OK:
+        if response == Gtk.ResponseType.OK:
             warnDlg.destroy()
             self.setBusyCursor()
             # clear settings
-            gobject.idle_add(self.clearInteractiveSettings)
+            GLib.idle_add(self.clearInteractiveSettings)
         else:
             warnDlg.destroy()
 
 
     def on_buttonOptimizeShutdownRestore_clicked(self, widget):
         self.setBusyCursor()
-        gobject.idle_add(self.restoreShutdown)
+        GLib.idle_add(self.restoreShutdown)
 
     def on_checkbuttonOptimizationStartupEnable_toggled(self, widget):
-        if self.wTree.get_widget("checkbuttonOptimizationStartupEnable").get_active() == True:
-            self.wTree.get_widget("labelOptimizationStartupInfo").show()
-            self.wTree.get_widget("tableOptimizationStartup").show()
+        if self.builder.get_object("checkbuttonOptimizationStartupEnable").get_active() == True:
+            self.builder.get_object("labelOptimizationStartupInfo").show()
+            self.builder.get_object("tableOptimizationStartup").show()
         else:
-            self.wTree.get_widget("labelOptimizationStartupInfo").hide()
-            self.wTree.get_widget("tableOptimizationStartup").hide()
+            self.builder.get_object("labelOptimizationStartupInfo").hide()
+            self.builder.get_object("tableOptimizationStartup").hide()
 
     def on_buttonCustomizeLaunchTerminal_clicked(self, widget):
         self.launchTerminal()
@@ -3729,28 +3752,29 @@ class Reconstructor:
         elif self.discType == 'alt':
             self.burnAltIso()
         else:
-            print _("Error: Cannot burn iso... Unknown disc type...")
+            print(_("Error: Cannot burn iso... Unknown disc type..."))
 
     def on_buttonCheckUpdates_clicked(self, widget):
         self.setBusyCursor()
-        gobject.idle_add(self.checkForUpdates)
+        GLib.idle_add(self.checkForUpdates)
 
     def on_buttonModulesAddModule_clicked(self, widget):
         # filter only tar.gz files
-        dlgFilter = gtk.FileFilter()
+        dlgFilter = Gtk.FileFilter()
         dlgFilter.set_name("Modules (.rmod)")
         dlgFilter.add_pattern("*.rmod")
         # create dialog
         dlgTitle = _('Select Reconstructor Module')
-        dlg = gtk.FileChooserDialog(title=dlgTitle, parent=self.wTree.get_widget("windowMain"), action=gtk.FILE_CHOOSER_ACTION_OPEN, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK), backend=None)
+        dlg = Gtk.FileChooserDialog(title=dlgTitle, parent=self.builder.get_object("windowMain"), action=Gtk.FileChooserAction.OPEN)
+        dlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
         dlg.add_filter(dlgFilter)
         dlg.set_select_multiple(False)
         response = dlg.run()
-        if response == gtk.RESPONSE_OK :
+        if response == Gtk.ResponseType.OK :
             self.addModule(dlg.get_filename())
             dlg.destroy()
-        elif response == gtk.RESPONSE_CANCEL :
-            print _("Module installation cancelled...")
+        elif response == Gtk.ResponseType.CANCEL :
+            print(_("Module installation cancelled..."))
             dlg.destroy()
 
     def on_buttonModulesViewModule_clicked(self, widget, treeview):
@@ -3772,23 +3796,24 @@ class Reconstructor:
         # check for valid module and update
         if modPath != None:
             self.setBusyCursor()
-            gobject.idle_add(self.updateModule, modName, modVersion, modPath, modUpdateUrl, treeview)
+            GLib.idle_add(self.updateModule, modName, modVersion, modPath, modUpdateUrl, treeview)
 
     def on_buttonModulesClearRunOnBoot_clicked(self, widget):
-        warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_YES, gtk.RESPONSE_OK))
+        warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+        warnDlg.add_buttons(Gtk.STOCK_NO, Gtk.ResponseType.CANCEL, Gtk.STOCK_YES, Gtk.ResponseType.OK)
         warnDlg.set_icon_from_file(self.iconFile)
         warnDlg.vbox.set_spacing(10)
-        labelSpc = gtk.Label(" ")
-        warnDlg.vbox.pack_start(labelSpc)
+        labelSpc = Gtk.Label(" ")
+        warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
         labelSpc.show()
         lblContinueText = _("  <b>Clear all run on boot modules?</b>  ")
-        label = gtk.Label(lblContinueText)
+        label = Gtk.Label(lblContinueText)
         label.set_use_markup(True)
-        warnDlg.vbox.pack_start(label)
+        warnDlg.vbox.pack_start(label, expand=True, fill=True, padding=0)
         label.show()
         #warnDlg.show()
         response = warnDlg.run()
-        if response == gtk.RESPONSE_OK:
+        if response == Gtk.ResponseType.OK:
             warnDlg.destroy()
             # clear run on boot modules
             self.clearRunOnBootModules()
@@ -3797,324 +3822,334 @@ class Reconstructor:
 
     def on_buttonBrowseAltWorkingDir_clicked(self, widget):
         dlgTitle = _('Select Working Directory')
-        workingDlg = gtk.FileChooserDialog(title=dlgTitle, parent=self.wTree.get_widget("windowMain"), action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK), backend=None)
+        workingDlg = Gtk.FileChooserDialog(title=dlgTitle, parent=self.builder.get_object("windowMain"), action=Gtk.FileChooserAction.SELECT_FOLDER)
+        workingDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
         workingDlg.set_uri(os.environ['HOME'] + '/reconstructor')
         response = workingDlg.run()
-        if response == gtk.RESPONSE_OK :
+        if response == Gtk.ResponseType.OK :
             filename = workingDlg.get_current_folder()
-            self.wTree.get_widget("entryAltWorkingDir").set_text(workingDlg.get_filename())
+            self.builder.get_object("entryAltWorkingDir").set_text(workingDlg.get_filename())
             workingDlg.hide()
-        elif response == gtk.RESPONSE_CANCEL :
+        elif response == Gtk.ResponseType.CANCEL :
             workingDlg.destroy()
 
     def on_buttonBrowseAltIsoFilename_clicked(self, widget):
         # filter only iso files
-        isoFilter = gtk.FileFilter()
+        isoFilter = Gtk.FileFilter()
         isoFilter.set_name("ISO Files (.iso)")
         isoFilter.add_pattern("*.iso")
         # create dialog
         dlgTitle = _('Select Alternate CD ISO')
-        isoDlg = gtk.FileChooserDialog(title=dlgTitle, parent=self.wTree.get_widget("windowMain"), action=gtk.FILE_CHOOSER_ACTION_OPEN, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK), backend=None)
+        isoDlg = Gtk.FileChooserDialog(title=dlgTitle, parent=self.builder.get_object("windowMain"), action=Gtk.FileChooserAction.OPEN)
+        isoDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
         isoDlg.add_filter(isoFilter)
         isoDlg.set_current_folder(os.environ['HOME'])
         response = isoDlg.run()
-        if response == gtk.RESPONSE_OK :
-            self.wTree.get_widget("entryAltIsoFilename").set_text(isoDlg.get_filename())
+        if response == Gtk.ResponseType.OK :
+            self.builder.get_object("entryAltIsoFilename").set_text(isoDlg.get_filename())
             isoDlg.hide()
-        elif response == gtk.RESPONSE_CANCEL :
+        elif response == Gtk.ResponseType.CANCEL :
             isoDlg.destroy()
 
     def on_checkbuttonAltCreateRemasterDir_clicked(self, widget):
-        if self.wTree.get_widget("checkbuttonAltCreateRemasterDir").get_active() == True:
-            self.wTree.get_widget("hboxAltBase").set_sensitive(True)
+        if self.builder.get_object("checkbuttonAltCreateRemasterDir").get_active() == True:
+            self.builder.get_object("hboxAltBase").set_sensitive(True)
         else:
-            self.wTree.get_widget("hboxAltBase").set_sensitive(False)
+            self.builder.get_object("hboxAltBase").set_sensitive(False)
     def on_buttonAptRepoImportGpgKey_clicked(self, widget):
         # filter only iso files
-        gpgFilter = gtk.FileFilter()
+        gpgFilter = Gtk.FileFilter()
         gpgFilter.set_name("GPG Key Files (.gpg, .key)")
         gpgFilter.add_pattern("*.gpg")
         # create dialog
         dlgTitle = _('Select GPG Key File')
-        gpgDlg = gtk.FileChooserDialog(title=dlgTitle, parent=self.wTree.get_widget("windowMain"), action=gtk.FILE_CHOOSER_ACTION_OPEN, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK), backend=None)
+        gpgDlg = Gtk.FileChooserDialog(title=dlgTitle, parent=self.builder.get_object("windowMain"), action=Gtk.FileChooserAction.OPEN)
+        gpgDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
         gpgDlg.add_filter(gpgFilter)
         gpgDlg.set_current_folder(os.environ['HOME'])
         response = gpgDlg.run()
-        if response == gtk.RESPONSE_OK :
-            print _('Importing GPG Key...')
+        if response == Gtk.ResponseType.OK :
+            print(_('Importing GPG Key...'))
             try:
-                os.popen('cp -Rf \"' + gpgDlg.get_filename() + '\" \"' + os.path.join(self.customDir, "root") + '/tmp/apt_key.gpg\"')
-                os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-key add /tmp/apt_key.gpg')
-                os.popen('rm -Rf \"' + os.path.join(self.customDir, "root") + '/tmp/apt_key.gpg\"')
-                print _('GPG Key successfully imported...')
-            except Exception, detail:
+                subprocess.getoutput('cp -Rf \"' + gpgDlg.get_filename() + '\" \"' + os.path.join(self.customDir, "root") + '/tmp/apt_key.gpg\"')
+                subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-key add /tmp/apt_key.gpg')
+                subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root") + '/tmp/apt_key.gpg\"')
+                print(_('GPG Key successfully imported...'))
+            except Exception as detail:
                 errImport = _('Error importing GPG key: ')
-                print errImport, detail
+                print(errImport, detail)
                 pass
             gpgDlg.hide()
-        elif response == gtk.RESPONSE_CANCEL :
+        elif response == Gtk.ResponseType.CANCEL :
             gpgDlg.destroy()
 
     def on_buttonAltPackagesImportGpgKey_clicked(self, widget):
         # filter only iso files
-        gpgFilter = gtk.FileFilter()
+        gpgFilter = Gtk.FileFilter()
         gpgFilter.set_name("GPG Key Files (.gpg, .key)")
         gpgFilter.add_pattern("*.gpg")
         # create dialog
         dlgTitle = _('Select GPG Key File')
-        gpgDlg = gtk.FileChooserDialog(title=dlgTitle, parent=self.wTree.get_widget("windowMain"), action=gtk.FILE_CHOOSER_ACTION_OPEN, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK), backend=None)
+        gpgDlg = Gtk.FileChooserDialog(title=dlgTitle, parent=self.builder.get_object("windowMain"), action=Gtk.FileChooserAction.OPEN)    
+        gpgDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
         gpgDlg.add_filter(gpgFilter)
         gpgDlg.set_current_folder(os.environ['HOME'])
         response = gpgDlg.run()
-        if response == gtk.RESPONSE_OK :
-            print _('Importing GPG Key...')
+        if response == Gtk.ResponseType.OK :
+            print(_('Importing GPG Key...'))
             try:
-                os.popen('apt-key add \"' + gpgDlg.get_filename() + '\"')
-                print _('GPG Key successfully imported...')
-            except Exception, detail:
+                subprocess.getoutput('apt-key add \"' + gpgDlg.get_filename() + '\"')
+                print(_('GPG Key successfully imported...'))
+            except Exception as detail:
                 errImport = _('Error importing GPG key: ')
-                print errImport, detail
+                print(errImport, detail)
                 pass
             gpgDlg.hide()
-        elif response == gtk.RESPONSE_CANCEL :
+        elif response == Gtk.ResponseType.CANCEL :
             gpgDlg.destroy()
 
     def on_buttonAltPackagesApply_clicked(self, widget):
         # customize alternate
-        warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))
+        warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+        warnDlg.add_buttons(Gtk.STOCK_NO, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK)
         warnDlg.set_icon_from_file(self.iconFile)
         warnDlg.vbox.set_spacing(10)
-        labelSpc = gtk.Label(" ")
-        warnDlg.vbox.pack_start(labelSpc)
+        labelSpc = Gtk.Label(" ")
+        warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
         labelSpc.show()
         lblContinueText = _("  <b>Continue?</b>  ")
         lblContinueInfo = _("     This may take a few minutes.  Please wait...     ")
-        label = gtk.Label(lblContinueText)
-        lblInfo = gtk.Label(lblContinueInfo)
+        label = Gtk.Label(lblContinueText)
+        lblInfo = Gtk.Label(lblContinueInfo)
         label.set_use_markup(True)
-        warnDlg.vbox.pack_start(label)
-        warnDlg.vbox.pack_start(lblInfo)
+        warnDlg.vbox.pack_start(label, expand=True, fill=True, padding=0)
+        warnDlg.vbox.pack_start(lblInfo, expand=True, fill=True, padding=0)
         lblInfo.show()
         label.show()
         #warnDlg.show()
         response = warnDlg.run()
-        if response == gtk.RESPONSE_OK:
+        if response == Gtk.ResponseType.OK:
             warnDlg.destroy()
             self.setBusyCursor()
-            gobject.idle_add(self.customizeAlt)
+            GLib.idle_add(self.customizeAlt)
         else:
             warnDlg.destroy()
 
 
     def on_buttonDonate_clicked(self, widget):
         # go to web to donate
-        if commands.getoutput('which firefox') != '':
+        if subprocess.getoutput('which firefox') != '':
             user = os.getlogin()
-            os.popen('su ' + user + ' firefox \"' + self.donateUrl + '\"')
+            subprocess.getoutput('su ' + user + ' firefox \"' + self.donateUrl + '\"')
         else:
-            print _("Cannot find system web browser.  Please copy and paste the following link in your browser.")
-            print self.donateUrl
-            print ""
+            print(_("Cannot find system web browser.  Please copy and paste the following link in your browser."))
+            print(self.donateUrl)
+            print("")
 
     def saveSetupInfo(self):
         # do setup - check and create dirs as needed
-        print _("INFO: Saving working directory information...")
-        self.customDir = self.wTree.get_widget("entryWorkingDir").get_text()
-        self.createRemasterDir = self.wTree.get_widget("checkbuttonCreateRemaster").get_active()
-        self.createCustomRoot = self.wTree.get_widget("checkbuttonCreateRoot").get_active()
-        self.createInitrdRoot = self.wTree.get_widget("checkbuttonCreateInitRd").get_active()
+        print(_("INFO: Saving working directory information..."))
+        self.customDir = self.builder.get_object("entryWorkingDir").get_text()
+        self.createRemasterDir = self.builder.get_object("checkbuttonCreateRemaster").get_active()
+        self.createCustomRoot = self.builder.get_object("checkbuttonCreateRoot").get_active()
+        self.createInitrdRoot = self.builder.get_object("checkbuttonCreateInitRd").get_active()
         # debug
-        print "Custom Directory: " + str(self.customDir)
-        print "Create Remaster Directory: " + str(self.createRemasterDir)
-        print "Create Custom Root: " + str(self.createCustomRoot)
-        print "Create Initrd Root: " + str(self.createInitrdRoot)
+        print("Custom Directory: " + str(self.customDir))
+        print("Create Remaster Directory: " + str(self.createRemasterDir))
+        print("Create Custom Root: " + str(self.createCustomRoot))
+        print("Create Initrd Root: " + str(self.createInitrdRoot))
  
     def saveAltSetupInfo(self):
         # do setup - check and create dirs as needed
-        print _("INFO: Saving working directory information...")
-        self.customDir = self.wTree.get_widget("entryAltWorkingDir").get_text()
-        self.createAltRemasterDir = self.wTree.get_widget("checkbuttonAltCreateRemasterDir").get_active()
-        self.createAltInitrdRoot = self.wTree.get_widget("checkbuttonAltCreateInitrdDir").get_active()
+        print(_("INFO: Saving working directory information..."))
+        self.customDir = self.builder.get_object("entryAltWorkingDir").get_text()
+        self.createAltRemasterDir = self.builder.get_object("checkbuttonAltCreateRemasterDir").get_active()
+        self.createAltInitrdRoot = self.builder.get_object("checkbuttonAltCreateInitrdDir").get_active()
         # debug
-        print "Custom Directory: " + str(self.customDir)
-        print "Create Remaster Directory: " + str(self.createAltRemasterDir)
-        print "Create Initrd Root: " + str(self.createAltInitrdRoot)
+        print("Custom Directory: " + str(self.customDir))
+        print("Create Remaster Directory: " + str(self.createAltRemasterDir))
+        print("Create Initrd Root: " + str(self.createAltInitrdRoot))
 
 
 # ---------- Setup ---------- #
     def setupWorkingDirectory(self):
-        print _("INFO: Setting up working directory...")
+        print(_("INFO: Setting up working directory..."))
         self.showProgress(_("Setting up working directory..."),0.05)
         yield True
         self.setBusyCursor()
         # remaster dir
-        self.isoFilename = self.wTree.get_widget("entryIsoFilename").get_text()
-        print 'ISO File:' + self.isoFilename
+        self.isoFilename = self.builder.get_object("entryIsoFilename").get_text()
+        print('ISO File:' + self.isoFilename)
         if self.createRemasterDir == True:
             # check for existing directories and remove if necessary
             #if os.path.exists(os.path.join(self.customDir, "remaster")):
-            #    print _("INFO: Removing existing Remaster directory...")
-            #    os.popen('rm -Rf \"' + os.path.join(self.customDir, "remaster/") + '\"')
+            #    print(_("INFO: Removing existing Remaster directory..."))
+            #    subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "remaster/") + '\"')
             if os.path.exists(os.path.join(self.customDir, "remaster")) == False:
-                print "INFO: Creating Remaster directory..."
+                print("INFO: Creating Remaster directory...")
                 os.makedirs(os.path.join(self.customDir, "remaster"))
             # check for iso
             if  self.isoFilename == "":
-                mntDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))
+                mntDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+                mntDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK)
                 mntDlg.set_icon_from_file(self.iconFile)
                 mntDlg.vbox.set_spacing(10)
-                labelSpc = gtk.Label(" ")
-                mntDlg.vbox.pack_start(labelSpc)
+                labelSpc = Gtk.Label(" ")
+                mntDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
                 labelSpc.show()
                 lblText = _("  <b>Please insert Ubuntu Live CD and click OK</b>  ")
-                label = gtk.Label(lblText)
+                label = Gtk.Label(lblText)
                 label.set_use_markup(True)
-                mntDlg.vbox.pack_start(label)
+                mntDlg.vbox.pack_start(label, expand=True, fill=True, padding=0)
                 label.show()
                 #warnDlg.show()
                 response = mntDlg.run()
-                if response == gtk.RESPONSE_OK:
-                    print _("Using Live CD for remastering...")
+                if response == Gtk.ResponseType.OK:
+                    print(_("Using Live CD for remastering..."))
                     mntDlg.destroy()
-                    os.popen("mount " + self.mountDir)
+                    subprocess.getoutput("mount " + self.mountDir)
                 else:
                     mntDlg.destroy()
                     self.setDefaultCursor()
                     return
             else:
-                print _("Using ISO for remastering...")
-                os.popen('mount -o loop \"' + self.isoFilename + '\" ' + self.mountDir)
+                print(_("Using ISO for remastering..."))
+                subprocess.getoutput('mount -o loop \"' + self.isoFilename + '\" ' + self.mountDir)
 
-            print _("Copying files...")
+            print(_("Copying files..."))
             self.showProgress(_("Copying files..."),0.06)
             yield True
             # copy remaster files
             self.setBusyCursor()
-            os.popen('rsync -at --del ' + self.mountDir + '/ \"' + os.path.join(self.customDir, "remaster") + '\"')
-            print _("Finished copying files...")
+            subprocess.getoutput('rsync -at --del ' + self.mountDir + '/ \"' + os.path.join(self.customDir, "remaster") + '\"')
+            print(_("Finished copying files..."))
             self.showProgress(_("Finished copying files..."),0.10)
             yield True
             # unmount iso/cd-rom
-            os.popen("umount " + self.mountDir)
+            subprocess.getoutput("umount " + self.mountDir)
         # call doneTerminal to umount all direcotry that mounted
         self.doneTerminal(forceMode=True,silentMode=False,justUmount=False)
         # custom root dir
         if self.createCustomRoot == True:
             #if os.path.exists(os.path.join(self.customDir, "root")):
-            #    print _("INFO: Removing existing Custom Root directory...")
+            #    print(_("INFO: Removing existing Custom Root directory..."))
 
-            #    os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/") + '\"')
+            #    subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/") + '\"')
             if os.path.exists(os.path.join(self.customDir, "root")) == False:
-                print _("INFO: Creating Custom Root directory...")
+                print(_("INFO: Creating Custom Root directory..."))
                 os.makedirs(os.path.join(self.customDir, "root"))
             # check for existing directories and remove if necessary
             if os.path.exists(os.path.join(self.customDir, "tmpsquash")):
-                print _("INFO: Removing existing tmpsquash directory...")
+                print(_("INFO: Removing existing tmpsquash directory..."))
 
-                os.popen('rm -Rf \"' + os.path.join(self.customDir, "tmpsquash") + '\"')
+                subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "tmpsquash") + '\"')
 
             # extract squashfs into custom root
             # check for iso
             if self.isoFilename == "":
-                mntDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))
+                mntDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+                mntDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK)
                 mntDlg.set_icon_from_file(self.iconFile)
                 mntDlg.vbox.set_spacing(10)
-                labelSpc = gtk.Label(" ")
-                mntDlg.vbox.pack_start(labelSpc)
+                labelSpc = Gtk.Label(" ")
+                mntDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
                 labelSpc.show()
                 lblText = _("  <b>Please insert Ubuntu Live CD and click OK</b>  ")
-                label = gtk.Label(lblText)
+                label = Gtk.Label(lblText)
                 label.set_use_markup(True)
-                mntDlg.vbox.pack_start(label)
+                mntDlg.vbox.pack_start(label, expand=True, fill=True, padding=0)
                 label.show()
                 response = mntDlg.run()
-                if response == gtk.RESPONSE_OK:
-                    print _("Using Live CD for squashfs root...")
+                if response == Gtk.ResponseType.OK:
+                    print(_("Using Live CD for squashfs root..."))
                     mntDlg.destroy()
-                    os.popen("mount " + self.mountDir)
+                    subprocess.getoutput("mount " + self.mountDir)
                 else:
                     mntDlg.destroy()
                     self.setDefaultCursor()
                     return
             else:
-                print _("Using ISO for squashfs root...")
-                os.popen('mount -o loop \"' + self.isoFilename + '\" ' + self.mountDir)
+                print(_("Using ISO for squashfs root..."))
+                subprocess.getoutput('mount -o loop \"' + self.isoFilename + '\" ' + self.mountDir)
 
             # copy remaster files
             os.mkdir(os.path.join(self.customDir, "tmpsquash"))
             # mount squashfs root
-            print _("Mounting squashfs...")
-            os.popen('mount -t squashfs -o loop ' + self.mountDir + '/casper/filesystem.squashfs \"' + os.path.join(self.customDir, "tmpsquash") + '\"')
-            print _("Extracting squashfs root...")
+            print(_("Mounting squashfs..."))
+            subprocess.getoutput('mount -t squashfs -o loop ' + self.mountDir + '/casper/filesystem.squashfs \"' + os.path.join(self.customDir, "tmpsquash") + '\"')
+            print(_("Extracting squashfs root..."))
             self.showProgress(_("Extracting squashfs root..."),0.10)
             yield True
             # copy squashfs root
             self.setBusyCursor()
-            os.popen('rsync -at --del \"' + os.path.join(self.customDir, "tmpsquash") + '\"/ \"' + os.path.join(self.customDir, "root/") + '\"')
+            subprocess.getoutput('rsync -at --del \"' + os.path.join(self.customDir, "tmpsquash") + '\"/ \"' + os.path.join(self.customDir, "root/") + '\"')
             # umount tmpsquashfs
-            print _("Unmounting tmpsquash...")
-            os.popen('umount -lf \"' + os.path.join(self.customDir, "tmpsquash") + '\"')
+            print(_("Unmounting tmpsquash..."))
+            subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "tmpsquash") + '\"')
             # umount cdrom
-            print _("Unmounting cdrom...")
-            os.popen("umount -lf " + self.mountDir)
+            print(_("Unmounting cdrom..."))
+            subprocess.getoutput("umount -lf " + self.mountDir)
             # remove tmpsquash
-            print _("Removing tmpsquash...")
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "tmpsquash") + '\"')
+            print(_("Removing tmpsquash..."))
+            subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "tmpsquash") + '\"')
             # set proper permissions - MUST DO WITH UBUNTU
-            print _("Setting proper permissions...")
-            os.popen('chmod 6755 \"' + os.path.join(self.customDir, "root/usr/bin/sudo") + '\"')
-            os.popen('chmod 0440 \"' + os.path.join(self.customDir, "root/etc/sudoers") + '\"')
-     	    print _("Checking chroot kernel file if exists...")
+            print(_("Setting proper permissions..."))
+            subprocess.getoutput('chmod 6755 \"' + os.path.join(self.customDir, "root/usr/bin/sudo") + '\"')
+            subprocess.getoutput('chmod 0440 \"' + os.path.join(self.customDir, "root/etc/sudoers") + '\"')
+            print(_("Checking chroot kernel file if exists..."))
             self.CheckChrootKernel()
-            print _("Finished extracting squashfs root...")
+            print(_("Finished extracting squashfs root..."))
             self.showProgress(_("Finished extracting squashfs root..."),0.18)
             yield True
         # initrd dir
         if self.createInitrdRoot == True:
             if os.path.exists(os.path.join(self.customDir, "initrd")):
-                print _("INFO: Removing existing Initrd directory...")
-                os.popen('rm -Rf \"' + os.path.join(self.customDir, "initrd/") + '\"')
-            print _("INFO: Creating Initrd directory...")
+                print(_("INFO: Removing existing Initrd directory..."))
+                subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "initrd/") + '\"')
+            print(_("INFO: Creating Initrd directory..."))
             os.makedirs(os.path.join(self.customDir, "initrd"))
             # check for iso
             if self.isoFilename == "":
-                mntDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))
+                mntDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+                mntDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK)
                 mntDlg.set_icon_from_file(self.iconFile)
                 mntDlg.vbox.set_spacing(10)
-                labelSpc = gtk.Label(" ")
-                mntDlg.vbox.pack_start(labelSpc)
+                labelSpc = Gtk.Label(" ")
+                mntDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
                 labelSpc.show()
                 lblText = _("  <b>Please insert Ubuntu Live CD and click OK</b>  ")
-                label = gtk.Label(lblText)
+                label = Gtk.Label(lblText)
                 label.set_use_markup(True)
-                mntDlg.vbox.pack_start(label)
+                mntDlg.vbox.pack_start(label, expand=True, fill=True, padding=0)
                 label.show()
                 response = mntDlg.run()
-                if response == gtk.RESPONSE_OK:
-                    print _("Using Live CD for initrd...")
+                if response == Gtk.ResponseType.OK:
+                    print(_("Using Live CD for initrd..."))
                     mntDlg.destroy()
-                    os.popen("mount " + self.mountDir)
+                    subprocess.getoutput("mount " + self.mountDir)
                 else:
                     mntDlg.destroy()
                     self.setDefaultCursor()
                     yield False
             else:
-                print _("Using ISO for initrd...")
-                os.popen('mount -o loop \"' + self.isoFilename + '\" ' + self.mountDir)
+                print(_("Using ISO for initrd..."))
+                subprocess.getoutput('mount -o loop \"' + self.isoFilename + '\" ' + self.mountDir)
 
             # extract initrd
-            print _("Extracting Initial Ram Disk (initrd)...")
+            print(_("Extracting Initial Ram Disk (initrd)..."))
             self.showProgress(_("Extracting Initial Ram Disk (initrd)..."),0.18)
             yield True
             self.setBusyCursor()
             if (os.path.exists(self.mountDir + '/casper/initrd.lz')):
-                os.popen('cd \"' + os.path.join(self.customDir, "initrd/") + '\"; cat ' + self.mountDir + '/casper/initrd.lz | lzma -d | cpio -i')
+                subprocess.getoutput('cd \"' + os.path.join(self.customDir, "initrd/") + '\"')
+                subprocess.getoutput('cat ' + self.mountDir + '/casper/initrd.lz | lzma -d | cpio -i')
             elif (os.path.exists(self.mountDir + '/casper/initrd')):
-                os.popen('cd \"' + os.path.join(self.customDir, "initrd/") + '\"; cat ' + self.mountDir,'/casper/initrd | gzip -d | cpio -i')
+                subprocess.getoutput('cd \"' + os.path.join(self.customDir, "initrd/") + '\"')
+                subprocess.getoutput('cat ' + self.mountDir + '/casper/initrd | gzip -d | cpio -i')
 
 
             # umount cdrom
-            os.popen("umount " + self.mountDir)
+            subprocess.getoutput("umount " + self.mountDir)
 
         # get ubuntu version
         self.loadCdVersion()
@@ -4128,22 +4163,22 @@ class Reconstructor:
         #self.hideWorking()
         self.setDefaultCursor()
         self.setPage(self.pageLiveCustomize)
-        print _("Finished setting up working directory...")
-        print " "
+        print(_("Finished setting up working directory..."))
+        print(" ")
         self.showProgress(_('Finished setting up working directory...'),0.20)
-        gobject.idle_add(self.calculateIsoSize().next)
+        self.run_generator(self.calculateIsoSize)
         yield False
 
     def setupAltWorkingDirectory(self):
-        print _("INFO: Setting up alternate working directory...")
+        print(_("INFO: Setting up alternate working directory..."))
         self.showProgress(_("Setting up alternate working directory..."),0.05)
         yield True
         # remaster dir
         if self.createAltRemasterDir == True:
             # check for existing directories and remove if necessary
             #if os.path.exists(os.path.join(self.customDir, self.altRemasterDir)):
-            #    print _("INFO: Removing existing Alternate Remaster directory...")
-            #    os.popen('rm -Rf \"' + os.path.join(self.customDir, self.altRemasterDir) + '\"')
+            #    print(_("INFO: Removing existing Alternate Remaster directory..."))
+            #    subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, self.altRemasterDir) + '\"')
             #    os.makedirs(os.path.join(self.customDir, self.altRemasterDir))
             if os.path.exists(os.path.join(self.customDir, self.altRemasterDir)) == False:
                 # create remaster dir
@@ -4161,8 +4196,9 @@ class Reconstructor:
                 os.makedirs(os.path.join(self.customDir, self.tmpDir))
             else:
                 # clean tmp dir
-                print _("Cleaning alternate temporary directory...")
-                os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\" ; rm -Rf ./*')
+                print(_("Cleaning alternate temporary directory..."))
+                subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\"')
+                subprocess.getoutput('rm -Rf ./*')
             # create archives/partial dir
             #if os.path.exists(os.path.join(os.path.join(self.customDir, self.tmpPackageDir), "archives/partial")) == False:
             #    os.makedirs(os.path.join(os.path.join(self.customDir, self.tmpPackageDir), "archives/partial"))
@@ -4170,144 +4206,151 @@ class Reconstructor:
             if os.path.exists(os.path.join(self.customDir, self.altRemasterRepo)) == False:
                 # create alternate remaster repo
                 os.makedirs(os.path.join(self.customDir, self.altRemasterRepo))
-            #print "INFO: Creating Remaster directory..."
+            #print("INFO: Creating Remaster directory...")
             # check for iso
-            self.isoFilename = self.wTree.get_widget("entryAltIsoFilename").get_text()
-            print 'ISO File:' + self.isoFilename
+            self.isoFilename = self.builder.get_object("entryAltIsoFilename").get_text()
+            print('ISO File:' + self.isoFilename)
             if self.isoFilename == "":
-                mntDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))
+                mntDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+                mntDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK)
                 mntDlg.set_icon_from_file(self.iconFile)
                 mntDlg.vbox.set_spacing(10)
-                labelSpc = gtk.Label(" ")
-                mntDlg.vbox.pack_start(labelSpc)
+                labelSpc = Gtk.Label(" ")
+                mntDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
                 labelSpc.show()
                 lblText = _("  <b>Please insert Ubuntu Alternate CD and click OK</b>  ")
-                label = gtk.Label(lblText)
+                label = Gtk.Label(lblText)
                 label.set_use_markup(True)
-                mntDlg.vbox.pack_start(label)
+                mntDlg.vbox.pack_start(label, expand=True, fill=True, padding=0)
                 label.show()
                 #warnDlg.show()
                 response = mntDlg.run()
-                if response == gtk.RESPONSE_OK:
-                    print _("Using Alternate CD for remastering...")
+                if response == Gtk.ResponseType.OK:
+                    print(_("Using Alternate CD for remastering..."))
                     mntDlg.destroy()
-                    os.popen("mount " + self.mountDir)
+                    subprocess.getoutput("mount " + self.mountDir)
                 else:
                     mntDlg.destroy()
                     self.setDefaultCursor()
                     yield False
             else:
-                print _("Using ISO for remastering...")
-                os.popen('mount -o loop \"' + self.isoFilename + '\" ' + self.mountDir)
+                print(_("Using ISO for remastering..."))
+                subprocess.getoutput('mount -o loop \"' + self.isoFilename + '\" ' + self.mountDir)
 
             # copy remaster files
-            print _("Copying alternate remaster directory...")
+            print(_("Copying alternate remaster directory..."))
             self.showProgress(_("Copying alternate remaster directory..."),0.08)
             yield True
-            #os.popen('rsync -at --del --exclude=\"pool/main/**/*.deb\" --exclude=\"pool/restricted/**/*.deb\" ' + self.mountDir + '/ \"' + os.path.join(self.customDir, self.altRemasterDir) + '\"')
+            #subprocess.getoutput('rsync -at --del --exclude=\"pool/main/**/*.deb\" --exclude=\"pool/restricted/**/*.deb\" ' + self.mountDir + '/ \"' + os.path.join(self.customDir, self.altRemasterDir) + '\"')
             self.setBusyCursor()
-            os.popen('rsync -at --del ' + self.mountDir + '/ \"' + os.path.join(self.customDir, self.altRemasterDir) + '\"')
+            subprocess.getoutput('rsync -at --del ' + self.mountDir + '/ \"' + os.path.join(self.customDir, self.altRemasterDir) + '\"')
             self.showProgress(False,0.20)
             yield True
 
             # ----- Removed due to poor ubuntu dependency packaging -----
             # copy alternate base
-            #baseType = self.wTree.get_widget("comboboxAltBase").get_active()
-            #print _("Copying files...")
+            #baseType = self.builder.get_object("comboboxAltBase").get_active()
+            #print(_("Copying files..."))
             #typeTxt = _("Using Alternate Base:")
             ## HACK: use rsync to find packages and copy
             #if baseType == self.altBaseTypeStandard:
-            #    print typeTxt,"Standard"
+            #    print(typeTxt,"Standard")
             #    pHelper.copyPackages(pHelper.ubuntuMinimalPackages, self.mountDir + '/', os.path.join(self.customDir, self.altRemasterDir))
             #elif baseType == self.altBaseTypeServer:
-            #    print typeTxt, " Server"
+            #    print(typeTxt, " Server")
             #    pHelper.copyPackages(pHelper.ubuntuServerPackages, self.mountDir + '/', os.path.join(self.customDir, self.altRemasterDir))
             #elif baseType == self.altBaseTypeDesktop:
-            #    print typeTxt, " Desktop"
+            #    print(typeTxt, " Desktop")
             #    pHelper.copyPackages(pHelper.ubuntuDesktopPackages, self.mountDir + '/', os.path.join(self.customDir, self.altRemasterDir))
             #else:
-            #    print _("ERROR: Unknown Alternate Base Type...")
+            #    print(_("ERROR: Unknown Alternate Base Type..."))
 
-            print _("Finished copying files...")
+            print(_("Finished copying files..."))
 
             # unmount iso/cd-rom
-            os.popen("umount " + self.mountDir)
+            subprocess.getoutput("umount " + self.mountDir)
         # initrd dir
         if self.createAltInitrdRoot == True:
             if os.path.exists(os.path.join(self.customDir, self.altInitrdRoot)):
-                print _("INFO: Removing existing Alternate Initrd directory...")
-                os.popen('rm -Rf \"' + os.path.join(self.customDir, self.altInitrdRoot) + '\"')
-            print _("INFO: Creating Alternate Initrd directory...")
+                print(_("INFO: Removing existing Alternate Initrd directory..."))
+                subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, self.altInitrdRoot) + '\"')
+            print(_("INFO: Creating Alternate Initrd directory..."))
             os.makedirs(os.path.join(self.customDir, self.altInitrdRoot))
             # check for iso
             if self.isoFilename == "":
-                mntDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))
+                mntDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+                mntDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK)
                 mntDlg.set_icon_from_file(self.iconFile)
                 mntDlg.vbox.set_spacing(10)
-                labelSpc = gtk.Label(" ")
-                mntDlg.vbox.pack_start(labelSpc)
+                labelSpc = Gtk.Label(" ")
+                mntDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
                 labelSpc.show()
                 lblText = _("  <b>Please insert Ubuntu Alternate CD and click OK</b>  ")
-                label = gtk.Label(lblText)
+                label = Gtk.Label(lblText)
                 label.set_use_markup(True)
-                mntDlg.vbox.pack_start(label)
+                mntDlg.vbox.pack_start(label, expand=True, fill=True, padding=0)
                 label.show()
                 response = mntDlg.run()
-                if response == gtk.RESPONSE_OK:
-                    print _("Using Alternate CD for initrd...")
+                if response == Gtk.ResponseType.OK:
+                    print(_("Using Alternate CD for initrd..."))
                     mntDlg.destroy()
-                    os.popen("mount " + self.mountDir)
+                    subprocess.getoutput("mount " + self.mountDir)
                 else:
                     mntDlg.destroy()
                     self.setDefaultCursor()
                     yield False
             else:
-                print _("Using ISO for initrd...")
-                os.popen('mount -o loop \"' + self.isoFilename + '\" ' + self.mountDir)
+                print(_("Using ISO for initrd..."))
+                subprocess.getoutput('mount -o loop \"' + self.isoFilename + '\" ' + self.mountDir)
 
             # extract initrd
-            print _("Extracting Alternate Initial Ram Disk (initrd)...")
+            print(_("Extracting Alternate Initial Ram Disk (initrd)..."))
             self.showProgress(_("Extracting Alternate Initial Ram Disk (initrd)..."),0.22)
             yield True
             self.setBusyCursor()
             if (os.path.exists(self.mountDir + '/install/initrd.lz')):
-                os.popen('cd \"' + os.path.join(self.customDir, self.altInitrdRoot) + '\"; cat ' + self.mountDir + '/install/initrd.lz | lzma -d | cpio -i')
+                subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.altInitrdRoot) + '\"')
+                subprocess.getoutput('cat ' + self.mountDir + '/install/initrd.lz | lzma -d | cpio -i')
             elif (os.path.exists(self.mountDir + '/install/initrd.gz')):
-                os.popen('cd \"' + os.path.join(self.customDir, self.altInitrdRoot) + '\"; cat ' + self.mountDir + '/install/initrd.gz | gzip -d | cpio -i')
+                subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.altInitrdRoot) + '\"')
+                subprocess.getoutput('cat ' + self.mountDir + '/install/initrd.gz | gzip -d | cpio -i')
             elif (os.path.exists(self.mountDir + '/install/initrd')):
-                os.popen('cd \"' + os.path.join(self.customDir, self.altInitrdRoot) + '\"; cat ' + self.mountDir + '/install/initrd | gzip -d | cpio -i')
+                subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.altInitrdRoot) + '\"')
+                subprocess.getoutput('cat ' + self.mountDir + '/install/initrd | gzip -d | cpio -i')
             self.showProgress(False,0.30)
             yield True
 
             # umount cdrom
-            os.popen("umount " + self.mountDir)
+            subprocess.getoutput("umount " + self.mountDir)
 
 
         self.setDefaultCursor()
         # calculate iso size in the background
-        gobject.idle_add(self.calculateAltIsoSize().next)
-        print _("Finished setting up alternate working directory...")
-        print " "
+        self.run_generator(self.calculateAltIsoSize)
+        print(_("Finished setting up alternate working directory..."))
+        print(" ")
         yield False
 
     def liveCDKernel(self):
-        os.popen('cd \"' + self.customDir + '\"; ' + 'rm -Rf initrd/*')
+        subprocess.getoutput('cd \"' + self.customDir + '\"; ' + 'rm -Rf initrd/*')
         if (os.path.exists(os.path.join(self.customDir,"remaster/casper/initrd.lz"))):
-            os.popen('cp -f \"' + os.path.join(self.customDir, "root/initrd.img") + '\" \"' + os.path.join(self.customDir, "initrd/initrd.lz") + '\"')
-            os.popen('cd \"' + os.path.join(self.customDir, "initrd/") + '\"; cat ' + 'initrd.lz | lzma -df | cpio -i')
-            os.popen('cp -f \"' + os.path.join(self.customDir, "root/initrd.img") + '\" \"' + os.path.join(self.customDir, "remaster/casper/initrd.lz") + '\"')
+            subprocess.getoutput('cp -f \"' + os.path.join(self.customDir, "root/initrd.img") + '\" \"' + os.path.join(self.customDir, "initrd/initrd.lz") + '\"')
+            subprocess.getoutput('cd \"' + os.path.join(self.customDir, "initrd/") + '\"')
+            subprocess.getoutput('cat ' + 'initrd.lz | lzma -df | cpio -i')
+            subprocess.getoutput('cp -f \"' + os.path.join(self.customDir, "root/initrd.img") + '\" \"' + os.path.join(self.customDir, "remaster/casper/initrd.lz") + '\"')
 
         else:
-            os.popen('cp -f \"' + os.path.join(self.customDir, "root/initrd.img") + '\" \"' + os.path.join(self.customDir, "initrd/initrd") + '\"')
-            os.popen('cd \"' + os.path.join(self.customDir, "initrd/") + '\"; cat ' + 'initrd | gzip -df | cpio -i')
-            os.popen('cp -f \"' + os.path.join(self.customDir, "root/initrd.img") + '\" \"' + os.path.join(self.customDir, "remaster/casper/initrd") + '\"')
+            subprocess.getoutput('cp -f \"' + os.path.join(self.customDir, "root/initrd.img") + '\" \"' + os.path.join(self.customDir, "initrd/initrd") + '\"')
+            subprocess.getoutput('cd \"' + os.path.join(self.customDir, "initrd/") + '\"')
+            subprocess.getoutput('cat ' + 'initrd | gzip -df | cpio -i')
+            subprocess.getoutput('cp -f \"' + os.path.join(self.customDir, "root/initrd.img") + '\" \"' + os.path.join(self.customDir, "remaster/casper/initrd") + '\"')
 
-        os.popen('rm -Rf \"' + os.path.join(self.customDir, "initrd/initrd") + '\"')
-        os.popen('rm -Rf \"' + os.path.join(self.customDir, "remaster/casper/vmlinuz*") + '\"')
+        subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "initrd/initrd") + '\"')
+        subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "remaster/casper/vmlinuz*") + '\"')
         if (os.path.exists(os.path.join(self.customDir,"remaster/casper/vmlinuz.efi"))):
-           os.popen('cp -f \"' + os.path.join(self.customDir, "root/vmlinuz") + '\" \"' + os.path.join(self.customDir, "remaster/casper/vmlinuz.efi") + '\"')
+           subprocess.getoutput('cp -f \"' + os.path.join(self.customDir, "root/vmlinuz") + '\" \"' + os.path.join(self.customDir, "remaster/casper/vmlinuz.efi") + '\"')
         else :
-           os.popen('cp -f \"' + os.path.join(self.customDir, "root/vmlinuz") + '\" \"' + os.path.join(self.customDir, "remaster/casper/vmlinuz") + '\"')
+           subprocess.getoutput('cp -f \"' + os.path.join(self.customDir, "root/vmlinuz") + '\" \"' + os.path.join(self.customDir, "remaster/casper/vmlinuz") + '\"')
 
 
     def getTerminal(self):
@@ -4316,64 +4359,65 @@ class Reconstructor:
         except:
             terminal = 'gnome-terminal'
 
-        if commands.getoutput('which ' + terminal) != '':
+        if subprocess.getoutput('which ' + terminal) != '':
             pass
-        elif commands.getoutput('which gnome-terminal') != '':
+        elif subprocess.getoutput('which gnome-terminal') != '':
             terminal = 'gnome-terminal'
-        elif commands.getoutput('which mate-terminal') != '':
+        elif subprocess.getoutput('which mate-terminal') != '':
             terminal = 'mate-terminal'
-        elif commands.getoutput('which konsole') != '':
+        elif subprocess.getoutput('which konsole') != '':
             terminal = 'konsole'
-        elif commands.getoutput('which xfc4-terminal') != '':
+        elif subprocess.getoutput('which xfc4-terminal') != '':
             terminal = 'xfc4-terminal'
-        elif commands.getoutput('which lxterminal') != '':
+        elif subprocess.getoutput('which lxterminal') != '':
             terminal = 'lxterminal'
-        elif commands.getoutput('which qterminal') != '':
+        elif subprocess.getoutput('which qterminal') != '':
             terminal = 'qterminal'
         return terminal
 
 # ---------- Customize Live ---------- #
     def customize(self):
-        print _("INFO: Customizing...")
+        print(_("INFO: Customizing..."))
         # check user entered password first, so user doesn't have to wait
         if self.checkUserPassword() == False:
-            print _('User passwords do not match.')
+            print(_('User passwords do not match.'))
             # show warning dlg
-            warnDlg = gtk.Dialog(title=self.appName, parent=None, flags=0, buttons=(gtk.STOCK_OK, gtk.RESPONSE_OK))
+            warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
+            warnDlg.add_buttons(Gtk.STOCK_OK, Gtk.ResponseType.OK)
             warnDlg.set_icon_from_file(self.iconFile)
             warnDlg.vbox.set_spacing(10)
-            labelSpc = gtk.Label(" ")
-            warnDlg.vbox.pack_start(labelSpc)
+            labelSpc = Gtk.Label(" ")
+            warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
             labelSpc.show()
             lblBuildText = _("  <b>Passwords do not match</b>  ")
             lblBuildInfo = _("     Please make sure passwords match and try again...     ")
-            label = gtk.Label(lblBuildText)
-            lblInfo = gtk.Label(lblBuildInfo)
+            label = Gtk.Label(lblBuildText)
+            lblInfo = Gtk.Label(lblBuildInfo)
             label.set_use_markup(True)
-            warnDlg.vbox.pack_start(label)
-            warnDlg.vbox.pack_start(lblInfo)
+            warnDlg.vbox.pack_start(label, expand=True, fill=True, padding=0)
+            warnDlg.vbox.pack_start(lblInfo, expand=True, fill=True, padding=0)
             lblInfo.show()
             label.show()
             response = warnDlg.run()
             # destroy dialog no matter what...
-            if response == gtk.RESPONSE_OK:
+            if response == Gtk.ResponseType.OK:
                 warnDlg.destroy()
             else:
                 warnDlg.destroy()
             # show live cd customization page
-            self.wTree.get_widget("notebookCustomize").set_current_page(-1)
+            self.builder.get_object("notebookCustomize").set_current_page(-1)
             # return - don't continue until error fixed
             return
 
         # boot customization
         # live cd text color
         if os.path.exists(os.path.join(self.customDir, "remaster/isolinux/isolinux.cfg")):
-            print _("Setting Live CD Text color...")
-            color = self.wTree.get_widget("colorbuttonBrowseLiveCdTextColor").get_color()
+            print(_("Setting Live CD Text color..."))
+            color = self.builder.get_object("colorbuttonBrowseLiveCdTextColor").get_color()
             rgbColor = color.red/255, color.green/255, color.blue/255
             hexColor = '%02x%02x%02x' % rgbColor
             # replace config line in isolinux.cfg
-            f = file(os.path.join(self.customDir, "remaster/isolinux/isolinux.cfg"), 'r')
+            f = open(os.path.join(self.customDir, "remaster/isolinux/isolinux.cfg"), 'r')
             lines = []
             r = re.compile('GFXBOOT-BACKGROUND*', re.IGNORECASE)
             # find config string
@@ -4385,102 +4429,102 @@ class Reconstructor:
 
             f.close()
             # re-write config file
-            f = file(os.path.join(self.customDir, "remaster/isolinux/isolinux.cfg"), 'w')
+            f = open(os.path.join(self.customDir, "remaster/isolinux/isolinux.cfg"), 'w')
             f.writelines(lines)
             f.close()
 
             # regenerate initrd for root
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' update-initramfs -uk `uname -r` ')
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' update-initramfs -uk `uname -r` ')
         # LiveCD kernel
-        if self.wTree.get_widget("checkbuttonLiveCdUpdateKernel").get_active() == True:
-            print _("Updating LiveCD Linux kernel...")
+        if self.builder.get_object("checkbuttonLiveCdUpdateKernel").get_active() == True:
+            print(_("Updating LiveCD Linux kernel..."))
             self.liveCDKernel()
             #Intentionally reset the GUI checkbutton in case the user clicks apply again.
-            self.wTree.get_widget("checkbuttonLiveCdUpdateKernel").set_active(False)
+            self.builder.get_object("checkbuttonLiveCdUpdateKernel").set_active(False)
         # LiveCD info must be set afterwards in case the user updates the kernel as the initrd folder is replaced
         if self.checkUserPassword() == True:
             # set user info
-            user = self.wTree.get_widget("entryLiveCdUsername").get_text()
-            userFull = self.wTree.get_widget("entryLiveCdUserFullname").get_text()
-            password = self.wTree.get_widget("entryLiveCdUserPassword").get_text()
-            host = self.wTree.get_widget("entryLiveCdHostname").get_text()
+            user = self.builder.get_object("entryLiveCdUsername").get_text()
+            userFull = self.builder.get_object("entryLiveCdUserFullname").get_text()
+            password = self.builder.get_object("entryLiveCdUserPassword").get_text()
+            host = self.builder.get_object("entryLiveCdHostname").get_text()
             # set live cd info
             self.setLiveCdInfo(username=user, userFullname=userFull, userPassword=password, hostname=host)
         # wallpaper
-        if self.wTree.get_widget("entryGnomeDesktopWallpaperFilename").get_text() != "":
-            print _("Customizing Gnome wallpaper...")
-            path, filename = os.path.split(self.wTree.get_widget("entryGnomeDesktopWallpaperFilename").get_text())
-            os.popen('cp -f \"' + self.wTree.get_widget("entryGnomeDesktopWallpaperFilename").get_text() + '\" \"' + os.path.join(self.customDir, "root/usr/share/backgrounds/") + filename + '\"')
-            os.popen('chmod 777 \"' + os.path.join(self.customDir, "root/usr/share/backgrounds/") + filename + '\"')
+        if self.builder.get_object("entryGnomeDesktopWallpaperFilename").get_text() != "":
+            print(_("Customizing Gnome wallpaper..."))
+            path, filename = os.path.split(self.builder.get_object("entryGnomeDesktopWallpaperFilename").get_text())
+            subprocess.getoutput('cp -f \"' + self.builder.get_object("entryGnomeDesktopWallpaperFilename").get_text() + '\" \"' + os.path.join(self.customDir, "root/usr/share/backgrounds/") + filename + '\"')
+            subprocess.getoutput('chmod 777 \"' + os.path.join(self.customDir, "root/usr/share/backgrounds/") + filename + '\"')
             # set wallpaper in gconf
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' gconftool-2 --direct --config-source xml:readwrite:/etc/gconf/gconf.xml.defaults --type string --set /desktop/gnome/background/picture_filename \"/usr/share/backgrounds/' + filename + '\"')
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' gconftool-2 --direct --config-source xml:readwrite:/etc/gconf/gconf.xml.defaults --type string --set /desktop/gnome/background/picture_filename \"/usr/share/backgrounds/' + filename + '\"')
         # set fonts in gconf
-        if self.wTree.get_widget("labelGnomeDesktopApplicationFontValue").get_text() != "":
-            print _("Setting Gnome application font...")
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' gconftool-2 --direct --config-source xml:readwrite:/etc/gconf/gconf.xml.defaults --type string --set /desktop/gnome/interface/font_name \"' + self.wTree.get_widget("labelGnomeDesktopApplicationFontValue").get_text() + '\"')
-        if self.wTree.get_widget("labelGnomeDesktopDocumentFontValue").get_text() != "":
-            print _("Setting Gnome document font...")
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' gconftool-2 --direct --config-source xml:readwrite:/etc/gconf/gconf.xml.defaults --type string --set /desktop/gnome/interface/document_font_name \"' + self.wTree.get_widget("labelGnomeDesktopDocumentFontValue").get_text() + '\"')
-        if self.wTree.get_widget("labelGnomeDesktopFontValue").get_text() != "":
-            print _("Setting Gnome desktop font...")
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' gconftool-2 --direct --config-source xml:readwrite:/etc/gconf/gconf.xml.defaults --type string --set /apps/nautilus/preferences/desktop_font \"' + self.wTree.get_widget("labelGnomeDesktopFontValue").get_text() + '\"')
-        if self.wTree.get_widget("labelGnomeDesktopTitleBarFontValue").get_text() != "":
-            print _("Setting Gnome title bar font...")
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' gconftool-2 --direct --config-source xml:readwrite:/etc/gconf/gconf.xml.defaults --type string --set /apps/metacity/general/titlebar_font \"' + self.wTree.get_widget("labelGnomeDesktopTitleBarFontValue").get_text() + '\"')
-        if self.wTree.get_widget("labelGnomeDesktopFixedFontValue").get_text() != "":
-            print _("Setting Gnome fixed font...")
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' gconftool-2 --direct --config-source xml:readwrite:/etc/gconf/gconf.xml.defaults --type string --set /desktop/gnome/interface/monospace_font_name \"' + self.wTree.get_widget("labelGnomeDesktopFixedFontValue").get_text() + '\"')
+        if self.builder.get_object("labelGnomeDesktopApplicationFontValue").get_text() != "":
+            print(_("Setting Gnome application font..."))
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' gconftool-2 --direct --config-source xml:readwrite:/etc/gconf/gconf.xml.defaults --type string --set /desktop/gnome/interface/font_name \"' + self.builder.get_object("labelGnomeDesktopApplicationFontValue").get_text() + '\"')
+        if self.builder.get_object("labelGnomeDesktopDocumentFontValue").get_text() != "":
+            print(_("Setting Gnome document font..."))
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' gconftool-2 --direct --config-source xml:readwrite:/etc/gconf/gconf.xml.defaults --type string --set /desktop/gnome/interface/document_font_name \"' + self.builder.get_object("labelGnomeDesktopDocumentFontValue").get_text() + '\"')
+        if self.builder.get_object("labelGnomeDesktopFontValue").get_text() != "":
+            print(_("Setting Gnome desktop font..."))
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' gconftool-2 --direct --config-source xml:readwrite:/etc/gconf/gconf.xml.defaults --type string --set /apps/nautilus/preferences/desktop_font \"' + self.builder.get_object("labelGnomeDesktopFontValue").get_text() + '\"')
+        if self.builder.get_object("labelGnomeDesktopTitleBarFontValue").get_text() != "":
+            print(_("Setting Gnome title bar font..."))
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' gconftool-2 --direct --config-source xml:readwrite:/etc/gconf/gconf.xml.defaults --type string --set /apps/metacity/general/titlebar_font \"' + self.builder.get_object("labelGnomeDesktopTitleBarFontValue").get_text() + '\"')
+        if self.builder.get_object("labelGnomeDesktopFixedFontValue").get_text() != "":
+            print(_("Setting Gnome fixed font..."))
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' gconftool-2 --direct --config-source xml:readwrite:/etc/gconf/gconf.xml.defaults --type string --set /desktop/gnome/interface/monospace_font_name \"' + self.builder.get_object("labelGnomeDesktopFixedFontValue").get_text() + '\"')
 
         # set theme options in gconf
         # theme
-        if self.wTree.get_widget("comboboxentryGnomeTheme").get_active_text() != "":
-            print _("Setting Gnome theme...")
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' gconftool-2 --direct --config-source xml:readwrite:/etc/gconf/gconf.xml.defaults --type string --set /desktop/gnome/interface/gtk_theme \"' + self.wTree.get_widget("comboboxentryGnomeTheme").get_active_text() + '\"')
+        if self.builder.get_object("comboboxentryGnomeTheme").get_active_text() != "":
+            print(_("Setting Gnome theme..."))
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' gconftool-2 --direct --config-source xml:readwrite:/etc/gconf/gconf.xml.defaults --type string --set /desktop/gnome/interface/gtk_theme \"' + self.builder.get_object("comboboxentryGnomeTheme").get_active_text() + '\"')
         # window borders
-        if self.wTree.get_widget("comboboxentryGnomeThemeWindowBorders").get_active_text() != "":
-            print _("Setting Gnome window borders...")
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' gconftool-2 --direct --config-source xml:readwrite:/etc/gconf/gconf.xml.defaults --type string --set /apps/metacity/general/theme \"' + self.wTree.get_widget("comboboxentryGnomeThemeWindowBorders").get_active_text() + '\"')
+        if self.builder.get_object("comboboxentryGnomeThemeWindowBorders").get_active_text() != "":
+            print(_("Setting Gnome window borders..."))
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' gconftool-2 --direct --config-source xml:readwrite:/etc/gconf/gconf.xml.defaults --type string --set /apps/metacity/general/theme \"' + self.builder.get_object("comboboxentryGnomeThemeWindowBorders").get_active_text() + '\"')
         # icons
-        if self.wTree.get_widget("comboboxentryGnomeThemeIcons").get_active_text() != "":
-            print _("Setting Gnome icons...")
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' gconftool-2 --direct --config-source xml:readwrite:/etc/gconf/gconf.xml.defaults --type string --set /desktop/gnome/interface/icon_theme \"' + self.wTree.get_widget("comboboxentryGnomeThemeIcons").get_active_text() + '\"')
+        if self.builder.get_object("comboboxentryGnomeThemeIcons").get_active_text() != "":
+            print(_("Setting Gnome icons..."))
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' gconftool-2 --direct --config-source xml:readwrite:/etc/gconf/gconf.xml.defaults --type string --set /desktop/gnome/interface/icon_theme \"' + self.builder.get_object("comboboxentryGnomeThemeIcons").get_active_text() + '\"')
 
         # gdm configuration
         if self.checkCustomGdm() == True:
-            print _("Configuring GDM...")
+            print(_("Configuring GDM..."))
             conf = "[daemon]\nRemoteGreeter=/usr/lib/gdm/gdmgreeter\n\n"
             # security
-            print _("Setting GDM Security...")
-            if self.wTree.get_widget("checkbuttonGdmRootLogin").get_active() == True:
+            print(_("Setting GDM Security..."))
+            if self.builder.get_object("checkbuttonGdmRootLogin").get_active() == True:
                 conf = conf + "[security]\nAllowRoot=true\n\n"
             else:
                 conf = conf + "[security]\nAllowRoot=false\n\n"
             # xdmcp
-            print _("Setting GDM XDMCP...")
-            if self.wTree.get_widget("checkbuttonGdmXdmcp").get_active() == True:
+            print(_("Setting GDM XDMCP..."))
+            if self.builder.get_object("checkbuttonGdmXdmcp").get_active() == True:
                 conf = conf + "[xdmcp]\nEnable=true\n\n"
             else:
                 conf = conf + "[xdmcp]\nEnable=false\n\n"
             conf = conf + "[gui]\n\n"
             conf = conf + "[greeter]\n"
             # gdm color
-            color = self.wTree.get_widget("colorbuttonBrowseGdmBackgroundColor").get_color()
+            color = self.builder.get_object("colorbuttonBrowseGdmBackgroundColor").get_color()
             rgbColor = color.red/255, color.green/255, color.blue/255
             hexColor = '%02x%02x%02x' % rgbColor
             conf += 'GraphicalThemedColor=#' + str(hexColor) + '\n'
-            if self.wTree.get_widget("comboboxentryGnomeGdmTheme").get_active_text() != "":
-                print _("Setting GDM Theme...")
-                conf = conf + "GraphicalTheme=" + self.wTree.get_widget("comboboxentryGnomeGdmTheme").get_active_text() + "\n"
-            print _("Setting GDM Sounds...")
-            if self.wTree.get_widget("checkbuttonGdmSounds").get_active() == True:
+            if self.builder.get_object("comboboxentryGnomeGdmTheme").get_active_text() != "":
+                print(_("Setting GDM Theme..."))
+                conf = conf + "GraphicalTheme=" + self.builder.get_object("comboboxentryGnomeGdmTheme").get_active_text() + "\n"
+            print(_("Setting GDM Sounds..."))
+            if self.builder.get_object("checkbuttonGdmSounds").get_active() == True:
                 conf = conf + "SoundOnLogin=true\n\n"
             else:
                 conf = conf + "SoundOnLogin=false\n\n"
 
-            print _("Backing up GDM configuration...")
-            os.popen('mv -f \"' + os.path.join(self.customDir, "root/etc/gdm/gdm.conf-custom") + '\" \"' + os.path.join(self.customDir, "root/etc/gdm/gdm.conf-custom.orig") + '\"')
+            print(_("Backing up GDM configuration..."))
+            subprocess.getoutput('mv -f \"' + os.path.join(self.customDir, "root/etc/gdm/gdm.conf-custom") + '\" \"' + os.path.join(self.customDir, "root/etc/gdm/gdm.conf-custom.orig") + '\"')
 
-            print _("Saving GDM configuration...")
+            print(_("Saving GDM configuration..."))
             f=open(os.path.join(self.customDir, "root/etc/gdm/gdm.conf-custom"), 'w')
             f.write(conf)
             f.close()
@@ -4489,9 +4533,9 @@ class Reconstructor:
         # set up apt repos
         if self.checkCustomRepos() == True:
             # move old sources.list apt file
-            print _("Backing up old apt config...")
-            os.popen('mv -f ' + os.path.join(self.customDir, "root/etc/apt/sources.list") + ' ' + os.path.join(self.customDir, "root/etc/apt/sources.list.orig"))
-            #os.popen('rm -f ' + os.path.join(self.customDir, "root/etc/apt/sources.list"))
+            print(_("Backing up old apt config..."))
+            subprocess.getoutput('mv -f ' + os.path.join(self.customDir, "root/etc/apt/sources.list") + ' ' + os.path.join(self.customDir, "root/etc/apt/sources.list.orig"))
+            #subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/etc/apt/sources.list"))
             # load ubuntu codename for apt
             ubuntuCodename = ''
             if self.cdUbuntuVersion == self.dapperVersion:
@@ -4511,66 +4555,66 @@ class Reconstructor:
             elif self.cdUbuntuVersion == self.karmicVersion:
                 ubuntuCodename = 'karmic'
             else:
-                print _("Unable to detect codename for Ubuntu CD Version - APT Repositories will NOT be modified...")
+                print(_("Unable to detect codename for Ubuntu CD Version - APT Repositories will NOT be modified..."))
 
             if ubuntuCodename != '':
                 # ubuntu official
-                if self.wTree.get_widget("checkbuttonAptRepoUbuntuOfficial").get_active() == True:
-                    print _("Adding Official Apt Repository...")
-                    os.popen('echo \"deb http://archive.ubuntu.com/ubuntu/ ' + ubuntuCodename + ' main\" >> \"' + os.path.join(self.customDir, "root/etc/apt/sources.list") + '\"')
-                    print _('Adding Ubuntu Official Security Repository...')
-                    os.popen('echo \"deb http://security.ubuntu.com/ubuntu ' + ubuntuCodename +'-security main restricted\" >> \"' + os.path.join(self.customDir, "root/etc/apt/sources.list") + '\"')
-                    os.popen('echo \"deb-src http://security.ubuntu.com/ubuntu ' + ubuntuCodename + '-security main restricted\" >> \"' + os.path.join(self.customDir, "root/etc/apt/sources.list") + '\"')
+                if self.builder.get_object("checkbuttonAptRepoUbuntuOfficial").get_active() == True:
+                    print(_("Adding Official Apt Repository..."))
+                    subprocess.getoutput('echo \"deb http://archive.ubuntu.com/ubuntu/ ' + ubuntuCodename + ' main\" >> \"' + os.path.join(self.customDir, "root/etc/apt/sources.list") + '\"')
+                    print(_('Adding Ubuntu Official Security Repository...'))
+                    subprocess.getoutput('echo \"deb http://security.ubuntu.com/ubuntu ' + ubuntuCodename +'-security main restricted\" >> \"' + os.path.join(self.customDir, "root/etc/apt/sources.list") + '\"')
+                    subprocess.getoutput('echo \"deb-src http://security.ubuntu.com/ubuntu ' + ubuntuCodename + '-security main restricted\" >> \"' + os.path.join(self.customDir, "root/etc/apt/sources.list") + '\"')
 
                 # ubuntu restricted
-                if self.wTree.get_widget("checkbuttonAptRepoUbuntuRestricted").get_active() == True:
-                    print _("Adding Ubuntu Restricted Apt Repository...")
-                    os.popen('echo \"deb http://archive.ubuntu.com/ubuntu/ ' + ubuntuCodename + ' restricted\" >> \"' + os.path.join(self.customDir, "root/etc/apt/sources.list") + '\"')
+                if self.builder.get_object("checkbuttonAptRepoUbuntuRestricted").get_active() == True:
+                    print(_("Adding Ubuntu Restricted Apt Repository..."))
+                    subprocess.getoutput('echo \"deb http://archive.ubuntu.com/ubuntu/ ' + ubuntuCodename + ' restricted\" >> \"' + os.path.join(self.customDir, "root/etc/apt/sources.list") + '\"')
 
                 # ubuntu universe
-                if self.wTree.get_widget("checkbuttonAptRepoUbuntuUniverse").get_active() == True:
-                    print _("Adding Ubuntu Universe Apt Repository...")
-                    os.popen('echo \"deb http://archive.ubuntu.com/ubuntu/ ' + ubuntuCodename + ' universe\" >> \"' + os.path.join(self.customDir, "root/etc/apt/sources.list") + '\"')
-                    print _('Adding Ubuntu Universe Security Repository...')
-                    os.popen('echo \"deb http://security.ubuntu.com/ubuntu ' + ubuntuCodename + '-security universe\" >> \"' + os.path.join(self.customDir, "root/etc/apt/sources.list") + '\"')
-                    os.popen('echo \"deb-src http://security.ubuntu.com/ubuntu ' + ubuntuCodename + '-security universe\" >> \"' + os.path.join(self.customDir, "root/etc/apt/sources.list") + '\"')
+                if self.builder.get_object("checkbuttonAptRepoUbuntuUniverse").get_active() == True:
+                    print(_("Adding Ubuntu Universe Apt Repository..."))
+                    subprocess.getoutput('echo \"deb http://archive.ubuntu.com/ubuntu/ ' + ubuntuCodename + ' universe\" >> \"' + os.path.join(self.customDir, "root/etc/apt/sources.list") + '\"')
+                    print(_('Adding Ubuntu Universe Security Repository...'))
+                    subprocess.getoutput('echo \"deb http://security.ubuntu.com/ubuntu ' + ubuntuCodename + '-security universe\" >> \"' + os.path.join(self.customDir, "root/etc/apt/sources.list") + '\"')
+                    subprocess.getoutput('echo \"deb-src http://security.ubuntu.com/ubuntu ' + ubuntuCodename + '-security universe\" >> \"' + os.path.join(self.customDir, "root/etc/apt/sources.list") + '\"')
 
                 # ubuntu multiverse
-                if self.wTree.get_widget("checkbuttonAptRepoUbuntuMultiverse").get_active() == True:
-                    print _("Adding Ubuntu Multiverse Apt Repository...")
-                    os.popen('echo \"deb http://archive.ubuntu.com/ubuntu/ ' + ubuntuCodename + ' multiverse\" >> \"' + os.path.join(self.customDir, "root/etc/apt/sources.list") + '\"')
+                if self.builder.get_object("checkbuttonAptRepoUbuntuMultiverse").get_active() == True:
+                    print(_("Adding Ubuntu Multiverse Apt Repository..."))
+                    subprocess.getoutput('echo \"deb http://archive.ubuntu.com/ubuntu/ ' + ubuntuCodename + ' multiverse\" >> \"' + os.path.join(self.customDir, "root/etc/apt/sources.list") + '\"')
 
                 # ubuntu official updates
-                print _("Adding Ubuntu Official Updates Apt Repository...")
-                os.popen('echo \"deb http://us.archive.ubuntu.com/ubuntu/ ' + ubuntuCodename + '-updates main restricted\" >> \"' + os.path.join(self.customDir, "root/etc/apt/sources.list") + '\"')
+                print(_("Adding Ubuntu Official Updates Apt Repository..."))
+                subprocess.getoutput('echo \"deb http://us.archive.ubuntu.com/ubuntu/ ' + ubuntuCodename + '-updates main restricted\" >> \"' + os.path.join(self.customDir, "root/etc/apt/sources.list") + '\"')
 
                 # custom archives
-                buf = self.wTree.get_widget("textviewAptCustomArchives").get_buffer()
-                buflist = self.wTree.get_widget("textviewAptCustomSourcesList").get_buffer()
+                buf = self.builder.get_object("textviewAptCustomArchives").get_buffer()
+                buflist = self.builder.get_object("textviewAptCustomSourcesList").get_buffer()
                 if buf.get_text(buf.get_start_iter(),buf.get_end_iter()) != '':
-                    print _("Adding Custom Apt Repositories...")
-                    os.popen('echo \"' + buf.get_text(buf.get_start_iter(),buf.get_end_iter()) + '\" >> \"' + os.path.join(self.customDir, "root/etc/apt/sources.list.d/" + buflist.get_text(buflist.get_start_iter(),buflist.get_end_iter())) + '\"')
+                    print(_("Adding Custom Apt Repositories..."))
+                    subprocess.getoutput('echo \"' + buf.get_text(buf.get_start_iter(),buf.get_end_iter()) + '\" >> \"' + os.path.join(self.customDir, "root/etc/apt/sources.list.d/" + buflist.get_text(buflist.get_start_iter(),buflist.get_end_iter())) + '\"')
 
         # interactive editing
         if self.interactiveEdit == True:
             # copy template user config to /etc/skel in root dir
             try:
-                print _('Removing existing template...')
-                os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/skel/*") + '\"')
-                print _('Copying User Template...')
-                os.popen('cp -Rf /home/reconstructor ' + os.path.join(self.customDir, "root/etc/skel") )
-                os.popen('cp -Rf ' + os.path.join(self.customDir, "root/etc/skel/reconstructor/*") + ' ' + os.path.join(self.customDir, "root/etc/skel/"))
-                os.popen('rm -Rf ' + os.path.join(self.customDir, "root/etc/skel/reconstructor"))
-            except Exception, detail:
+                print(_('Removing existing template...'))
+                subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/etc/skel/*") + '\"')
+                print(_('Copying User Template...'))
+                subprocess.getoutput('cp -Rf /home/reconstructor ' + os.path.join(self.customDir, "root/etc/skel") )
+                subprocess.getoutput('cp -Rf ' + os.path.join(self.customDir, "root/etc/skel/reconstructor/*") + ' ' + os.path.join(self.customDir, "root/etc/skel/"))
+                subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/etc/skel/reconstructor"))
+            except Exception as detail:
                 errCopy = _('Error copying template: ')
-                print errCopy, detail
+                print(errCopy, detail)
                 pass
         # startup optimization
-        if self.wTree.get_widget("checkbuttonOptimizationStartupEnable").get_active() == True:
+        if self.builder.get_object("checkbuttonOptimizationStartupEnable").get_active() == True:
             self.optimizeStartup()
 
         # shutdown optimization
-        if self.wTree.get_widget("checkbuttonOptimizationShutdown").get_active() == True:
+        if self.builder.get_object("checkbuttonOptimizationShutdown").get_active() == True:
             self.optimizeShutdown()
 
         # run modules
@@ -4578,7 +4622,7 @@ class Reconstructor:
         self.execModulesEnabled = False;
         self.treeModel.foreach(self.checkExecModuleEnabled)
         if self.execModulesEnabled == True:
-            print _('Running modules...')
+            print(_('Running modules...'))
             modExecScrChroot = '#!/bin/sh\n\napt-get update\ncd /tmp ;\n'
             # copy all "execute" enabled scripts proper location (chroot or customdir)
             self.treeModel.foreach(self.copyExecuteModule)
@@ -4595,74 +4639,75 @@ class Reconstructor:
             modExecScrChroot += '\necho \'--------------------\'\necho \'Modules Finished...\'\n'
             modExecScrChroot += 'sleep 10'
             #modExecScrChroot += 'echo \'Press [Enter] to continue...\'\nread \n'
-            #print modExecScrChroot
+            #print(modExecScrChroot)
             fModExecChroot=open(os.path.join(self.customDir, "root/tmp/module-exec.sh"), 'w')
             fModExecChroot.write(modExecScrChroot)
             fModExecChroot.close()
-            os.popen('chmod a+x ' + os.path.join(self.customDir, "root/tmp/module-exec.sh"))
-            #os.popen('xterm -title \'Reconstructor Module Exec\' -e chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/module-exec.sh')
+            subprocess.getoutput('chmod a+x ' + os.path.join(self.customDir, "root/tmp/module-exec.sh"))
+            #subprocess.getoutput('xterm -title \'Reconstructor Module Exec\' -e chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/module-exec.sh')
             # add current user to the access control list
-            user = commands.getoutput('echo $USER')
-            print _("Adding user " + user + " to access control list...")
-            os.popen('xhost +local:' + user)
+            user = subprocess.getoutput('echo $USER')
+            print(_("Adding user " + user + " to access control list..."))
+            subprocess.getoutput('xhost +local:' + user)
             # copy dns info
             if os.path.exists("/etc/resolv.conf"):
-                print _("Copying DNS info...")
-                os.popen('cp -L --remove-destination /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                print(_("Copying DNS info..."))
+                subprocess.getoutput('cp -L --remove-destination /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             elif os.path.exists("/run/resolvconf/resolv.conf"):
-                print _("Copying DNS info...")
-                os.popen('cp -L --remove-destination /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                print(_("Copying DNS info..."))
+                subprocess.getoutput('cp -L --remove-destination /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             # mount /proc
-            print _("Mounting /proc filesystem...")
-            os.popen('mount -t proc none \"' + os.path.join(self.customDir, "root/proc") + '\"')
+            print(_("Mounting /proc filesystem..."))
+            subprocess.getoutput('mount -t proc none \"' + os.path.join(self.customDir, "root/proc") + '\"')
             #mount /var/run/dbus
-            print _("Mounting /var/run/dubs filesystem...")
-            os.popen('mount --bind /var/run/dbus \"' + os.path.join(self.customDir, "root/var/run/dbus") + '\"')
+            print(_("Mounting /var/run/dubs filesystem..."))
+            subprocess.getoutput('mount --bind /var/run/dbus \"' + os.path.join(self.customDir, "root/var/run/dbus") + '\"')
 	
             # copy apt.conf
-            print _("Copying apt.conf configuration...")
+            print(_("Copying apt.conf configuration..."))
             if not os.path.exists(os.path.join(self.customDir, "root/etc/apt/apt.conf.d")):
                 os.makedirs(os.path.join(self.customDir, "root/etc/apt/apt.conf.d"))
-            os.popen('cp -f /etc/apt/apt.conf.d/* ' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d"))
+            subprocess.getoutput('cp -f /etc/apt/apt.conf.d/* ' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d"))
             # copy wgetrc
-            print _("Copying wgetrc configuration...")
+            print(_("Copying wgetrc configuration..."))
             # backup
-            os.popen('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\"')
-            os.popen('cp -f /etc/wgetrc ' + os.path.join(self.customDir, "root/etc/wgetrc"))
+            subprocess.getoutput('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\"')
+            subprocess.getoutput('cp -f /etc/wgetrc ' + os.path.join(self.customDir, "root/etc/wgetrc"))
             terminal = self.getTerminal()
             # run module script using COLORTERM if available -- more features
-            if terminal != '' and commands.getoutput('which ' + terminal) != '':
-                print _('Launching Chroot ' + terminal + '...')
-                failed = commands.getoutput(terminal + '--hide-menubar -t \"Reconstructor Modules\" -x chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/module-exec.sh')
-                if commands.getoutput('echo' + failed + ' | grep fail') != '':
-                    print _(failed + '\nLaunching Chroot Xterm...')
-                    os.popen('xterm -bg black -fg white -rightbar -title \'Reconstructor Modules\' -e chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/module-exec.sh')
+            if terminal != '' and subprocess.getoutput('which ' + terminal) != '':
+                print(_('Launching Chroot ' + terminal + '...'))
+                failed = subprocess.getoutput(terminal + '--hide-menubar -t \"Reconstructor Modules\" -x chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/module-exec.sh')
+                if subprocess.getoutput('echo' + failed + ' | grep fail') != '':
+                    print(_(failed + '\nLaunching Chroot Xterm...'))
+                    subprocess.getoutput('xterm -bg black -fg white -rightbar -title \'Reconstructor Modules\' -e chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/module-exec.sh')
             else:
-                print _('Launching Chroot Xterm...')
+                print(_('Launching Chroot Xterm...'))
                 # run module script using xterm if COLORTERM isn't available
-                os.popen('xterm -bg black -fg white -rightbar -title \'Reconstructor Modules\' -e chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/module-exec.sh')
+                subprocess.getoutput('xterm -bg black -fg white -rightbar -title \'Reconstructor Modules\' -e chroot \"' + os.path.join(self.customDir, "root/") + '\" /tmp/module-exec.sh')
             # cleanup
-            os.popen('cd \"' + os.path.join(self.customDir, "root/tmp/") + '\" ; ' + 'rm -Rf *.rmod 1>&2 2>/dev/null')
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/tmp/module-exec.sh") + '\" 1>&2 2>/dev/null')
+            subprocess.getoutput('cd \"' + os.path.join(self.customDir, "root/tmp/") + '\"')
+            subprocess.getoutput('rm -Rf *.rmod 1>&2 2>/dev/null')
+            subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/tmp/module-exec.sh") + '\" 1>&2 2>/dev/null')
             # restore wgetrc
-            print _("Restoring wgetrc configuration...")
-            os.popen('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\"')
+            print(_("Restoring wgetrc configuration..."))
+            subprocess.getoutput('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\"')
             # remove apt.conf
-            #print _("Removing apt.conf configuration...")
-            #os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d/*") + '\"')
+            #print(_("Removing apt.conf configuration..."))
+            #subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d/*") + '\"')
             # remove dns info
-            print _("Removing DNS info...")
-            os.popen('rm -f \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
-            os.popen('ln -s /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+            print(_("Removing DNS info..."))
+            subprocess.getoutput('rm -f \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
+            subprocess.getoutput('ln -s /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
 
             # umount /var/run/dbus
-            print _("Umounting -lf /var/run/dubs...")
-            error = commands.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/var/run/dbus/") + '\"')
+            print(_("Umounting -lf /var/run/dubs..."))
+            error = subprocess.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/var/run/dbus/") + '\"')
             if(error != ''):
                 self.suggestReboot('/var/run/dbus could not be unmounted. It must be unmounted before you can build an ISO.')
             # umount /proc
-            print _("Umounting /proc...")
-            error = commands.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/proc/") + '\"')
+            print(_("Umounting /proc..."))
+            error = subprocess.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/proc/") + '\"')
             if(error != ''):
                 self.suggestReboot('/proc could not be unmounted. It must be unmounted before you can build an ISO.')
 
@@ -4671,10 +4716,10 @@ class Reconstructor:
         self.treeModel.foreach(self.checkBootModuleEnabled)
         if self.bootModulesEnabled == True:
             # create module script to add to live cd for modules that run on boot
-            print _('Copying modules that run on boot...')
+            print(_('Copying modules that run on boot...'))
             modScrRunOnBoot = '#/bin/sh\n\nsleep 5\n'
             # clear previous
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/usr/share/reconstructor/scripts/") + '\"')
+            subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/usr/share/reconstructor/scripts/") + '\"')
             # copy all "run on boot" enabled scripts
             self.treeModel.foreach(self.copyRunOnBootModule)
             for bootModRoot, bootModDirs, bootModFiles in os.walk(os.path.join(self.customDir, "root/usr/share/reconstructor/scripts/")):
@@ -4686,28 +4731,28 @@ class Reconstructor:
 
             modScrRunOnBoot += '\nsudo rm -Rf /etc/skel/.gnomerc\nsudo rm -Rf /usr/share/reconstructor/\necho \'Modules Finished...\'\n\nsleep 5'
             # create boot mod script
-            print _('Generating boot module script...')
+            print(_('Generating boot module script...'))
             # remove existing
             if os.path.exists(os.path.join(self.customDir, "root/etc/skel/.gnomerc")):
-                os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/skel/.gnomerc") + '\"')
+                subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/etc/skel/.gnomerc") + '\"')
             fGnomerc = open(os.path.join(self.customDir, "root/etc/skel/.gnomerc"), 'w')
             fGnomerc.write("bash /usr/share/reconstructor/scripts/boot-scripts-exec.sh &")
             fGnomerc.close()
-            os.popen('chmod -R 777 \"' + os.path.join(self.customDir, "root/etc/skel/.gnomerc") + '\"')
+            subprocess.getoutput('chmod -R 777 \"' + os.path.join(self.customDir, "root/etc/skel/.gnomerc") + '\"')
             fbootModScript = open(os.path.join(self.customDir, "root/usr/share/reconstructor/scripts/boot-scripts-exec.sh"), 'w')
             fbootModScript.write(modScrRunOnBoot)
             fbootModScript.close()
-            os.popen('chmod a+x \"' + os.path.join(self.customDir, "root/usr/share/reconstructor/scripts/boot-scripts-exec.sh") + '\"')
+            subprocess.getoutput('chmod a+x \"' + os.path.join(self.customDir, "root/usr/share/reconstructor/scripts/boot-scripts-exec.sh") + '\"')
             # chmod all scripts
-            os.popen('chmod -R 775 \"' + os.path.join(self.customDir, "root/usr/share/reconstructor/") + '\"')
+            subprocess.getoutput('chmod -R 775 \"' + os.path.join(self.customDir, "root/usr/share/reconstructor/") + '\"')
 
         # manual software
         # check for manual install
         if self.manualInstall == True:
-            print _("Manually installing all existing .deb archives in /var/cache/apt/archives...")
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' dpkg -i -R /var/cache/apt/archives/ 1>&2 2>/dev/null')
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get clean')
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get autoclean')
+            print(_("Manually installing all existing .deb archives in /var/cache/apt/archives..."))
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' dpkg -i -R /var/cache/apt/archives/ 1>&2 2>/dev/null')
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get clean')
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get autoclean')
 
         # DEPRECATED - replacing with module framework
         # install software
@@ -4715,69 +4760,69 @@ class Reconstructor:
         # install regular software
         if self.checkSoftware() == True:
             # add current user to the access control list
-            user = commands.getoutput('echo $USER')
-            print _("Adding user " + user + " to access control list...")
-            os.popen('xhost +local:' + user)
+            user = subprocess.getoutput('echo $USER')
+            print(_("Adding user " + user + " to access control list..."))
+            subprocess.getoutput('xhost +local:' + user)
             # copy dns info
             if os.path.exists("/etc/resolv.conf"):
-                print _("Copying DNS info...")
-                os.popen('cp -L --remove-destination /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                print(_("Copying DNS info..."))
+                subprocess.getoutput('cp -L --remove-destination /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             elif os.path.exists("/run/resolvconf/resolv.conf"):
-                print _("Copying DNS info...")
-                os.popen('cp -L --remove-destination /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                print(_("Copying DNS info..."))
+                subprocess.getoutput('cp -L --remove-destination /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             # mount /proc
-            print _("Mounting /proc filesystem...")
-            os.popen('mount -t proc none \"' + os.path.join(self.customDir, "root/proc") + '\"')
+            print(_("Mounting /proc filesystem..."))
+            subprocess.getoutput('mount -t proc none \"' + os.path.join(self.customDir, "root/proc") + '\"')
             # copy apt.conf
-            print _("Copying apt.conf configuration...")
+            print(_("Copying apt.conf configuration..."))
             if not os.path.exists(os.path.join(self.customDir, "root/etc/apt/apt.conf.d/")):
                 os.makedirs(os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
-            os.popen('cp -f /etc/apt/apt.conf.d/* ' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
+            subprocess.getoutput('cp -f /etc/apt/apt.conf.d/* ' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
             # copy wgetrc
-            print _("Copying wgetrc configuration...")
+            print(_("Copying wgetrc configuration..."))
             # backup
-            os.popen('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\"')
-            os.popen('cp -f /etc/wgetrc ' + os.path.join(self.customDir, "root/etc/wgetrc"))
+            subprocess.getoutput('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\"')
+            subprocess.getoutput('cp -f /etc/wgetrc ' + os.path.join(self.customDir, "root/etc/wgetrc"))
             # update ONLY if repositories are selected
             if self.checkCustomRepos() == True:
-                print _("Updating APT Information...")
+                print(_("Updating APT Information..."))
                 # update apt
-                os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get update ')
+                subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get update ')
             # clean cache
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get clean')
-            os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get autoclean')
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get clean')
+            subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get autoclean')
 
             # custom apt-get
-            if self.wTree.get_widget("entryCustomAptInstall").get_text() != "":
-                print _("Installing Custom Software...")
-                os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get install --assume-yes --force-yes -d ' + self.wTree.get_widget("entryCustomAptInstall").get_text())
-                os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' dpkg -i -R /var/cache/apt/archives/ 1>&2 2>/dev/null')
-                os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get clean')
-                os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get autoclean')
+            if self.builder.get_object("entryCustomAptInstall").get_text() != "":
+                print(_("Installing Custom Software..."))
+                subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get install --assume-yes --force-yes -d ' + self.builder.get_object("entryCustomAptInstall").get_text())
+                subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' dpkg -i -R /var/cache/apt/archives/ 1>&2 2>/dev/null')
+                subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get clean')
+                subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get autoclean')
 
             # custom software removal
-            if self.wTree.get_widget("entryCustomAptRemove").get_text() != "":
-                print _("Removing Custom Software...")
-                os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' dpkg -P ' + self.wTree.get_widget("entryCustomAptRemove").get_text() + ' 1>&2 2>/dev/null')
-                os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' dpkg --configure -a')
-                os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get clean')
-                os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get autoclean')
+            if self.builder.get_object("entryCustomAptRemove").get_text() != "":
+                print(_("Removing Custom Software..."))
+                subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' dpkg -P ' + self.builder.get_object("entryCustomAptRemove").get_text() + ' 1>&2 2>/dev/null')
+                subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' dpkg --configure -a')
+                subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get clean')
+                subprocess.getoutput('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + ' apt-get autoclean')
 
 
             # restore wgetrc
-            print _("Restoring wgetrc configuration...")
-            os.popen('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\"')
+            print(_("Restoring wgetrc configuration..."))
+            subprocess.getoutput('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\"')
             # remove apt.conf
-            #print _("Removing apt.conf configuration...")
-            #os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf") + '\"')
+            #print(_("Removing apt.conf configuration..."))
+            #subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf") + '\"')
             # remove dns info
-            print _("Removing DNS info...")
-            os.popen('rm -f \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
-            os.popen('ln -s /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+            print(_("Removing DNS info..."))
+            subprocess.getoutput('rm -f \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
+            subprocess.getoutput('ln -s /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
 
             # umount /proc
-            print _("Umounting /proc...")
-            error = commands.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/proc/") + '\"')
+            print(_("Umounting /proc..."))
+            error = subprocess.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/proc/") + '\"')
             if(error != ''):
                 self.suggestReboot('/proc could not be unmounted. It must be unmounted before you can build an ISO.')
             self.setDefaultCursor()
@@ -4794,7 +4839,7 @@ class Reconstructor:
         self.altCdUbuntuArch = 'unknown'
         # build regex for info
         r = re.compile(self.regexUbuntuAltCdInfo, re.IGNORECASE)
-        f = file(os.path.join(self.customDir, "remaster_alt/.disk/info"), 'r')
+        f = open(os.path.join(self.customDir, "remaster_alt/.disk/info"), 'r')
         for l in f:
             if r.match(l) != None:
                 self.altCdUbuntuDist = r.match(l).group(1)
@@ -4804,9 +4849,9 @@ class Reconstructor:
         distText = _('Distribution:')
         verText = _('Version:')
         archText = _('Architecture:')
-        print distText + ' ' + self.altCdUbuntuDist
-        print verText + ' ' + self.altCdUbuntuVersion
-        print archText + ' ' + self.altCdUbuntuArch
+        print(distText + ' ' + self.altCdUbuntuDist)
+        print(verText + ' ' + self.altCdUbuntuVersion)
+        print(archText + ' ' + self.altCdUbuntuArch)
 
         # load ubuntu codename for apt
         self.ubuntuCodename = ''
@@ -4827,106 +4872,109 @@ class Reconstructor:
         elif self.altCdUbuntuVersion == self.karmicVersion:
             self.ubuntuCodename = 'karmic'
         else:
-            print _("Unable to detect codename for Ubuntu CD Version - APT Repositories will NOT be modified...")
+            print(_("Unable to detect codename for Ubuntu CD Version - APT Repositories will NOT be modified..."))
 
 
         # set up apt repos
         if self.checkAltCustomRepos() == True:
             # move old sources.list apt file
-            print _("Backing up old apt config...")
-            os.popen('mv -f /etc/apt/sources.list /etc/apt/sources.list.orig')
-            os.popen('cp -Rf /var/cache/apt /var/cache/apt.orig')
+            print(_("Backing up old apt config..."))
+            subprocess.getoutput('mv -f /etc/apt/sources.list /etc/apt/sources.list.orig')
+            subprocess.getoutput('cp -Rf /var/cache/apt /var/cache/apt.orig')
             # check for directories and create if necessary
             if os.path.exists(os.path.join(self.customDir, self.altRemasterRepo)) == False:
-                os.popen('mkdir -p \"' + os.path.join(self.customDir, self.altRemasterRepo) + '\"')
+                subprocess.getoutput('mkdir -p \"' + os.path.join(self.customDir, self.altRemasterRepo) + '\"')
             if os.path.exists(os.path.join(self.customDir, self.altRemasterRepo + "/archives")) == False:
-                os.popen('mkdir -p \"' + os.path.join(self.customDir, self.altRemasterRepo + "/archives/partial") + '\"')
-            os.popen('chmod -R 775 \"' + os.path.join(self.customDir, self.altRemasterRepo) + '\"')
+                subprocess.getoutput('mkdir -p \"' + os.path.join(self.customDir, self.altRemasterRepo + "/archives/partial") + '\"')
+            subprocess.getoutput('chmod -R 775 \"' + os.path.join(self.customDir, self.altRemasterRepo) + '\"')
 
             if self.ubuntuCodename != '':
                 # ubuntu official
-                if self.wTree.get_widget("checkbuttonAltUbuntuOfficialRepo").get_active() == True:
-                    print _("Adding Ubuntu Official Apt Repository...")
-                    os.popen('echo \"deb http://archive.ubuntu.com/ubuntu/ ' + self.ubuntuCodename + ' main\" >> /etc/apt/sources.list')
-                    print _('Adding Ubuntu Official Security Repository...')
-                    os.popen('echo \"deb http://security.ubuntu.com/ubuntu ' + self.ubuntuCodename +'-security main restricted\" >> /etc/apt/sources.list')
-                    os.popen('echo \"deb-src http://security.ubuntu.com/ubuntu ' + self.ubuntuCodename + '-security main restricted\" >> /etc/apt/sources.list')
+                if self.builder.get_object("checkbuttonAltUbuntuOfficialRepo").get_active() == True:
+                    print(_("Adding Ubuntu Official Apt Repository..."))
+                    subprocess.getoutput('echo \"deb http://archive.ubuntu.com/ubuntu/ ' + self.ubuntuCodename + ' main\" >> /etc/apt/sources.list')
+                    print(_('Adding Ubuntu Official Security Repository...'))
+                    subprocess.getoutput('echo \"deb http://security.ubuntu.com/ubuntu ' + self.ubuntuCodename +'-security main restricted\" >> /etc/apt/sources.list')
+                    subprocess.getoutput('echo \"deb-src http://security.ubuntu.com/ubuntu ' + self.ubuntuCodename + '-security main restricted\" >> /etc/apt/sources.list')
 
                 # ubuntu restricted
-                if self.wTree.get_widget("checkbuttonAltUbuntuRestrictedRepo").get_active() == True:
-                    print _("Adding Ubuntu Restricted Apt Repository...")
-                    os.popen('echo \"deb http://archive.ubuntu.com/ubuntu/ ' + self.ubuntuCodename + ' restricted\" >> /etc/apt/sources.list')
+                if self.builder.get_object("checkbuttonAltUbuntuRestrictedRepo").get_active() == True:
+                    print(_("Adding Ubuntu Restricted Apt Repository..."))
+                    subprocess.getoutput('echo \"deb http://archive.ubuntu.com/ubuntu/ ' + self.ubuntuCodename + ' restricted\" >> /etc/apt/sources.list')
 
                 # ubuntu universe
-                if self.wTree.get_widget("checkbuttonAltUbuntuUniverseRepo").get_active() == True:
-                    print _("Adding Ubuntu Universe Apt Repository...")
-                    os.popen('echo \"deb http://archive.ubuntu.com/ubuntu/ ' + self.ubuntuCodename + ' universe\" >> /etc/apt/sources.list')
-                    print _('Adding Ubuntu Universe Security Repository...')
-                    os.popen('echo \"deb http://security.ubuntu.com/ubuntu ' + self.ubuntuCodename + '-security universe\" >> /etc/apt/sources.list')
-                    os.popen('echo \"deb-src http://security.ubuntu.com/ubuntu ' + self.ubuntuCodename + '-security universe\" >> /etc/apt/sources.list')
+                if self.builder.get_object("checkbuttonAltUbuntuUniverseRepo").get_active() == True:
+                    print(_("Adding Ubuntu Universe Apt Repository..."))
+                    subprocess.getoutput('echo \"deb http://archive.ubuntu.com/ubuntu/ ' + self.ubuntuCodename + ' universe\" >> /etc/apt/sources.list')
+                    print(_('Adding Ubuntu Universe Security Repository...'))
+                    subprocess.getoutput('echo \"deb http://security.ubuntu.com/ubuntu ' + self.ubuntuCodename + '-security universe\" >> /etc/apt/sources.list')
+                    subprocess.getoutput('echo \"deb-src http://security.ubuntu.com/ubuntu ' + self.ubuntuCodename + '-security universe\" >> /etc/apt/sources.list')
 
                 # ubuntu multiverse
-                if self.wTree.get_widget("checkbuttonAltUbuntuMultiverseRepo").get_active() == True:
-                    print _("Adding Ubuntu Multiverse Apt Repository...")
-                    os.popen('echo \"deb http://archive.ubuntu.com/ubuntu/ ' + self.ubuntuCodename + ' multiverse\" >> /etc/apt/sources.list')
+                if self.builder.get_object("checkbuttonAltUbuntuMultiverseRepo").get_active() == True:
+                    print(_("Adding Ubuntu Multiverse Apt Repository..."))
+                    subprocess.getoutput('echo \"deb http://archive.ubuntu.com/ubuntu/ ' + self.ubuntuCodename + ' multiverse\" >> /etc/apt/sources.list')
 
                 # ubuntu official updates
-                print _("Adding Ubuntu Official Updates Apt Repository...")
-                os.popen('echo \"deb http://us.archive.ubuntu.com/ubuntu/ ' + self.ubuntuCodename + '-updates main restricted\" >> /etc/apt/sources.list')
+                print(_("Adding Ubuntu Official Updates Apt Repository..."))
+                subprocess.getoutput('echo \"deb http://us.archive.ubuntu.com/ubuntu/ ' + self.ubuntuCodename + '-updates main restricted\" >> /etc/apt/sources.list')
 
                 # custom archives
-                buf = self.wTree.get_widget("textviewAltAptCustomRepos").get_buffer()
+                buf = self.builder.get_object("textviewAltAptCustomRepos").get_buffer()
                 if buf.get_text(buf.get_start_iter(),buf.get_end_iter()) != '':
-                    print _("Adding Custom Apt Repositories...")
-                    os.popen('echo \"' + buf.get_text(buf.get_start_iter(),buf.get_end_iter()) + '\" >> /etc/apt/sources.list.d/reconstructor.list')
+                    print(_("Adding Custom Apt Repositories..."))
+                    subprocess.getoutput('echo \"' + buf.get_text(buf.get_start_iter(),buf.get_end_iter()) + '\" >> /etc/apt/sources.list.d/reconstructor.list')
 
                 # download packages
-                buf = self.wTree.get_widget("textviewAltPackages").get_buffer()
+                buf = self.builder.get_object("textviewAltPackages").get_buffer()
                 if buf.get_text(buf.get_start_iter(),buf.get_end_iter()) != '':
-                    print _("Updating apt (apt-get update)...")
-                    os.popen('apt-get update')
-                    print _("Downloading extra packages...")
-                    print(commands.getoutput('apt-get install -d -y -m --reinstall --allow-unauthenticated -o Dir::Cache=\"' + os.path.join(self.customDir, self.altRemasterRepo) + '/\" ' + buf.get_text(buf.get_start_iter(),buf.get_end_iter())))
+                    print(_("Updating apt (apt-get update)..."))
+                    subprocess.getoutput('apt-get update')
+                    print(_("Downloading extra packages..."))
+                    print(subprocess.getoutput('apt-get install -d -y -m --reinstall --allow-unauthenticated -o Dir::Cache=\"' + os.path.join(self.customDir, self.altRemasterRepo) + '/\" ' + buf.get_text(buf.get_start_iter(),buf.get_end_iter())))
 
 
                 # copy .debs to remaster dir
                 # check for extras dir
                 if os.path.exists(os.path.join(self.customDir, self.altRemasterDir) + "/dists/" + self.ubuntuCodename + "/extras") == False:
-                    os.popen('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '\" ; mkdir -p dists/' + self.ubuntuCodename + '/extras/binary-' + self.altCdUbuntuArch)
+                    subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '\"')
+                    subprocess.getoutput('mkdir -p dists/' + self.ubuntuCodename + '/extras/binary-' + self.altCdUbuntuArch)
                 # pool dir
                 if os.path.exists(os.path.join(self.customDir, self.altRemasterDir) + "/pool/extras") == False:
-                    os.popen('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '\" ; mkdir -p pool/extras')
+                    subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '\"')
+                    subprocess.getoutput('mkdir -p pool/extras')
                 # check and copy
-                if commands.getoutput('ls \"' + os.path.join(self.customDir, self.altRemasterRepo) + '/archives\"' + ' | grep .deb') != '':
-                    print _("Copying downloaded archives into pool...")
-                    os.popen('cd \"' + os.path.join(self.customDir, self.altRemasterRepo) + '/archives\" ; cp -R *.deb \"' + os.path.join(self.customDir, self.altRemasterDir) + '/pool/extras/\"')
-                    #print _("Cleaning temporary apt cache...")
-                    os.popen('apt-get clean -o Dir::Cache=\"' + os.path.join(self.customDir, self.altRemasterRepo) + '/\" ')
+                if subprocess.getoutput('ls \"' + os.path.join(self.customDir, self.altRemasterRepo) + '/archives\"' + ' | grep .deb') != '':
+                    print(_("Copying downloaded archives into pool..."))
+                    subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.altRemasterRepo) + '/archives\"')
+                    subprocess.getoutput('cp -R *.deb \"' + os.path.join(self.customDir, self.altRemasterDir) + '/pool/extras/\"')
+                    #print(_("Cleaning temporary apt cache..."))
+                    subprocess.getoutput('apt-get clean -o Dir::Cache=\"' + os.path.join(self.customDir, self.altRemasterRepo) + '/\" ')
 
                 # check dependencies for extras
                 p = PackageHelper(customDirectory=self.customDir, remasterDirectory=self.altRemasterDir, remasterRepoDirectory=self.altRemasterRepo, remasterTempDirectory=self.tmpDir, distribution=self.ubuntuCodename)
-                print _("Checking and downloading dependencies for extra packages...")
+                print(_("Checking and downloading dependencies for extra packages..."))
                 p.resolveDependencies()
 
-                #print _("Cleaning temporary apt cache...")
-                os.popen('apt-get clean -o Dir::Cache=\"' + os.path.join(self.customDir, self.altRemasterRepo) + '/\" ')
+                #print(_("Cleaning temporary apt cache..."))
+                subprocess.getoutput('apt-get clean -o Dir::Cache=\"' + os.path.join(self.customDir, self.altRemasterRepo) + '/\" ')
 
-                print _("Restoring original apt configuration...")
-                os.popen('mv -f /etc/apt/sources.list.orig /etc/apt/sources.list')
-                os.popen('rm -Rf /var/cache/apt')
-                os.popen('mv -f /var/cache/apt.orig /var/cache/apt')
-                os.popen('rm -Rf /var/cache/apt.orig')
+                print(_("Restoring original apt configuration..."))
+                subprocess.getoutput('mv -f /etc/apt/sources.list.orig /etc/apt/sources.list')
+                subprocess.getoutput('rm -Rf /var/cache/apt')
+                subprocess.getoutput('mv -f /var/cache/apt.orig /var/cache/apt')
+                subprocess.getoutput('rm -Rf /var/cache/apt.orig')
 
 
         # check for pool dir
         if os.path.exists(os.path.join(self.customDir, self.altRemasterDir) + '/pool/extras' ) == True:
             # check for debs
-            if commands.getoutput('ls \"' + os.path.join(self.customDir, self.altRemasterDir) + '/pool/extras/\"' + ' | grep .deb') != '':
+            if subprocess.getoutput('ls \"' + os.path.join(self.customDir, self.altRemasterDir) + '/pool/extras/\"' + ' | grep .deb') != '':
                 # create Release file
-                print _("Creating Release file...")
+                print(_("Creating Release file..."))
                 # check for extras directory
                 if os.path.exists(os.path.join(self.customDir, self.altRemasterDir) + '/dists/' + self.ubuntuCodename + '/extras/binary-' + self.altCdUbuntuArch) == False:
-                    os.popen('mkdir -p \"' + os.path.join(self.customDir, self.altRemasterDir) + '/dists/' + self.ubuntuCodename + '/extras/binary-' + self.altCdUbuntuArch + '\"')
+                    subprocess.getoutput('mkdir -p \"' + os.path.join(self.customDir, self.altRemasterDir) + '/dists/' + self.ubuntuCodename + '/extras/binary-' + self.altCdUbuntuArch + '\"')
                 f=open(os.path.join(self.customDir, self.altRemasterDir) + '/dists/' + self.ubuntuCodename + '/extras/binary-' + self.altCdUbuntuArch + '/Release', 'w')
                 f.write('Archive: ' + self.ubuntuCodename + '\nVersion: ' + self.altCdUbuntuVersion + '\nComponent: extras\nOrigin: Ubuntu\nLabel: Ubuntu\nArchitecture: ' + self.altCdUbuntuArch + '\n')
                 f.close()
@@ -4934,10 +4982,10 @@ class Reconstructor:
                 status, output = commands.getstatusoutput('gpg --list-keys | grep \"' + self.altGpgKeyName +'\" > /dev/null')
                 if status == 0:
                     # key found
-                    print "GPG Key Found..."
+                    print("GPG Key Found...")
                 else:
                     # not found; create
-                    print _("No GPG Key found... Creating...")
+                    print(_("No GPG Key found... Creating..."))
                     try:
                         # get key information
                         gpgKeyEmail, gpgKeyPhrase = None, None
@@ -4946,35 +4994,36 @@ class Reconstructor:
                         except:
                             pass
                         if gpgKeyEmail != None and gpgKeyPhrase != None:
-                            #print gpgKeyEmail, gpgKeyPhrase
+                            #print(gpgKeyEmail, gpgKeyPhrase)
                             # create key
                             key = "Key-Type: DSA\nKey-Length: 1024\nSubkey-Type: ELG-E\nSubkey-Length: 2048\nName-Real: " + self.altGpgKeyName + "\nName-Comment: " + self.altGpgKeyComment + "\nName-Email: " + gpgKeyEmail + "\nExpire-Date: 0\nPassphrase: " + gpgKeyPhrase
-                            #print key
+                            #print(key)
                             f = open(os.path.join(self.customDir, self.tmpDir) + '/gpg.key', 'w')
                             f.write(key)
                             f.close()
                             # create the key from the gpg.key file
-                            os.popen('gpg --gen-key --batch --gen-key \"' + os.path.join(self.customDir, self.tmpDir) + '/gpg.key\" > /dev/null')
+                            subprocess.getoutput('gpg --gen-key --batch --gen-key \"' + os.path.join(self.customDir, self.tmpDir) + '/gpg.key\" > /dev/null')
                             # reset permissions for user
-                            os.popen('chown -R ' + os.getlogin() + ' \"' + os.environ['HOME'] + '/.gnupg/\"')
-                            print _("GPG Key Generation Finished...")
+                            subprocess.getoutput('chown -R ' + os.getlogin() + ' \"' + os.environ['HOME'] + '/.gnupg/\"')
+                            print(_("GPG Key Generation Finished..."))
                             # remove key generation file
-                            os.popen('rm -Rf \"' + os.path.join(self.customDir, self.tmpDir) + '/gpg.key\"')
+                            subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, self.tmpDir) + '/gpg.key\"')
 
                         else:
-                            raise Exception, _("Email and passphrase must not be empty and must match...")
+                            raise(Exception, _("Email and passphrase must not be empty and must match..."))
                             self.setDefaultCursor()
                             return False
-                    except Exception, detail:
+                    except Exception as detail:
                         errText = _("Error Creating GPG Key:")
-                        print errText, detail
+                        print(errText, detail)
                         self.setDefaultCursor()
                         return False
 
                 # create apt.conf
                 if os.path.exists(os.path.join(self.customDir, self.tmpDir) + '/apt.conf.d/99reconstructor') == False:
-                    print _("Creating apt.conf...")
-                    os.popen('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '\" ; cat dists/' + self.ubuntuCodename + '/Release | egrep -v \"^ \" | egrep -v \"^(Date|MD5Sum|SHA1)\" | sed \'s/: / \"/\' | sed \'s/^/APT::FTPArchive::Release::/\' | sed \'s/$/\";/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt.conf.d/99reconstructor\"')
+                    print(_("Creating apt.conf..."))
+                    subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '\"')
+                    subprocess.getoutput('cat dists/' + self.ubuntuCodename + '/Release | egrep -v \"^ \" | egrep -v \"^(Date|MD5Sum|SHA1)\" | sed \'s/: / \"/\' | sed \'s/^/APT::FTPArchive::Release::/\' | sed \'s/$/\";/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt.conf.d/99reconstructor\"')
 
                 # build paths for conf files (so sed can understand them...)
                 archDir = os.path.join(self.customDir, self.altRemasterDir)
@@ -4984,126 +5033,158 @@ class Reconstructor:
                 #check for apt-ftparchive-deb.conf
                 if os.path.exists(os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf') == False:
                     # create apt-ftparchive-deb.conf
-                    print _("Creating apt-ftparchive-deb.conf...")
+                    print(_("Creating apt-ftparchive-deb.conf..."))
                     # add archive dir path
-                    os.popen('cat \"' + cur_file_dir + '/lib/apt-ftparchive-deb.conf\" | sed \'s/ARCHIVEDIR/' + archDir + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf\"')
+                    subprocess.getoutput('cat \"' + cur_file_dir + '/lib/apt-ftparchive-deb.conf\" | sed \'s/ARCHIVEDIR/' + archDir + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf\"')
                     # add dist
-                    os.popen('cat \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf\" | sed \'s/DIST/' + self.ubuntuCodename + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf.tmp\"')
-                    os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\" ; mv apt-ftparchive-deb.conf.tmp apt-ftparchive-deb.conf ; rm -f apt-ftparchive-deb.conf.tmp')
+                    subprocess.getoutput('cat \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf\" | sed \'s/DIST/' + self.ubuntuCodename + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf.tmp\"')
+                    subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\"')
+                    subprocess.getoutput('mv apt-ftparchive-deb.conf.tmp apt-ftparchive-deb.conf')
+                    subprocess.getoutput('rm -f apt-ftparchive-deb.conf.tmp')
                     # add architecture
-                    os.popen('cat \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf\" | sed \'s/ARCH/' + self.altCdUbuntuArch + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf.tmp\"')
-                    os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\" ; mv apt-ftparchive-deb.conf.tmp apt-ftparchive-deb.conf ; rm -f apt-ftparchive-deb.conf.tmp')
+                    subprocess.getoutput('cat \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf\" | sed \'s/ARCH/' + self.altCdUbuntuArch + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf.tmp\"')
+                    subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\"')
+                    subprocess.getoutput('mv apt-ftparchive-deb.conf.tmp apt-ftparchive-deb.conf')
+                    subprocess.getoutput('rm -f apt-ftparchive-deb.conf.tmp')
                     # add index path
-                    os.popen('cat \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf\" | sed \'s/INDEXDIR/' + indexDir + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf.tmp\"')
-                    os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\" ; mv apt-ftparchive-deb.conf.tmp apt-ftparchive-deb.conf ; rm -f apt-ftparchive-deb.conf.tmp')
+                    subprocess.getoutput('cat \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf\" | sed \'s/INDEXDIR/' + indexDir + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf.tmp\"')
+                    subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\"')
+                    subprocess.getoutput('mv apt-ftparchive-deb.conf.tmp apt-ftparchive-deb.conf')
+                    subprocess.getoutput('rm -f apt-ftparchive-deb.conf.tmp')
 
                 # check for apt-ftparchive-udeb.conf
                 if os.path.exists(os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf') == False:
-                    print _("Creating apt-ftparchive-udeb.conf...")
+                    print(_("Creating apt-ftparchive-udeb.conf..."))
                     # add archive dir path
-                    os.popen('cat \"' + cur_file_dir + '/lib/apt-ftparchive-udeb.conf\" | sed \'s/ARCHIVEDIR/' + archDir + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf\"')
+                    subprocess.getoutput('cat \"' + cur_file_dir + '/lib/apt-ftparchive-udeb.conf\" | sed \'s/ARCHIVEDIR/' + archDir + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf\"')
                     # add dist
-                    os.popen('cat \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf\" | sed \'s/DIST/' + self.ubuntuCodename + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf.tmp\"')
-                    os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\" ; mv apt-ftparchive-udeb.conf.tmp apt-ftparchive-udeb.conf ; rm -f apt-ftparchive-udeb.conf.tmp')
+                    subprocess.getoutput('cat \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf\" | sed \'s/DIST/' + self.ubuntuCodename + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf.tmp\"')
+                    subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\"')
+                    subprocess.getoutput('mv apt-ftparchive-udeb.conf.tmp apt-ftparchive-udeb.conf')
+                    subprocess.getoutput('rm -f apt-ftparchive-udeb.conf.tmp')
                     # add architecture
-                    os.popen('cat \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf\" | sed \'s/ARCH/' + self.altCdUbuntuArch + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf.tmp\"')
-                    os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\" ; mv apt-ftparchive-udeb.conf.tmp apt-ftparchive-udeb.conf ; rm -f apt-ftparchive-udeb.conf.tmp')
+                    subprocess.getoutput('cat \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf\" | sed \'s/ARCH/' + self.altCdUbuntuArch + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf.tmp\"')
+                    subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\"')
+                    subprocess.getoutput('mv apt-ftparchive-udeb.conf.tmp apt-ftparchive-udeb.conf')
+                    subprocess.getoutput('rm -f apt-ftparchive-udeb.conf.tmp')
                     # add index path
-                    os.popen('cat \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf\" | sed \'s/INDEXDIR/' + indexDir + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf.tmp\"')
-                    os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\" ; mv apt-ftparchive-udeb.conf.tmp apt-ftparchive-udeb.conf ; rm -f apt-ftparchive-udeb.conf.tmp')
+                    subprocess.getoutput('cat \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf\" | sed \'s/INDEXDIR/' + indexDir + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf.tmp\"')
+                    subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\"')
+                    subprocess.getoutput('mv apt-ftparchive-udeb.conf.tmp apt-ftparchive-udeb.conf')
+                    subprocess.getoutput('rm -f apt-ftparchive-udeb.conf.tmp')
 
                 # check for apt-ftparchive-extras.conf
                 if os.path.exists(os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-extras.conf') == False:
-                    print _("Creating apt-ftparchive-extras.conf...")
+                    print(_("Creating apt-ftparchive-extras.conf..."))
                     # add archive dir path
-                    os.popen('cat \"' + cur_file_dir + '/lib/apt-ftparchive-extras.conf\" | sed \'s/ARCHIVEDIR/' + archDir + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-extras.conf\"')
+                    subprocess.getoutput('cat \"' + cur_file_dir + '/lib/apt-ftparchive-extras.conf\" | sed \'s/ARCHIVEDIR/' + archDir + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-extras.conf\"')
                     # add dist
-                    os.popen('cat \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-extras.conf\" | sed \'s/DIST/' + self.ubuntuCodename + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-extras.conf.tmp\"')
-                    os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\" ; mv apt-ftparchive-extras.conf.tmp apt-ftparchive-extras.conf ; rm -f apt-ftparchive-extras.conf.tmp')
+                    subprocess.getoutput('cat \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-extras.conf\" | sed \'s/DIST/' + self.ubuntuCodename + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-extras.conf.tmp\"')
+                    subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\"')
+                    subprocess.getoutput('mv apt-ftparchive-extras.conf.tmp apt-ftparchive-extras.conf')
+                    subprocess.getoutput('rm -f apt-ftparchive-extras.conf.tmp')
                     # add architecture
-                    os.popen('cat \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-extras.conf\" | sed \'s/ARCH/' + self.altCdUbuntuArch + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-extras.conf.tmp\"')
-                    os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\" ; mv apt-ftparchive-extras.conf.tmp apt-ftparchive-extras.conf ; rm -f apt-ftparchive-extras.conf.tmp')
+                    subprocess.getoutput('cat \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-extras.conf\" | sed \'s/ARCH/' + self.altCdUbuntuArch + '/\' > \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-extras.conf.tmp\"')
+                    subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\"')
+                    subprocess.getoutput('mv apt-ftparchive-extras.conf.tmp apt-ftparchive-extras.conf')
+                    subprocess.getoutput('rm -f apt-ftparchive-extras.conf.tmp')
 
-                print _("Checking Indices...")
+                print(_("Checking Indices..."))
                 if os.path.exists (os.path.join(self.customDir, self.tmpDir) + '/override.' + self.ubuntuCodename + '.main') == False:
-                    print "Getting index: override." + self.ubuntuCodename + ".main ..."
-                    os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\" ; wget -nv http://archive.ubuntu.com/ubuntu/indices/override.' + self.ubuntuCodename + '.main')
+                    print("Getting index: override." + self.ubuntuCodename + ".main ...")
+                    subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\"')
+                    subprocess.getoutput('wget -nv http://archive.ubuntu.com/ubuntu/indices/override.' + self.ubuntuCodename + '.main')
                 if os.path.exists (os.path.join(self.customDir, self.tmpDir) + '/override.' + self.ubuntuCodename + '.extra.main') == False:
-                    print "Getting index: override." + self.ubuntuCodename + ".extra.main ..."
-                    os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\" ; wget -nv http://archive.ubuntu.com/ubuntu/indices/override.' + self.ubuntuCodename + '.extra.main')
+                    print("Getting index: override." + self.ubuntuCodename + ".extra.main ...")
+                    subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\"')
+                    subprocess.getoutput('wget -nv http://archive.ubuntu.com/ubuntu/indices/override.' + self.ubuntuCodename + '.extra.main')
                 if os.path.exists (os.path.join(self.customDir, self.tmpDir) + '/override.' + self.ubuntuCodename + '.main.debian-installer') == False:
-                    print "Getting index: override." + self.ubuntuCodename + ".main.debian-installer ..."
-                    os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\" ; wget -nv http://archive.ubuntu.com/ubuntu/indices/override.' + self.ubuntuCodename + '.main.debian-installer')
+                    print("Getting index: override." + self.ubuntuCodename + ".main.debian-installer ...")
+                    subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\"')
+                    subprocess.getoutput('wget -nv http://archive.ubuntu.com/ubuntu/indices/override.' + self.ubuntuCodename + '.main.debian-installer')
 
                 # check for extra2.main override
                 if os.path.exists(os.path.join(self.customDir, self.tmpDir) + '/override.' + self.ubuntuCodename + '.extra2.main') == False:
                     # create a 'fixed' version of extra.main override
-                    print "Fixing index: override." + self.ubuntuCodename + ".extra.main ..."
-                    os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\" ; cat override.'+ self.ubuntuCodename + '.extra.main | egrep -v \' Task \' > override.' + self.ubuntuCodename + '.extra2.main')
-                    os.popen('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '\" ; cat dists/' + self.ubuntuCodename + '/main/binary-' + self.altCdUbuntuArch + '/Packages | perl -e \'while (<>) { chomp; if(/^Package\:\s*(.+)$/) { $pkg=$1; } elsif(/^Task\:\s(.+)$/) { print \"$pkg\tTask\t$1\n\"; } }\' >> ' + os.path.join(self.customDir, self.tmpDir) + '/override.' + self.ubuntuCodename + '.extra2.main')
+                    print("Fixing index: override." + self.ubuntuCodename + ".extra.main ...")
+                    subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\"')
+                    subprocess.getoutput('cat override.'+ self.ubuntuCodename + '.extra.main | egrep -v \' Task \' > override.' + self.ubuntuCodename + '.extra2.main')
+                    subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '\"')
+                    subprocess.getoutput('cat dists/' + self.ubuntuCodename + '/main/binary-' + self.altCdUbuntuArch + '/Packages | perl -e \'while (<>) { chomp; if(/^Package\:\s*(.+)$/) { $pkg=$1; } elsif(/^Task\:\s(.+)$/) { print(\"$pkg\tTask\t$1\n\"); } }\' >> ' + os.path.join(self.customDir, self.tmpDir) + '/override.' + self.ubuntuCodename + '.extra2.main')
 
                 # download ubuntu keyring
                 # move old sources.list apt file
-                print _("Backing up old apt config...")
-                os.popen('mv -f /etc/apt/sources.list /etc/apt/sources.list.orig')
-                os.popen('cp -Rf /var/cache/apt /var/cache/apt.orig')
+                print(_("Backing up old apt config..."))
+                subprocess.getoutput('mv -f /etc/apt/sources.list /etc/apt/sources.list.orig')
+                subprocess.getoutput('cp -Rf /var/cache/apt /var/cache/apt.orig')
 
                 # remove old ubuntu-keyring
-                print _("Removing existing ubuntu-keyring source...")
-                os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\" ; rm -Rf ubuntu-keyring*')
+                print(_("Removing existing ubuntu-keyring source..."))
+                subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, self.tmpDir) + '/ubuntu-keyring*')
 
                 # add deb-src to apt sources
-                os.popen('echo deb-src http://us.archive.ubuntu.com/ubuntu ' + self.ubuntuCodename + ' main restricted > /etc/apt/sources.list')
-                print _("Updating apt (apt-get update)...")
-                os.popen('apt-get update')
+                subprocess.getoutput('echo deb-src http://us.archive.ubuntu.com/ubuntu ' + self.ubuntuCodename + ' main restricted > /etc/apt/sources.list')
+                print(_("Updating apt (apt-get update)..."))
+                subprocess.getoutput('apt-get update')
                 # download ubuntu-keyring for keyring generation
-                print _("Getting Ubuntu Keyring source...")
-                print(commands.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\" ; apt-get source ubuntu-keyring'))
+                print(_("Getting Ubuntu Keyring source..."))
+                subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\"')
+                subprocess.getoutput('apt-get source ubuntu-keyring')
 
-                print _("Restoring original apt configuration...")
-                os.popen('mv -f /etc/apt/sources.list.orig /etc/apt/sources.list')
-                os.popen('rm -Rf /var/cache/apt')
-                os.popen('mv -f /var/cache/apt.orig /var/cache/apt')
-                os.popen('rm -Rf /var/cache/apt.orig')
+                print(_("Restoring original apt configuration..."))
+                subprocess.getoutput('mv -f /etc/apt/sources.list.orig /etc/apt/sources.list')
+                subprocess.getoutput('rm -Rf /var/cache/apt')
+                subprocess.getoutput('mv -f /var/cache/apt.orig /var/cache/apt')
+                subprocess.getoutput('rm -Rf /var/cache/apt.orig')
                 # update local system apt so user doesn't have to later
-                os.popen('apt-get update')
+                subprocess.getoutput('apt-get update')
 
-                keyringDir = commands.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\" ; find * -maxdepth 1 -name "ubuntu-keyring*" -type d -print')
+                subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\"')
+                keyringDir = subprocess.getoutput('find * -maxdepth 1 -name "ubuntu-keyring*" -type d -print')
                 # import ubuntu keyring
-                print _("Importing Ubuntu Key...")
-                os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '/' + keyringDir + '/keyrings\" ; gpg --import < ubuntu-archive-keyring.gpg > /dev/null ; rm -Rf ubuntu-archive-keyring.gpg > /dev/null')
+                print(_("Importing Ubuntu Key..."))
+                subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '/' + keyringDir + '/keyrings\" ')
+                subprocess.getoutput('gpg --import < ubuntu-archive-keyring.gpg > /dev/null')
+                subprocess.getoutput('rm -Rf ubuntu-archive-keyring.gpg > /dev/null')
                 # reset permissions for user
-                os.popen('chown -R ' + os.getlogin() + ' \"' + os.environ['HOME'] + '/.gnupg/\"')
-                print _("Exporting new key...")
-                os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '/' + keyringDir + '/keyrings\" ; gpg --output=ubuntu-archive-keyring.gpg --export \"Ubuntu CD Image Automatic Signing Key\" \"Ubuntu Archive Automatic Signing Key\" \"' + self.altGpgKeyName + '\" > /dev/null' )
-                print _("Building new key package...")
+                subprocess.getoutput('chown -R ' + os.getlogin() + ' \"' + os.environ['HOME'] + '/.gnupg/\"')
+                print(_("Exporting new key..."))
+                subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '/' + keyringDir + '/keyrings\"')
+                subprocess.getoutput('gpg --output=ubuntu-archive-keyring.gpg --export \"Ubuntu CD Image Automatic Signing Key\" \"Ubuntu Archive Automatic Signing Key\" \"' + self.altGpgKeyName + '\" > /dev/null' )
+                print(_("Building new key package..."))
                 # TODO: somehow pass the gpg passphrase so it doesn't prompt...
-                os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '/' + keyringDir + '\" ; dpkg-buildpackage -rfakeroot -m\"' + self.altGpgKeyName + '\" -k\"' + self.altGpgKeyName + '\" > /dev/null')
+                subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '/' + keyringDir + '\"')
+                subprocess.getoutput('dpkg-buildpackage -rfakeroot -m\"' + self.altGpgKeyName + '\" -k\"' + self.altGpgKeyName + '\" > /dev/null')
                 # remove old ubuntu-keyring package
-                print _("Removing old ubuntu keyring package...")
-                os.popen('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '\" ; rm -Rf pool/main/u/ubuntu-keyring/*')
+                print(_("Removing old ubuntu keyring package..."))
+                subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '\"')
+                subprocess.getoutput('rm -Rf pool/main/u/ubuntu-keyring/*')
                 # copy new keyring package
-                print _("Copying new ubuntu keyring package...")
-                os.popen('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\" ; cp -Rf ubuntu-keyring*deb \"' + os.path.join(self.customDir, self.altRemasterDir) + '/pool/main/u/ubuntu-keyring/\"')
+                print(_("Copying new ubuntu keyring package..."))
+                subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\"')
+                subprocess.getoutput('cp -Rf ubuntu-keyring*deb \"' + os.path.join(self.customDir, self.altRemasterDir) + '/pool/main/u/ubuntu-keyring/\"')
 
                 # create apt package list
-                print _("Generating package lists...")
+                print(_("Generating package lists..."))
+                subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '\"')
                 print("  deb...")
-                os.popen('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '\" ; apt-ftparchive -c \"' + os.path.join(self.customDir, self.tmpDir) + '/apt.conf.d/99reconstructor\" generate \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf\"')
+                subprocess.getoutput('apt-ftparchive -c \"' + os.path.join(self.customDir, self.tmpDir) + '/apt.conf.d/99reconstructor\" generate \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-deb.conf\"')
                 print("  udeb...")
-                os.popen('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '\" ; apt-ftparchive -c \"' + os.path.join(self.customDir, self.tmpDir) + '/apt.conf.d/99reconstructor\" generate \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf\"')
-                os.popen('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '\" ; cat dists/' + self.ubuntuCodename + '/main/binary-' + self.altCdUbuntuArch + '/Release | sed \'s/Component: main/Component: extras/\' > dists/' + self.ubuntuCodename + '/extras/binary-' + self.altCdUbuntuArch + '/Release')
+                subprocess.getoutput('apt-ftparchive -c \"' + os.path.join(self.customDir, self.tmpDir) + '/apt.conf.d/99reconstructor\" generate \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-udeb.conf\"')
+                subprocess.getoutput('cat dists/' + self.ubuntuCodename + '/main/binary-' + self.altCdUbuntuArch + '/Release | sed \'s/Component: main/Component: extras/\' > dists/' + self.ubuntuCodename + '/extras/binary-' + self.altCdUbuntuArch + '/Release')
                 print("  extras...")
-                os.popen('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '\" ; apt-ftparchive -c \"' + os.path.join(self.customDir, self.tmpDir) + '/apt.conf.d/99reconstructor\" generate \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-extras.conf\"')
+                subprocess.getoutput('apt-ftparchive -c \"' + os.path.join(self.customDir, self.tmpDir) + '/apt.conf.d/99reconstructor\" generate \"' + os.path.join(self.customDir, self.tmpDir) + '/apt-ftparchive-extras.conf\"')
 
                 # remove existing release file
-                print _("Removing current Release file...")
-                os.popen('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '/dists/' + self.ubuntuCodename + '\" ; rm -Rf Release*')
-                print _("Generating new Release file...")
-                os.popen('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '\" ; apt-ftparchive -c \"' + os.path.join(self.customDir, self.tmpDir) + '/apt.conf.d/99reconstructor\" release dists/' + self.ubuntuCodename + '/ > \"' + os.path.join(self.customDir, self.altRemasterDir) + '/dists/' + self.ubuntuCodename + '/Release\"')
-                print _("GPG signing new Release file...")
-                #os.popen('echo \"' + self.altGpgKeyPhrase + '\" | gpg --default-key \"' + self.altGpgKeyName + '\" --passphrase-fd 0 --output \"' + os.path.join(self.customDir, self.altRemasterDir) + '/dists/' + self.ubuntuCodename + '/Release.gpg\" -ba \"' + os.path.join(self.customDir, self.altRemasterDir) + '/dists/' + self.ubuntuCodename + '/Release\"')
-                os.popen('gpg --default-key \"' + self.altGpgKeyName + '\" --output \"' + os.path.join(self.customDir, self.altRemasterDir) + '/dists/' + self.ubuntuCodename + '/Release.gpg\" -ba \"' + os.path.join(self.customDir, self.altRemasterDir) + '/dists/' + self.ubuntuCodename + '/Release\"')
+                print(_("Removing current Release file..."))
+                subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '/dists/' + self.ubuntuCodename + '\"')
+                subprocess.getoutput('rm -Rf Release*')
+                print(_("Generating new Release file..."))
+                subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '\"')
+                subprocess.getoutput('apt-ftparchive -c \"' + os.path.join(self.customDir, self.tmpDir) + '/apt.conf.d/99reconstructor\" release dists/' + self.ubuntuCodename + '/ > \"' + os.path.join(self.customDir, self.altRemasterDir) + '/dists/' + self.ubuntuCodename + '/Release\"')
+                print(_("GPG signing new Release file..."))
+                #subprocess.getoutput('echo \"' + self.altGpgKeyPhrase + '\" | gpg --default-key \"' + self.altGpgKeyName + '\" --passphrase-fd 0 --output \"' + os.path.join(self.customDir, self.altRemasterDir) + '/dists/' + self.ubuntuCodename + '/Release.gpg\" -ba \"' + os.path.join(self.customDir, self.altRemasterDir) + '/dists/' + self.ubuntuCodename + '/Release\"')
+                subprocess.getoutput('gpg --default-key \"' + self.altGpgKeyName + '\" --output \"' + os.path.join(self.customDir, self.altRemasterDir) + '/dists/' + self.ubuntuCodename + '/Release.gpg\" -ba \"' + os.path.join(self.customDir, self.altRemasterDir) + '/dists/' + self.ubuntuCodename + '/Release\"')
 
                 # build list for preseed
                 # build regex
@@ -5120,47 +5201,48 @@ class Reconstructor:
                 preseedMain = ''
                 seedfile = ''
                 if self.altCdUbuntuDist == 'Ubuntu':
-                    print _("Creating preseed for Ubuntu...")
+                    print(_("Creating preseed for Ubuntu..."))
                     preseedMain = 'tasksel    tasksel/first    multiselect ubuntu-desktop\n'
                     seedfile = 'ubuntu.seed'
                 elif self.altCdUbuntuDist == 'Kubuntu':
-                    print _("Creating preseed for Kubuntu...")
+                    print(_("Creating preseed for Kubuntu..."))
                     preseedMain = 'tasksel    tasksel/first    multiselect kubuntu-desktop\n'
                     seedfile = 'kubuntu.seed'
                 elif self.altCdUbuntuDist == 'Xubuntu':
-                    print _("Creating preseed for Xubuntu...")
+                    print(_("Creating preseed for Xubuntu..."))
                     preseedMain = 'tasksel    tasksel/first    multiselect xubuntu-desktop\n'
                     seedfile = 'xubuntu.seed'
                 elif self.altCdUbuntuDist == 'Ubuntu-Server':
-                    print _("Creating preseed for Ubuntu-Server...")
+                    print(_("Creating preseed for Ubuntu-Server..."))
                     preseedMain = 'd-i    base-installer/kernel/override-image    string linux-server\nd-i    pkgsel/language-pack-patterns    string\nd-i    pkgsel/install-language-support    boolean false\n'
                     seedfile = 'ubuntu-server.seed'
                 else:
-                    print _("Error: Unknown distribution. Skipping preseed creation...")
+                    print(_("Error: Unknown distribution. Skipping preseed creation..."))
                 # write preseed
                 if preseedMain != '':
                     if os.path.exists(os.path.join(self.customDir, self.altRemasterDir) + '/preseed/custom.seed'):
                         # remove preseed
-                        os.popen('rm -Rf \"' + os.path.join(self.customDir, self.altRemasterDir) + '/preseed/custom.seed\"')
+                        subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, self.altRemasterDir) + '/preseed/custom.seed\"')
                     fs = open(os.path.join(self.customDir, self.altRemasterDir) + '/preseed/custom.seed', 'w')
                     preseedMain += 'd-i pkgsel/include string ' + pkgs
                     fs.write(preseedMain)
                     fs.close
                 # write custom isolinux.cfg
                 if seedfile != '':
-                    print _("Creating isolinux.cfg...")
-                    os.popen('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '/isolinux/\" ; cat isolinux.cfg | sed \'s/' + seedfile + '/custom.seed/\' > isolinux.cfg.tmp ; mv isolinux.cfg.tmp isolinux.cfg')
+                    print(_("Creating isolinux.cfg..."))
+                    subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '/isolinux/\"')
+                    subprocess.getoutput('cat isolinux.cfg | sed \'s/' + seedfile + '/custom.seed/\' > isolinux.cfg.tmp ; mv isolinux.cfg.tmp isolinux.cfg')
 
         # no packages
         else:
             # no extra packages found
-            print _("No extra packages found...")
+            print(_("No extra packages found..."))
 
         self.setDefaultCursor()
-        print _("Finished customizing alternate install...")
-        print " "
+        print(_("Finished customizing alternate install..."))
+        print(" ")
         # calculate iso size in the background
-        gobject.idle_add(self.calculateAltIsoSize().next)
+        self.run_generator(self.calculateAltIsoSize)
         #return False
 
 # ---------- Build ---------- #
@@ -5169,52 +5251,52 @@ class Reconstructor:
 
         # check for custom mksquashfs (for multi-threading, new features, etc.)
         mksquashfs = ''
-        if commands.getoutput('echo $MKSQUASHFS') != '':
-            mksquashfs = commands.getoutput('echo $MKSQUASHFS')
-            print 'Using alternative mksquashfs: ' + ' Version: ' + commands.getoutput(mksquashfs + ' -version')
+        if subprocess.getoutput('echo $MKSQUASHFS') != '':
+            mksquashfs = subprocess.getoutput('echo $MKSQUASHFS')
+            print('Using alternative mksquashfs: ' + ' Version: ' + subprocess.getoutput(mksquashfs + ' -version'))
         # setup build vars
-        self.buildInitrd = self.wTree.get_widget("checkbuttonBuildInitrd").get_active()
-        self.buildSquashRoot = self.wTree.get_widget("checkbuttonBuildSquashRoot").get_active()
-        self.buildIso = self.wTree.get_widget("checkbuttonBuildIso").get_active()
-        self.buildLiveCdFilename = self.wTree.get_widget("entryLiveIsoFilename").get_text()
+        self.buildInitrd = self.builder.get_object("checkbuttonBuildInitrd").get_active()
+        self.buildSquashRoot = self.builder.get_object("checkbuttonBuildSquashRoot").get_active()
+        self.buildIso = self.builder.get_object("checkbuttonBuildIso").get_active()
+        self.buildLiveCdFilename = self.builder.get_object("entryLiveIsoFilename").get_text()
         self.LiveCdDescription = "ubuntu-custom"
-        self.LiveCdRemovePrograms = self.wTree.get_widget("checkbuttonLiveCdRemoveWin32Programs").get_active()
-        self.LiveCdArch = self.wTree.get_widget("comboboxLiveCdArch").get_active_text()
+        self.LiveCdRemovePrograms = self.builder.get_object("checkbuttonLiveCdRemoveWin32Programs").get_active()
+        self.LiveCdArch = self.builder.get_object("comboboxLiveCdArch").get_active_text()
         self.hfsMap = cur_file_dir + "/lib/hfs.map"
 
-        print " "
-        print _("INFO: Starting Build...")
-        print " "
+        print(" ")
+        print(_("INFO: Starting Build..."))
+        print(" ")
         self.showProgress('Starting Build...',0.56)
         yield True
         # build initrd
         if self.buildInitrd == True:
             # create initrd
             if os.path.exists(os.path.join(self.customDir, "initrd")):
-                print _("Creating Initrd...")
+                print(_("Creating Initrd..."))
                 self.showProgress(_("Creating Initrd..."))
                 yield True
                 kver=find_newest_kernel_version(os.path.join(self.customDir, "root/boot"))
                 if os.path.exists(os.path.join(self.customDir, "remaster/casper/initrd.lz")):
-	            scr = '#!/bin/sh\n#\n cd /boot\n if grep COMPRESS= /etc/initramfs-tools/initramfs.conf>/dev/null ; then \n\t/usr/sbin/mkinitramfs -c lzma -o initrd.img-'+kver + ' '+kver+'\n else\n\t cat /usr/sbin/mkinitramfs | sed -e \"s/gzip/lzma/g\" >/tmp/mkinitramfs-lzma \n\t chmod +x /tmp/mkinitramfs-lzma\n\t /tmp/mkinitramfs-lzma -o initrd.img-'+kver + ' '+kver+' \n\t rm -f /tmp/mkinitramfs-lzma\n fi\n\trm -f /vmlinuz /initrd.img\n\tcd /\n\tln -s boot/vmlinuz-'+kver+' vmlinuz\n\tln -s boot/initrd.img-'+kver+' initrd.img\n'
+                    scr = '#!/bin/sh\n#\n cd /boot\n if grep COMPRESS= /etc/initramfs-tools/initramfs.conf>/dev/null ; then \n\t/usr/sbin/mkinitramfs -c lzma -o initrd.img-'+kver + ' '+kver+'\n else\n\t cat /usr/sbin/mkinitramfs | sed -e \"s/gzip/lzma/g\" >/tmp/mkinitramfs-lzma \n\t chmod +x /tmp/mkinitramfs-lzma\n\t /tmp/mkinitramfs-lzma -o initrd.img-'+kver + ' '+kver+' \n\t rm -f /tmp/mkinitramfs-lzma\n fi\n\trm -f /vmlinuz /initrd.img\n\tcd /\n\tln -s boot/vmlinuz-'+kver+' vmlinuz\n\tln -s boot/initrd.img-'+kver+' initrd.img\n'
                 else:
-	            scr = '#!/bin/sh\n#\n cd /boot\n \t/usr/sbin/mkinitramfs -c gzip -o initrd.img-'+kver + ' '+kver+'\n\trm -f /vmlinuz /initrd.img\n\tcd /\n\tln -s boot/vmlinuz-'+kver+' vmlinuz\n\tln -s boot/initrd.img-'+kver+' initrd.img\n'
+                    scr = '#!/bin/sh\n#\n cd /boot\n \t/usr/sbin/mkinitramfs -c gzip -o initrd.img-'+kver + ' '+kver+'\n\trm -f /vmlinuz /initrd.img\n\tcd /\n\tln -s boot/vmlinuz-'+kver+' vmlinuz\n\tln -s boot/initrd.img-'+kver+' initrd.img\n'
 
-	        f=open(os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"), 'w')
-	        f.write(scr)
-	        f.close()
-	        os.popen('chmod a+x ' + os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"))
-                os.popen('chroot '+os.path.join(self.customDir, "root/")+' /tmp/lmkinitrafs.sh >/dev/null 2>&1')
-	        os.popen('rm -f ' + os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"))
+                f=open(os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"), 'w')
+                f.write(scr)
+                f.close()
+                subprocess.getoutput('chmod a+x ' + os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"))
+                subprocess.getoutput('chroot '+os.path.join(self.customDir, "root/")+' /tmp/lmkinitrafs.sh >/dev/null 2>&1')
+                subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"))
                 if os.path.exists(os.path.join(self.customDir, "root/boot/initrd.img-"+kver)) and os.path.exists(os.path.join(self.customDir, "root/boot/vmlinuz-"+kver)):
                     if os.path.exists(os.path.join(self.customDir, "remaster/casper/initrd.lz")):
-		        os.popen('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd.lz"))
+                        subprocess.getoutput('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd.lz"))
                     else :
-		        os.popen('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd"))
+                        subprocess.getoutput('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd"))
                     if os.path.exists(os.path.join(self.customDir, "remaster/casper/vmlinuz.efi")):
-                        os.popen('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz.efi"))		
+                        subprocess.getoutput('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz.efi"))		
                     else:
-                        os.popen('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz"))		
+                        subprocess.getoutput('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz"))		
             self.showProgress(False,0.65)
             yield True
 
@@ -5222,33 +5304,33 @@ class Reconstructor:
         if self.buildSquashRoot == True:
             # create squashfs root
             if os.path.exists(os.path.join(self.customDir, "root")):
-                print _("Creating SquashFS root...")
+                print(_("Creating SquashFS root..."))
                 self.showProgress(_("Creating SquashFS root..."),0.66)
                 yield True
-                print _("Updating File lists...")
+                print(_("Updating File lists..."))
                 q = ' dpkg-query -W --showformat=\'${Package} ${Version}\n\' '
-                os.popen('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + q + ' > \"' + os.path.join(self.customDir, "remaster/casper/filesystem.manifest") + '\"' )
-                os.popen('cp -f \"' + os.path.join(self.customDir, "remaster/casper/filesystem.manifest") + '\" \"' + os.path.join(self.customDir, "remaster/casper/filesystem.manifest-desktop") + '\"')
+                subprocess.check_output('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + q + ' > \"' + os.path.join(self.customDir, "remaster/casper/filesystem.manifest") + '\"', shell=True )
+                subprocess.getoutput('cp -f \"' + os.path.join(self.customDir, "remaster/casper/filesystem.manifest") + '\" \"' + os.path.join(self.customDir, "remaster/casper/filesystem.manifest-desktop") + '\"')
 
                 # check for existing squashfs root
                 if os.path.exists(os.path.join(self.customDir, "remaster/casper/filesystem.squashfs")):
-                    print _("Removing existing SquashFS root...")
-                    os.popen('rm -Rf \"' + os.path.join(self.customDir, "remaster/casper/filesystem.squashfs") + '\"')
+                    print(_("Removing existing SquashFS root..."))
+                    subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "remaster/casper/filesystem.squashfs") + '\"')
 
                 # remove aptitude lock and crash logs
-                os.popen('rm -f ' + os.path.join(self.customDir, "root/var/lib/apt/lists/lock"))
-                os.popen('rm -f ' + os.path.join(self.customDir, "root/var/crash/*"))
+                subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/var/lib/apt/lists/lock"))
+                subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/var/crash/*"))
 
                 # remove some history files
-                os.popen('rm -f ' + os.path.join(self.customDir, "root/root/.bash_histroy"))
+                subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/root/.bash_histroy"))
                 
                 # remove kernel file
-                kernelVmlinuz = commands.getoutput("readlink " + os.path.join(self.customDir,"root/vmlinuz"))
-                kernelInitrd = commands.getoutput("readlink " + os.path.join(self.customDir,"root/initrd.img"))
-                os.popen('rm -f ' + os.path.join(self.customDir,"root/"+kernelVmlinuz))
-                os.popen('rm -f ' + os.path.join(self.customDir,"root/"+kernelInitrd)) 
+                kernelVmlinuz = subprocess.getoutput("readlink " + os.path.join(self.customDir,"root/vmlinuz"))
+                kernelInitrd = subprocess.getoutput("readlink " + os.path.join(self.customDir,"root/initrd.img"))
+                subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/"+kernelVmlinuz))
+                subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/"+kernelInitrd)) 
 
-                print _("Building SquashFS root...")
+                print(_("Building SquashFS root..."))
                 self.showProgress(_("Building SquashFS root..."),0.70)
                 yield True
                 # check for alternate mksquashfs
@@ -5257,24 +5339,24 @@ class Reconstructor:
                 if apt_pkg.version_compare(self.cdUbuntuVersion,'10.04')>0:
                         compStr="-comp xz"
                 if mksquashfs == '':
-                    os.popen(self.timeCmd + ' mksquashfs \"' + os.path.join(self.customDir, "root/") + '\"' + ' \"' + os.path.join(self.customDir, "remaster/casper/filesystem.squashfs") + '\" ' + compStr)
+                    subprocess.getoutput(self.timeCmd + ' mksquashfs \"' + os.path.join(self.customDir, "root/") + '\"' + ' \"' + os.path.join(self.customDir, "remaster/casper/filesystem.squashfs") + '\" ' + compStr)
                 else:
-                    os.popen(self.timeCmd + ' ' + mksquashfs + ' \"' + os.path.join(self.customDir, "root/") + '\"' + ' \"' + os.path.join(self.customDir, "remaster/casper/filesystem.squashfs") + '\" '+ compStr)
+                    subprocess.getoutput(self.timeCmd + ' ' + mksquashfs + ' \"' + os.path.join(self.customDir, "root/") + '\"' + ' \"' + os.path.join(self.customDir, "remaster/casper/filesystem.squashfs") + '\" '+ compStr)
                 self.showProgress(_("Finished Building SquashFS root"),0.85)
                 yield True
 
         # remove windows programs
         if self.LiveCdRemovePrograms == True:
-            print _('Removing Win32 versions of Firefox, Thunderbird, etc. ...')
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "remaster/bin") + '\"')
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "remaster/programs") + '\"')
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "remaster/autorun.inf") + '\"')
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "remaster/start.ini") + '\"')
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "remaster/start.exe") + '\"')
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "remaster/start.bmp") + '\"')
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "remaster/umenu.exe") + '\"')
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "remaster/wubi.exe") + '\"')
-            os.popen('rm -Rf \"' + os.path.join(self.customDir, "remaster/wubi-cdboot.exe") + '\"')
+            print(_('Removing Win32 versions of Firefox, Thunderbird, etc. ...'))
+            subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "remaster/bin") + '\"')
+            subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "remaster/programs") + '\"')
+            subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "remaster/autorun.inf") + '\"')
+            subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "remaster/start.ini") + '\"')
+            subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "remaster/start.exe") + '\"')
+            subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "remaster/start.bmp") + '\"')
+            subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "remaster/umenu.exe") + '\"')
+            subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "remaster/wubi.exe") + '\"')
+            subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "remaster/wubi-cdboot.exe") + '\"')
             self.showProgress(False,0.87)
             yield True
 
@@ -5282,32 +5364,33 @@ class Reconstructor:
         if self.buildIso == True:
             # create iso
             if os.path.exists(os.path.join(self.customDir, "remaster")):
-                print _("Creating ISO...")
+                print(_("Creating ISO..."))
                 self.showProgress(_("Creating ISO..."),0.87)
                 yield True
                 self.setBusyCursor()
                 # add disc id
-                os.popen('echo \"Built by Reconstructor ' + self.appVersion + ' - Rev ' + self.updateId + ' (c) Reconstructor Team, 2006-2009 - http://reconstructor.aperantis.com\" > \"' + os.path.join(self.customDir, "remaster/.disc_id") + '\"')
+                subprocess.getoutput('echo \"Built by Reconstructor ' + self.appVersion + ' - Rev ' + self.updateId + ' (c) Reconstructor Team, 2006-2009 - http://reconstructor.aperantis.com\" > \"' + os.path.join(self.customDir, "remaster/.disc_id") + '\"')
                 # update md5
-                print _("Updating md5 sums...")
-                os.popen('rm \"' + os.path.join(self.customDir, "remaster/") + 'md5sum.txt\"')
+                print(_("Updating md5 sums..."))
+                subprocess.getoutput('rm \"' + os.path.join(self.customDir, "remaster/") + 'md5sum.txt\"')
                 # exclude isolinux directory or else when checking disc integrity it will say there are errors
-                os.popen('(cd \"' + os.path.join(self.customDir, "remaster/") + '\"; ' + 'find . -type f -not -name md5sum.txt -not -path \'*/isolinux/*\' -print0 | xargs -0 md5sum > md5sum.txt)')
+                subprocess.getoutput('(cd \"' + os.path.join(self.customDir, "remaster/") + '\"')
+                subprocess.getoutput('find . -type f -not -name md5sum.txt -not -path \'*/isolinux/*\' -print0 | xargs -0 md5sum > md5sum.txt)')
                 rootSize = self.FileSize(os.path.join(self.customDir, "root/"))
-                print >>open(os.path.join(self.customDir, "remaster/casper/filesystem.size"),"w"),'%lu'%(rootSize)
+                print('%lu'%(rootSize), file=open(os.path.join(self.customDir, "remaster/casper/filesystem.size"),"w"))
                 self.showProgress(False,0.88)
                 yield True
 
                 # remove existing iso
                 if os.path.exists(self.buildLiveCdFilename):
-                    print _("Removing existing ISO...")
-                    os.popen('rm -Rf \"' + self.buildLiveCdFilename + '\"')
+                    print(_("Removing existing ISO..."))
+                    subprocess.getoutput('rm -Rf \"' + self.buildLiveCdFilename + '\"')
                     self.showProgress(False,0.89)
                     yield True
                 # build
                 # check for description - replace if necessary
-                if self.wTree.get_widget("entryLiveCdDescription").get_text() != "":
-                    self.LiveCdDescription = self.wTree.get_widget("entryLiveCdDescription").get_text()
+                if self.builder.get_object("entryLiveCdDescription").get_text() != "":
+                    self.LiveCdDescription = self.builder.get_object("entryLiveCdDescription").get_text()
 
                 self.showProgress(False,0.90)
                 yield True
@@ -5315,136 +5398,137 @@ class Reconstructor:
                 self.setBusyCursor()
                 # build iso according to architecture
                 if self.LiveCdArch == "x86":
-                    print _("Building x86 ISO...")
-                    os.popen(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"')
+                    print(_("Building x86 ISO..."))
+                    subprocess.getoutput(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"')
                 elif self.LiveCdArch == "PowerPC":
-                    print _("Building PowerPC ISO...")
-                    os.popen(self.timeCmd + ' mkisofs  -r -V \"' + self.LiveCdDescription + '\" --netatalk -hfs -probe -map \"' + self.hfsMap + '\" -chrp-boot -iso-level 2 -part -no-desktop -hfs-bless ' + '\"' + os.path.join(self.customDir, "remaster/install") + '\" -o \"' + self.buildLiveCdFilename + '\" \"' + os.path.join(self.customDir, "remaster") + '\"')
+                    print(_("Building PowerPC ISO..."))
+                    subprocess.getoutput(self.timeCmd + ' mkisofs  -r -V \"' + self.LiveCdDescription + '\" --netatalk -hfs -probe -map \"' + self.hfsMap + '\" -chrp-boot -iso-level 2 -part -no-desktop -hfs-bless ' + '\"' + os.path.join(self.customDir, "remaster/install") + '\" -o \"' + self.buildLiveCdFilename + '\" \"' + os.path.join(self.customDir, "remaster") + '\"')
                 elif self.LiveCdArch == "x86_64":
-                    print _("Building x86_64 ISO...")
-                    os.popen(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"')
+                    print(_("Building x86_64 ISO..."))
+                    subprocess.getoutput(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"')
                 self.showProgress(False,0.98)
                 yield True
 
         self.setDefaultCursor()
         self.setPage(self.pageFinish)
-        # print status message
+        # print(status message)
         statusMsgFinish = _('     <b>Finished.</b>     ')
         statusMsgISO = _('      <b>Finished.</b> ISO located at: ')
         if os.path.exists(self.buildLiveCdFilename):
-            print "ISO Located: " + self.buildLiveCdFilename
-            self.wTree.get_widget("labelBuildComplete").set_text(statusMsgISO + self.buildLiveCdFilename + '     ')
-            self.wTree.get_widget("labelBuildComplete").set_use_markup(True)
+            print("ISO Located: " + self.buildLiveCdFilename)
+            self.builder.get_object("labelBuildComplete").set_text(statusMsgISO + self.buildLiveCdFilename + '     ')
+            self.builder.get_object("labelBuildComplete").set_use_markup(True)
         else:
-            self.wTree.get_widget("labelBuildComplete").set_text(statusMsgFinish)
-            self.wTree.get_widget("labelBuildComplete").set_use_markup(True)
+            self.builder.get_object("labelBuildComplete").set_text(statusMsgFinish)
+            self.builder.get_object("labelBuildComplete").set_use_markup(True)
         # enable/disable iso burn
         self.checkEnableBurnIso()
 
-        print "Build Complete..."
+        print("Build Complete...")
         self.showProgress('Build Complete.',1)
         yield False
 
 #---------- Build alternate disc ----------#
     def buildAlternate(self):
         # setup build vars
-        self.buildAltInitrd = self.wTree.get_widget("checkbuttonAltBuildInitrd").get_active()
-        self.buildAltIso = self.wTree.get_widget("checkbuttonAltBuildIso").get_active()
-        self.buildAltCdFilename = self.wTree.get_widget("entryAltBuildIsoFilename").get_text()
+        self.buildAltInitrd = self.builder.get_object("checkbuttonAltBuildInitrd").get_active()
+        self.buildAltIso = self.builder.get_object("checkbuttonAltBuildIso").get_active()
+        self.buildAltCdFilename = self.builder.get_object("entryAltBuildIsoFilename").get_text()
         self.altCdDescription = "ubuntu-custom-alt"
-        self.altCdArch = self.wTree.get_widget("comboboxAltBuildArch").get_active_text()
+        self.altCdArch = self.builder.get_object("comboboxAltBuildArch").get_active_text()
         self.hfsMap = cur_file_dir + "/lib/hfs.map"
 
-        print " "
-        print _("INFO: Starting Build...")
-        print " "
+        print(" ")
+        print(_("INFO: Starting Build..."))
+        print(" ")
         # build initrd
         if self.buildAltInitrd == True:
             # create initrd
             if os.path.exists(os.path.join(self.customDir, "initrd_alt")):
-                print _("Creating Initrd...")
+                print(_("Creating Initrd..."))
                 self.showProgress(_("Creating Initrd..."),0.75)
                 yield True
                 self.setBusyCursor()
                 kver=find_newest_kernel_version(os.path.join(self.customDir, "root/boot"))
                 if os.path.exists(os.path.join(self.customDir, "remaster/casper/initrd.lz")):
-	             scr = '#!/bin/sh\n#\n  cat /usr/sbin/mkinitramfs | sed -e \"s/gzip/lzma/g\" >/tmp/mkinitramfs-lzma ;chmod +x /tmp/mkinitramfs-lzma;cd /boot; /tmp/mkinitramfs-lzma -o initrd.img-'+kver+' '+kver+';rm -f /tmp/mkinitramfs-lzma\n'
+                    scr = '#!/bin/sh\n#\n  cat /usr/sbin/mkinitramfs | sed -e \"s/gzip/lzma/g\" >/tmp/mkinitramfs-lzma ;chmod +x /tmp/mkinitramfs-lzma;cd /boot; /tmp/mkinitramfs-lzma -o initrd.img-'+kver+' '+kver+';rm -f /tmp/mkinitramfs-lzma\n'
                 else:
-	             scr = '#!/bin/sh\n#\n cd /boot; /usr/sbin/mkinitramfs -o initrd.img-'+kver+' '+kver+'\n'
-	        f=open(os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"), 'w')
-	        f.write(scr)
-	        f.close()
-	        os.popen('chmod a+x ' + os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"))
-                os.popen('chroot \"'+os.path.join(self.customDir, "root/")+'\" /tmp/lmkinitrafs.sh >/dev/null 2>&1')
-	        os.popen('rm -f ' + os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"))
+                    scr = '#!/bin/sh\n#\n cd /boot; /usr/sbin/mkinitramfs -o initrd.img-'+kver+' '+kver+'\n'
+                f=open(os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"), 'w')
+                f.write(scr)
+                f.close()
+                subprocess.getoutput('chmod a+x ' + os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"))
+                subprocess.getoutput('chroot \"'+os.path.join(self.customDir, "root/")+'\" /tmp/lmkinitrafs.sh >/dev/null 2>&1')
+                subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/tmp/lmkinitrafs.sh"))
                 if os.path.exists(os.path.join(self.customDir, "remaster/casper/initrd.lz")):
-		    os.popen('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd.lz"))		
+                    subprocess.getoutput('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd.lz"))		
                 else:
-		    os.popen('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd"))		
+                    subprocess.getoutput('cp '+os.path.join(self.customDir, "root/boot/initrd.img-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/initrd"))		
                 if os.path.exists(os.path.join(self.customDir, "remaster/casper/vmlinuz.efi")):
-		    os.popen('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz.efi"))
+                    subprocess.getoutput('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz.efi"))
                 else:
-		    os.popen('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz"))
+                    subprocess.getoutput('cp '+os.path.join(self.customDir, "root/boot/vmlinuz-"+kver+' ')+os.path.join(self.customDir, "remaster/casper/vmlinuz"))
 		
         # build iso
         if self.buildAltIso == True:
             # create iso
             if os.path.exists(os.path.join(self.customDir, "remaster_alt")):
-                print _("Creating ISO...")
+                print(_("Creating ISO..."))
                 self.showProgress(_("Creating ISO..."),0.80)
                 yield True
                 self.setBusyCursor()
                 # add disc id - alternate
-                os.popen('echo \"Built by Reconstructor ' + self.appVersion + ' - Rev ' + self.updateId + ' (c) Reconstructor Team, 2006 - http://reconstructor.aperantis.com\" > \"' + os.path.join(self.customDir, "remaster_alt/.disc_id") + '\"')
+                subprocess.getoutput('echo \"Built by Reconstructor ' + self.appVersion + ' - Rev ' + self.updateId + ' (c) Reconstructor Team, 2006 - http://reconstructor.aperantis.com\" > \"' + os.path.join(self.customDir, "remaster_alt/.disc_id") + '\"')
                 # update md5
-                print _("Updating md5 sums...")
-                os.popen('rm \"' + os.path.join(self.customDir, "remaster_alt/") + 'md5sum.txt\"')
+                print(_("Updating md5 sums..."))
+                subprocess.getoutput('rm \"' + os.path.join(self.customDir, "remaster_alt/") + 'md5sum.txt\"')
                 # exclude isolinux directory or else when checking disc integrity it will say there are errors
-                os.popen('(cd \"' + os.path.join(self.customDir, "remaster_alt/") + '\"; ' + 'find . -type f -not -name md5sum.txt -not -path \'*/isolinux/*\' -print0 | xargs -0 md5sum > md5sum.txt)')
+                subprocess.getoutput('(cd \"' + os.path.join(self.customDir, "remaster_alt/") + '\"')
+                subprocess.getoutput('find . -type f -not -name md5sum.txt -not -path \'*/isolinux/*\' -print0 | xargs -0 md5sum > md5sum.txt)')
                 rootSize = self.FileSize(os.path.join(self.customDir, "root/"))
-                print >>open(os.path.join(self.customDir, "remaster/casper/filesystem.size"),"w"),'%lu'%(rootSize)
+                print('%lu'%(rootSize),file=open(os.path.join(self.customDir, "remaster/casper/filesystem.size"),"w"))
 
                 # remove existing iso
                 if os.path.exists(self.buildAltCdFilename):
-                    print _("Removing existing ISO...")
-                    os.popen('rm -Rf \"' + self.buildAltCdFilename + '\"')
+                    print(_("Removing existing ISO..."))
+                    subprocess.getoutput('rm -Rf \"' + self.buildAltCdFilename + '\"')
                 # build
                 # check for description - replace if necessary
-                if self.wTree.get_widget("entryBuildAltCdDescription").get_text() != "":
-                    self.altCdDescription = self.wTree.get_widget("entryBuildAltCdDescription").get_text()
+                if self.builder.get_object("entryBuildAltCdDescription").get_text() != "":
+                    self.altCdDescription = self.builder.get_object("entryBuildAltCdDescription").get_text()
 
                 self.showProgress(False,0.82)
                 yield True
                 # build iso according to architecture
                 if self.altCdArch == "x86":
-                    print _("Building x86 ISO...")
+                    print(_("Building x86 ISO..."))
                     self.setBusyCursor()
-                    os.popen(self.timeCmd + ' mkisofs -o \"' + self.buildAltCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.altCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster_alt") + '\"')
+                    subprocess.getoutput(self.timeCmd + ' mkisofs -o \"' + self.buildAltCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.altCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster_alt") + '\"')
                 elif self.altCdArch == "PowerPC":
-                    print _("Building PowerPC ISO...")
-                    os.popen(self.timeCmd + ' mkisofs  -r -V \"' + self.altCdDescription + '\" --netatalk -hfs -probe -map \"' + self.hfsMap + '\" -chrp-boot -iso-level 2 -part -no-desktop -hfs-bless ' + '\"' + os.path.join(self.customDir, "remaster_alt/install") + '\" -o \"' + self.buildAltCdFilename + '\" \"' + os.path.join(self.customDir, "remaster_alt") + '\"')
+                    print(_("Building PowerPC ISO..."))
+                    subprocess.getoutput(self.timeCmd + ' mkisofs  -r -V \"' + self.altCdDescription + '\" --netatalk -hfs -probe -map \"' + self.hfsMap + '\" -chrp-boot -iso-level 2 -part -no-desktop -hfs-bless ' + '\"' + os.path.join(self.customDir, "remaster_alt/install") + '\" -o \"' + self.buildAltCdFilename + '\" \"' + os.path.join(self.customDir, "remaster_alt") + '\"')
                 elif self.altCdArch == "x86_64":
-                    print _("Building x86_64 ISO...")
-                    os.popen(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster_alt") + '\"')
+                    print(_("Building x86_64 ISO..."))
+                    subprocess.getoutput(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster_alt") + '\"')
                 self.showProgress(False,0.95)
                 yield True
 
         self.setDefaultCursor()
         self.setPage(self.pageFinish)
-        # print status message
+        # print(status message)
         statusMsgFinish = _('     <b>Finished.</b>     ')
         statusMsgISO = _('      <b>Finished.</b> ISO located at: ')
         if os.path.exists(self.buildAltCdFilename):
-            print "ISO Located: " + self.buildAltCdFilename
-            self.wTree.get_widget("labelBuildComplete").set_text(statusMsgISO + self.buildAltCdFilename + '     ')
-            self.wTree.get_widget("labelBuildComplete").set_use_markup(True)
+            print("ISO Located: " + self.buildAltCdFilename)
+            self.builder.get_object("labelBuildComplete").set_text(statusMsgISO + self.buildAltCdFilename + '     ')
+            self.builder.get_object("labelBuildComplete").set_use_markup(True)
         else:
-            self.wTree.get_widget("labelBuildComplete").set_text(statusMsgFinish)
-            self.wTree.get_widget("labelBuildComplete").set_use_markup(True)
+            self.builder.get_object("labelBuildComplete").set_text(statusMsgFinish)
+            self.builder.get_object("labelBuildComplete").set_use_markup(True)
         # enable/disable iso burn
         self.checkEnableBurnAltIso()
 
-        print "Build Complete..."
+        print("Build Complete...")
         self.showProgress('Build Complete.',1)
         yield False
 
@@ -5521,8 +5605,8 @@ class AltPackageHelper:
 
     def copyPackages(self, packageList, sourcePath, destinationPath):
         for package in packageList:
-            print "Copying " + package + "..."
-            os.popen("rsync -a --del --prune-empty-dirs --filter=\"+ */\" --filter=\"+ /**/" + package + "_*.deb\" --filter=\"- *\" " + sourcePath + " " + destinationPath)
+            print("Copying " + package + "...")
+            subprocess.getoutput("rsync -a --del --prune-empty-dirs --filter=\"+ */\" --filter=\"+ /**/" + package + "_*.deb\" --filter=\"- *\" " + sourcePath + " " + destinationPath)
 
 # ---------- MAIN ----------
 
@@ -5532,41 +5616,43 @@ if __name__ == "__main__":
     # locale
     locale.setlocale(locale.LC_ALL, '')
     gettext.bindtextdomain(APPDOMAIN, LANGDIR)
-    gtk.glade.bindtextdomain(APPDOMAIN, LANGDIR)
-    gtk.glade.textdomain(APPDOMAIN)
+    #Gtk.glade.bindtextdomain(APPDOMAIN, LANGDIR)
+    #Gtk.glade.textdomain(APPDOMAIN)
     gettext.textdomain(APPDOMAIN)
-    gettext.install(APPDOMAIN, LANGDIR, unicode=1)
+    gettext.install(APPDOMAIN, LANGDIR)
 
     # check credentials
     if os.getuid() != 0 :
         ## show non-root privledge error
-        warnDlg = gtk.Dialog(title="Reconstructor", parent=None, flags=0, buttons=(gtk.STOCK_OK, gtk.RESPONSE_OK))
+        warnDlg = Gtk.Dialog(title="Reconstructor", parent=None, flags=0)
+        warnDlg.set_default_size(320,150)
+        warnDlg.add_buttons(Gtk.STOCK_OK, Gtk.ResponseType.OK)
         warnDlg.set_icon_from_file(cur_file_dir + '/glade/app.png')
         warnDlg.vbox.set_spacing(10)
-        labelSpc = gtk.Label(" ")
-        warnDlg.vbox.pack_start(labelSpc)
+        labelSpc = Gtk.Label(label=" ")
+        warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
         labelSpc.show()
         warnText = _("  <b>You must run with root privledges.</b>")
         infoText = _("Open a Terminal, \nand type <b>sudo python reconstructor.py</b>  ")
-        label = gtk.Label(warnText)
-        lblInfo = gtk.Label(infoText)
+        label = Gtk.Label(label=warnText)
+        lblInfo = Gtk.Label(label=infoText)
         label.set_use_markup(True)
         lblInfo.set_use_markup(True)
-        warnDlg.vbox.pack_start(label)
-        warnDlg.vbox.pack_start(lblInfo)
+        warnDlg.vbox.pack_start(label, expand=True, fill=True, padding=0)
+        warnDlg.vbox.pack_start(lblInfo, expand=True, fill=True, padding=0)
         label.show()
         lblInfo.show()
         response = warnDlg.run()
-        if response == gtk.RESPONSE_OK :
+        if response == Gtk.ResponseType.OK :
             warnDlg.destroy()
-            #gtk.main_quit()
+            #Gtk.main_quit()
             sys.exit(0)
         # use gksu to open -- HIDES TERMINAL
-        #os.popen('gksu ' + cur_file_dir + '/reconstructor.py')
-        #gtk.main_quit()
+        #subprocess.getoutput('gksu ' + cur_file_dir + '/reconstructor.py')
+        #Gtk.main_quit()
         #sys.exit(0)
     else :
         rec = Reconstructor()
         # run gui
-        gtk.main()
+        Gtk.main()
 

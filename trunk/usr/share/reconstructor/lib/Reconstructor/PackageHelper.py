@@ -92,7 +92,7 @@ class PackageHelper:
 		reDependPackage = re.compile(self.regexDependPackage, re.IGNORECASE)
 		rePackageVersion = re.compile(self.regexVersion, re.IGNORECASE)
 		for f in os.popen('find \"' + packageDir + '\" -name *deb -print'):
-			if self.runningDebug: print "Checking dependencies for: " + f[:-1]
+			if self.runningDebug: print("Checking dependencies for: " + f[:-1])
 			#print f[:-1]
 			# find dependencies of package
 			for line in os.popen('dpkg --info \"' + f[:-1] + '\"'):
@@ -108,37 +108,37 @@ class PackageHelper:
 				packageVersion = None
 				if reDependPackage.match(depend.strip()) != None:
 					if reDependPackage.match(depend.strip()).group(1) != None:
-						if self.runningDebug: print "Package has version requirement: " + str(reDependPackage.match(depend.strip()).group(2)) + " " + str(reDependPackage.match(depend.strip()).group(3))
+						if self.runningDebug: print("Package has version requirement: " + str(reDependPackage.match(depend.strip()).group(2)) + " " + str(reDependPackage.match(depend.strip()).group(3)))
 						packageName = reDependPackage.match(depend.strip()).group(1)
 						packageQualifier = reDependPackage.match(depend.strip()).group(2)
 						packageVersion = reDependPackage.match(depend.strip()).group(3)
 					else:
-						if self.runningDebug: print "Package has no version requirement: " + str(reDependPackage.match(depend.strip()).group(4))
+						if self.runningDebug: print("Package has no version requirement: " + str(reDependPackage.match(depend.strip()).group(4)))
 						packageName = reDependPackage.match(depend.strip()).group(4)
 						# regex for package version
 						for line in os.popen('apt-cache show ' + packageName):
 							if rePackageVersion.match(line) != None:
 								packageVersion = rePackageVersion.match(line).group(1)
-								if self.runningDebug: print "Using repository version: " + packageVersion
+								if self.runningDebug: print("Using repository version: " + packageVersion)
 								break
 				if packageName != None and packageQualifier != None and packageVersion != None:
 					#print "Dependency: " + packageName, packageQualifier, packageVersion
 					# check package and add to depend list if not in local repo
 					if self.checkPackage(packageName) != None:
-						if self.runningDebug: print "Extra dependency package needed: " + packageName
+						if self.runningDebug: print("Extra dependency package needed: " + packageName)
 						dependList += packageName + ' '
 						# add new package to dict
 						self.repoPackages[packageName] = packageVersion
 				elif packageName != None and packageVersion != None:
 					# check package
 					if self.checkPackage(packageName) != None:
-						if self.runningDebug: print "Extra dependency package needed: " + packageName + " -- Using Repository Version: " + packageVersion
+						if self.runningDebug: print("Extra dependency package needed: " + packageName + " -- Using Repository Version: " + packageVersion)
 						dependList += packageName + ' '
 						# add to dict
 						self.repoPackages[packageName] = packageVersion
 				else:
 					errText = _("Error trying to resolve dependency:")
-					if self.runningDebug: print errText + " " + packageName
+					if self.runningDebug: print(errText + " " + packageName)
 		#print dependList
 		# check for depend list -- if not empty, download packages and check again
 		if dependList != '':
@@ -157,7 +157,7 @@ class PackageHelper:
 
 
 if __name__ == "__main__":
-	print "** Module not meant to be executed..."
+	print("** Module not meant to be executed...")
 	#print "----- Running Debug -----"
 	#p = PackageHelper(customDirectory='/home/ehazlett/reconstructor/', remasterDirectory='remaster_alt', remasterRepoDirectory='remaster_alt_repo', remasterTempDirectory='tmp', distribution='edgy', debug=True)
 	#p.loadRepoPackages()
