@@ -4,22 +4,19 @@
  "http://www.freedesktop.org/standards/PolicyKit/1.0/policyconfig.dtd">
 <policyconfig>
 
-  <vendor>Reconstructor</vendor>
-  <vendor_url>https://github.com/nx111/reconstructor-nx111</vendor_url>
-  <icon_name>reconstructor</icon_name>
+  <vendor>gedit</vendor>
+  <vendor_url>https://www.gedit.org</vendor_url>
+  <icon_name>gedit</icon_name>
 
-  <action id="com.github.nx111.reconstructor">
-    <description gettext-domain="reconstructor">custom ubuntu</description>
-    <message gettext-domain="reconstructor">To customize ubuntu, you need to authenticate.</message>
+  <action id="org.gnome.gedit">
+    <description gettext-domain="gedit">gedit</description>
     <defaults>
       <allow_any>auth_admin</allow_any>
       <allow_inactive>auth_admin</allow_inactive>
       <allow_active>auth_admin_keep</allow_active>
     </defaults>
-    <annotate key="org.freedesktop.policykit.exec.path">/usr/share/reconstructor/reconstructor.py</annotate>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/gedit</annotate>
     <annotate key="org.freedesktop.policykit.exec.allow_gui">TRUE</annotate>
  </action>
-
-
 
 </policyconfig>

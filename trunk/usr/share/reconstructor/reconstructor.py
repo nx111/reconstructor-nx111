@@ -428,9 +428,9 @@ class Reconstructor:
         #print("DEBUG: showProgress  result: text=" + self.builder.get_object("labelStatus").get_text() + " [[fraction="+str(self.builder.get_object("progressbar").get_fraction()) + "]]")
 
 
-    def CheckChrootKernel(self):
+    def checkChroot(self):
         # check vmlinuz and initrd
-        print('Check Chroot Kernel ...')
+        print('Check Chroot ...')
         kernelFileReady = False
         kernelVersion = ''
         kernelFile = ''
@@ -473,6 +473,15 @@ class Reconstructor:
                     os.remove(os.path.join(self.customDir, "root/initrd.img"))
                     os.symlink('boot/initrd.img-' + kernelVersion, os.path.join(self.customDir, "root/initrd.img"))
 
+        # check polkit rules for running pkexec gedit/nautilus
+        if apt_pkg.version_compare(self.cdUbuntuVersion, '18.04') >= 0:
+            mydir=os.path.split(os.path.realpath(__file__))[0]
+            if subprocess.getoutput('grep gedit -r ' + os.path.join(self.customDir,"root/usr/share/polkit-1/actions") + ' | wc -l') == '0':
+               subprocess.getoutput('cp -f' + os.path.join(mydir, 'polkit-1/actions/org.gnome.gedit.policy') + ' ' \
+                    +  os.path.join(self.customDir,"root/usr/share/polkit-1/actions"))
+            if subprocess.getoutput('grep nautilus -r ' + os.path.join(self.customDir,"root/usr/share/polkit-1/actions") + ' | wc -l') == '0':
+                subprocess.getoutput('cp -f' + os.path.join(mydir, 'polkit-1/actions/org.gnome.nautilus.policy') + ' ' \
+                +  os.path.join(self.customDir,"root/usr/share/polkit-1/actions"))
 
     # Check for Application Dependencies
     def checkDependencies(self):
@@ -1797,7 +1806,7 @@ class Reconstructor:
                         # load modules
                         #GLib.idle_add(self.loadModules)
 
-                        self.CheckChrootKernel()
+                        self.checkChroot()
 
                         # calculate iso size in the background
                         self.run_generator(self.calculateIsoSize)
@@ -4133,7 +4142,7 @@ class Reconstructor:
             subprocess.getoutput('chmod 6755 \"' + os.path.join(self.customDir, "root/usr/bin/sudo") + '\"')
             subprocess.getoutput('chmod 0440 \"' + os.path.join(self.customDir, "root/etc/sudoers") + '\"')
             print(_("Checking chroot kernel file if exists..."))
-            self.CheckChrootKernel()
+            self.checkChroot()
             print(_("Finished extracting squashfs root..."))
             self.showProgress(_("Finished extracting squashfs root..."),0.18)
             yield True
