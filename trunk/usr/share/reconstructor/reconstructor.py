@@ -5369,7 +5369,7 @@ class Reconstructor:
 
                 # remove some history files
                 print(_("Cleaning bash history..."))
-                subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/root/.bash_histroy"))
+                subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/root/.bash_history"))
                 
                 # remove kernel file
                 kernelVmlinuz = subprocess.getoutput("readlink " + os.path.join(self.customDir,"root/vmlinuz"))
