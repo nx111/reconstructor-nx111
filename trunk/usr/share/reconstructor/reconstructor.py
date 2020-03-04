@@ -1841,6 +1841,7 @@ class Reconstructor:
                     warnDlg.destroy()
                     return False
         elif pageNum == self.pageLiveCustomize:
+            self.builder.get_object("buttonNext").show()
             warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
             warnDlg.add_buttons(Gtk.STOCK_NO, Gtk.ResponseType.CANCEL, Gtk.STOCK_YES, Gtk.ResponseType.OK)
             warnDlg.set_icon_from_file(self.iconFile)
@@ -1923,6 +1924,7 @@ class Reconstructor:
                 self.run_generator(self.build)
                 # change Next text to Finish
                 self.builder.get_object("buttonNext").set_label("Finish")
+                self.builder.get_object("buttonNext").hide()
                 return True
             else:
                 warnDlg.destroy()
@@ -2002,6 +2004,7 @@ class Reconstructor:
                     warnDlg.destroy()
                     return False
         elif pageNum == self.pageAltCustomize:
+            self.builder.get_object("buttonNext").show()
             warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
             warnDlg.add_buttons(Gtk.STOCK_NO, Gtk.ResponseType.CANCEL, Gtk.STOCK_YES, Gtk.ResponseType.OK)
             warnDlg.set_icon_from_file(self.iconFile)
@@ -2078,6 +2081,7 @@ class Reconstructor:
                 self.run_generator(self.buildAlternate)
                 # change Next text to Finish
                 self.builder.get_object("buttonNext").set_label("Finish")
+                self.builder.get_object("buttonNext").hide()
                 return True
             else:
                 warnDlg.destroy()
@@ -5473,6 +5477,7 @@ class Reconstructor:
 
         print("Build Complete...")
         self.showProgress('Build Complete.',1)
+        self.builder.get_object("buttonNext").show()
         yield False
 
 #---------- Build alternate disc ----------#
@@ -5577,6 +5582,7 @@ class Reconstructor:
 
         print("Build Complete...")
         self.showProgress('Build Complete.',1)
+        self.builder.get_object("buttonNext").show()
         yield False
 
 class AltPackageHelper:
