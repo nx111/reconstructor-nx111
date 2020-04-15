@@ -2401,12 +2401,10 @@ class Reconstructor:
                     # remove apt.conf
                     #print(_("Removing apt.conf configuration..."))
                     #subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf") + '\"')
-                    # remove dns info
-                    # remove some locks
-                    if silentMode == False:
-                        print(_("Removing DNS info..."))
-                    subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
-                    subprocess.getoutput('ln -s /run/resolvconf/resolv.conf  ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                    if os.path.exists(os.path.join(self.customDir, "root/etc/resolv.conf.bak")):
+                        if silentMode == False:
+                            print(_("Restore DNS config..."))
+                        subprocess.getoutput('mv ' + os.path.join(self.customDir, "root/etc/resolv.conf.bak") + ' ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
 
                     #clean /run
                     if silentMode == False:
@@ -2637,10 +2635,9 @@ class Reconstructor:
             error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/tmp") + '\"')
             if(error != ''):
                 self.suggestReboot('/tmp could not be unmounted. It must be unmounted before you can build an ISO.')
-            # remove dns info
-            print(_("Removing DNS info..."))
-            subprocess.getoutput('rm -f \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
-            subprocess.getoutput('ln -s /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+            print(_("Restore DNS config..."))
+            if os.path.exists(os.path.join(self.customDir, "root/etc/resolv.conf.bak")):
+                subprocess.getoutput('mv ' + os.path.join(self.customDir, "root/etc/resolv.conf.bak") + ' ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             # umount /proc
             print(_("Umounting /proc..."))
             error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/proc/") + '\"')
@@ -2695,7 +2692,6 @@ class Reconstructor:
             # remove apt.conf
             #print(_("Removing apt.conf configuration..."))
             #subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf") + '\"')
-            # remove dns info
             # remove Xauthority
             subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/root/.Xauthority"))
             # remove hosts
@@ -2705,10 +2701,10 @@ class Reconstructor:
             error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/tmp") + '\"')
             if(error != ''):
                 self.suggestReboot('/tmp could not be unmounted. It must be unmounted before you can build an ISO.')
-            # remove dns info
-            print(_("Removing DNS info..."))
-            subprocess.getoutput('rm -f \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
-            subprocess.getoutput('ln -s /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+            # resotre dns config
+            print(_("Restore DNS config..."))
+            if os.path.exists(os.path.join(self.customDir, "root/etc/resolv.conf.bak")):
+                subprocess.getoutput('mv ' + os.path.join(self.customDir, "root/etc/resolv.conf.bak") + ' ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             # umount /proc
             print(_("Umounting /proc..."))
             error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/proc/") + '\"')
@@ -4721,6 +4717,7 @@ class Reconstructor:
             # copy dns info
             if os.path.exists("/etc/resolv.conf"):
                 print(_("Copying DNS info..."))
+                subprocess.getoutput('mv ' + os.path.join(self.customDir, "root/etc/resolv.conf") + ' ' + os.path.join(self.customDir, "root/etc/resolv.conf.bak"))
                 subprocess.getoutput('cp -L --remove-destination /etc/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
             elif os.path.exists("/run/resolvconf/resolv.conf"):
                 print(_("Copying DNS info..."))
@@ -4764,11 +4761,11 @@ class Reconstructor:
             # remove apt.conf
             #print(_("Removing apt.conf configuration..."))
             #subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d/*") + '\"')
-            # remove dns info
-            print(_("Removing DNS info..."))
-            subprocess.getoutput('rm -f \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
-            subprocess.getoutput('ln -s /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
-
+            print(_("Restore DNS config..."))
+            if os.path.exists(os.path.join(self.customDir, "root/etc/resolv.conf.bak")):
+                subprocess.getoutput('mv ' + os.path.join(self.customDir, "root/etc/resolv.conf.bak") + ' ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+            print(_("Clean apt cache..."))
+            subprocess.getoutput('chroot ' + os.path.join(self.customDir, "root/") + ' apt-get clean')
             # umount /var/run/dbus
             print(_("Umounting -lf /var/run/dubs..."))
             error = subprocess.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/var/run/dbus/") + '\"')
@@ -4885,10 +4882,10 @@ class Reconstructor:
             # remove apt.conf
             #print(_("Removing apt.conf configuration..."))
             #subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf") + '\"')
-            # remove dns info
-            print(_("Removing DNS info..."))
-            subprocess.getoutput('rm -f \"' + os.path.join(self.customDir, "root/etc/resolv.conf") + '\"')
-            subprocess.getoutput('ln -s /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+            # restore dns config
+            print(_("Restore DNS config..."))
+            if os.path.exists(os.path.join(self.customDir, "root/etc/resolv.conf.bak")):
+                subprocess.getoutput('mv ' + os.path.join(self.customDir, "root/etc/resolv.conf.bak") + ' ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
 
             # umount /proc
             print(_("Umounting /proc..."))
@@ -5380,6 +5377,13 @@ class Reconstructor:
                 kernelInitrd = subprocess.getoutput("readlink " + os.path.join(self.customDir,"root/initrd.img"))
                 subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/" + kernelVmlinuz))
                 subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/" + kernelInitrd)) 
+
+                print(_("Restore DNS config..."))
+                if os.path.exists(os.path.join(self.customDir, "root/etc/resolv.conf.bak")):
+                    subprocess.getoutput('mv ' + os.path.join(self.customDir, "root/etc/resolv.conf.bak") + ' ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+
+                print(_("Clean apt cache..."))
+                subprocess.getoutput('chroot ' + os.path.join(self.customDir, "root/") + ' apt-get clean')
 
                 print(_("Building SquashFS root..."))
                 self.showProgress(_("Building SquashFS root..."),0.70)
