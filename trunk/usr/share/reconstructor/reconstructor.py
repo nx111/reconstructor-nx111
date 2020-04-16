@@ -59,6 +59,8 @@ except Exception as detail:
 
 def find_newest_kernel_version(base):
     ver = ''
+    if not os.path.exists(base):
+        return ver
     if re.search('/modules$', base) != None:
         cur_list = os.listdir(base)
         for item in cur_list:
