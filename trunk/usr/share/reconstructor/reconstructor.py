@@ -57,7 +57,7 @@ except Exception as detail:
     sys.exit(1)
 
 
-def find_newest_kernel_version(base):
+def find_newest_kernel_version(base, oem=False):
     ver = ''
     if not os.path.exists(base):
         return ver
@@ -66,7 +66,8 @@ def find_newest_kernel_version(base):
         for item in cur_list:
                 #print(item)
                 full_path = os.path.join(base, item)
-                if re.match(r'[0-9]+[0-9.-]+', item) and os.path.isdir(full_path):
+                if re.match(r'[0-9]+[0-9.-]+', item) and os.path.isdir(full_path) and \
+                   ((oem == True and re.search('-oem$',item) != None) or (oem == False and re.search('-oem$',item) == None)):
                         if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',item))<0:
                              ver=item
                 else:
@@ -77,13 +78,13 @@ def find_newest_kernel_version(base):
         for item in cur_list:
                 #print(item)
                 full_path = os.path.join(base, item)        
-                if re_file.match(item) and os.path.isfile(full_path):
+                if re_file.match(item) and os.path.isfile(full_path) and \
+                   ((oem == True and re.search('-oem$',item) != None) or (oem == False and re.search('-oem$',item) == None)):
                         ver1=re_file.sub('',item)
                         if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver1))<0:
                              ver=ver1
                 else:
                         continue
-
     return ver
 
 class Reconstructor:
@@ -4190,6 +4191,8 @@ class Reconstructor:
             initramfile=subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.mountDir,"isolinux") + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\(\w\+\).*/\\1/g\"")
             if (os.path.exists(os.path.join(self.mountDir ,'casper', initramfile))):
                 subprocess.getoutput('unmkinitramfs ' + os.path.join(self.mountDir ,'casper', initramfile) + ' ' + os.path.join(self.customDir, "initrd"))
+            if (os.path.exists(os.path.join(self.mountDir ,'casper', 'initrd-oem'))):
+                subprocess.getoutput('unmkinitramfs ' + os.path.join(self.mountDir ,'casper', 'initrd-oem') + ' ' + os.path.join(self.customDir, "initrd-oem"))
 
             # umount cdrom
             subprocess.getoutput("umount " + self.mountDir)
@@ -4406,7 +4409,46 @@ class Reconstructor:
                     + ' mkinitramfs -d boot/initrd.live/main/conf -o boot/initrd_live')
                 subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
                 if os.path.exists(os.path.join(self.customDir, 'root/boot/initrd_live')):
-                    print(subprocess.getoutput('cp -f ' + os.path.join(self.customDir,"root/boot/initrd_live") + ' ' + os.path.join(self.customDir, "remaster/casper", casper_initrd_file)))
+                    subprocess.getoutput('cp -f ' + os.path.join(self.customDir,"root/boot/initrd_live") + ' ' + os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
+                    subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver))
+                    subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/initrd_live"))
+
+                subprocess.getoutput('rm -rf ' + os.path.join(self.customDir,"root/boot/initrd.live"))
+        if kver != '' and os.path.exists(os.path.join(self.customDir,"root/boot/vmlinuz-" + kver)):
+            if (os.path.exists(os.path.join(self.customDir,"remaster/casper", casper_vmlinuz_file))):
+                subprocess.getoutput('cp -f \"' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver) + '\" \"' + os.path.join(self.customDir, "remaster/casper", casper_vmlinuz_file) + '\"')
+                subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver))
+
+    def liveCDKernelOEM(self):
+        subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/boot/initrd.live"))
+        subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/boot/initrd_live"))
+        kver=find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"),oem=True)
+        casper_initrd_file="initrd-oem"
+        casper_vmlinuz_file="vmlinuz-oem"
+        if os.path.exists(os.path.join(self.customDir, 'remaster', 'casper', casper_initrd_file)) == False \
+                and os.path.exists(os.path.join(self.customDir, 'remaster', 'casper', casper_vmlinuz_file)) == False:
+            return
+        print('Updating init OEM Kernel ' + kver + ' for Live CD ...')
+        subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
+        subprocess.getoutput('chroot ' + os.path.join(self.customDir, 'root') \
+            + ' update-initramfs -c -k ' + kver)
+        subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
+        if kver != '' and os.path.exists(os.path.join(self.customDir,"root/boot/initrd.img-" + kver)):
+            os.makedirs(os.path.join(self.customDir, "root/boot/initrd.live"))
+            if os.path.exists(os.path.join(self.customDir, 'remaster', 'casper', casper_initrd_file)):
+                subprocess.getoutput('cp -f ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "remaster/casper/", casper_initrd_file))
+            subprocess.getoutput('unmkinitramfs ' + os.path.join(self.customDir, "root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "root/boot/initrd.live"))
+            if os.path.exists(os.path.join(self.customDir,"initrd-oem/main")) \
+                    and os.path.exists(os.path.join(self.customDir,"root/boot/initrd.live/main")):
+                subprocess.getoutput('cp -dR ' + os.path.join(self.customDir, "initrd-oem/main/conf") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/"))
+                subprocess.getoutput('cp -dR ' + os.path.join(self.customDir, "initrd-oem/main/etc") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/"))
+                subprocess.getoutput('cp -dR ' + os.path.join(self.customDir, "initrd-oem/main/scripts") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/conf/"))
+                subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
+                subprocess.getoutput('chroot ' + os.path.join(self.customDir, 'root') \
+                    + ' mkinitramfs -d boot/initrd.live/main/conf -o boot/initrd_live')
+                subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
+                if os.path.exists(os.path.join(self.customDir, 'root/boot/initrd_live')):
+                    subprocess.getoutput('cp -f ' + os.path.join(self.customDir,"root/boot/initrd_live") + ' ' + os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
                     subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver))
                     subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/initrd_live"))
 
@@ -5346,6 +5388,7 @@ class Reconstructor:
                 self.showProgress(_("Creating Initrd..."))
                 #yield True
                 self.liveCDKernel()
+                self.liveCDKernelOEM()
             self.showProgress(False,0.65)
             yield True
 
