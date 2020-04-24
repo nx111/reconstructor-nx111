@@ -4188,11 +4188,15 @@ class Reconstructor:
             self.showProgress(_("Extracting Initial Ram Disk (initrd)..."),0.18)
             yield True
             self.setBusyCursor()
-            initramfile=subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.mountDir,"isolinux") + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\(\w\+\).*/\\1/g\"")
-            if (os.path.exists(os.path.join(self.mountDir ,'casper', initramfile))):
-                subprocess.getoutput('unmkinitramfs ' + os.path.join(self.mountDir ,'casper', initramfile) + ' ' + os.path.join(self.customDir, "initrd"))
-            if (os.path.exists(os.path.join(self.mountDir ,'casper', 'initrd-oem'))):
-                subprocess.getoutput('unmkinitramfs ' + os.path.join(self.mountDir ,'casper', 'initrd-oem') + ' ' + os.path.join(self.customDir, "initrd-oem"))
+            initramfile=""
+            if (os.path.exists(os.path.join(self.customDir, "remaster/isolinux"))):
+                initramfile=subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,"remaster/isolinux") + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\(\w\+\).*/\\1/g\"")
+            elif (os.path.exists(os.path.join(self.customDir, "remaster/boot/grub/grub.cfg"))):
+                initramfile=subprocess.getoutput("grep \"initrd\s\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub/grub.cfg") + " | head -n 1 | sed -e \"s/\s*initrd\s\+\/casper\/\([a-zA-Z0-9\.\-]\+\).*/\\1/g\"")
+            if (os.path.exists(os.path.join(self.customDir ,'remaster/casper', initramfile))):
+                subprocess.getoutput('unmkinitramfs ' + os.path.join(self.customDir ,'remaster/casper', initramfile) + ' ' + os.path.join(self.customDir, "initrd"))
+            if (os.path.exists(os.path.join(self.customDir ,'remaster/casper', 'initrd-oem'))):
+                subprocess.getoutput('unmkinitramfs ' + os.path.join(self.customDir ,'remaster/casper', 'initrd-oem') + ' ' + os.path.join(self.customDir, "initrd-oem"))
 
             # umount cdrom
             subprocess.getoutput("umount " + self.mountDir)
@@ -4387,7 +4391,10 @@ class Reconstructor:
         subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/boot/initrd.live"))
         subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/boot/initrd_live"))
         kver=find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"))
-        casper_initrd_file=subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\(\w\+\).*/\\1/g\"")
+        if os.path.exists(os.path.join(self.customDir,'remaster','isolinux')):
+            casper_initrd_file=subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\(\w\+\).*/\\1/g\"")
+        elif os.path.exists(os.path.join(self.customDir,"remaster/boot/grub/grub.cfg")):
+            casper_initrd_file=subprocess.getoutput("grep \"initrd\s\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub/grub.cfg") + " | head -n 1 | sed -e \"s/\s*initrd\s\+\/casper\/\([a-zA-Z0-9\.\-]\+\).*/\\1/g\"")
         casper_vmlinuz_file=subprocess.getoutput("grep \"\W*kernel\W\+/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*kernel\W\+\/casper\/\(\w\+\).*/\\1/g\"")
         print('Updating init Kernel ' + kver + ' for Live CD ...')
         subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
@@ -5499,7 +5506,10 @@ class Reconstructor:
                 # build iso according to architecture
                 if self.LiveCdArch == "x86":
                     print(_("Building x86 ISO..."))
-                    subprocess.getoutput(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"')
+                    if os.path.exists(os.path.join(self.customDir, "remaster", "isolinux/isolinux.bin")): 
+                        subprocess.getoutput(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"')
+                    elif os.path.exists(os.path.join(self.customDir, "remaster", "boot.catalog")) and os.path.exists(os.path.join(self.customDir, "remaster", "boot/grub/i386-pc/eltorito.img")):
+                        subprocess.getoutput(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"boot/grub/i386-pc/eltorito.img\" -c \"boot.catalog\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"')
                 elif self.LiveCdArch == "PowerPC":
                     print(_("Building PowerPC ISO..."))
                     subprocess.getoutput(self.timeCmd + ' mkisofs  -r -V \"' + self.LiveCdDescription + '\" --netatalk -hfs -probe -map \"' + self.hfsMap + '\" -chrp-boot -iso-level 2 -part -no-desktop -hfs-bless ' + '\"' + os.path.join(self.customDir, "remaster/install") + '\" -o \"' + self.buildLiveCdFilename + '\" \"' + os.path.join(self.customDir, "remaster") + '\"')
