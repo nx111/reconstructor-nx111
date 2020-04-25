@@ -4410,7 +4410,7 @@ class Reconstructor:
                     and os.path.exists(os.path.join(self.customDir,"root/boot/initrd.live/main")):
                 subprocess.getoutput('cp -dR ' + os.path.join(self.customDir, "initrd/main/conf") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/"))
                 subprocess.getoutput('cp -dR ' + os.path.join(self.customDir, "initrd/main/etc") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/"))
-                subprocess.getoutput('cp -dR ' + os.path.join(self.customDir, "initrd/main/scripts") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/conf/"))
+                subprocess.getoutput('cp -dnR ' + os.path.join(self.customDir, "initrd/main/scripts") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/conf/"))
                 subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
                 subprocess.getoutput('chroot ' + os.path.join(self.customDir, 'root') \
                     + ' mkinitramfs -d boot/initrd.live/main/conf -o boot/initrd_live')
@@ -4449,7 +4449,7 @@ class Reconstructor:
                     and os.path.exists(os.path.join(self.customDir,"root/boot/initrd.live/main")):
                 subprocess.getoutput('cp -dR ' + os.path.join(self.customDir, "initrd-oem/main/conf") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/"))
                 subprocess.getoutput('cp -dR ' + os.path.join(self.customDir, "initrd-oem/main/etc") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/"))
-                subprocess.getoutput('cp -dR ' + os.path.join(self.customDir, "initrd-oem/main/scripts") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/conf/"))
+                subprocess.getoutput('cp -dnR ' + os.path.join(self.customDir, "initrd-oem/main/scripts") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/conf/"))
                 subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
                 subprocess.getoutput('chroot ' + os.path.join(self.customDir, 'root') \
                     + ' mkinitramfs -d boot/initrd.live/main/conf -o boot/initrd_live')
