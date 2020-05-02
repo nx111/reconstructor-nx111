@@ -4413,7 +4413,7 @@ class Reconstructor:
                 subprocess.getoutput('cp -dnR ' + os.path.join(self.customDir, "initrd/main/scripts") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/conf/"))
                 subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
                 subprocess.getoutput('chroot ' + os.path.join(self.customDir, 'root') \
-                    + ' mkinitramfs -d boot/initrd.live/main/conf -o boot/initrd_live')
+                    + ' mkinitramfs -d boot/initrd.live/main/conf -o boot/initrd_live ' + kver)
                 subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
                 if os.path.exists(os.path.join(self.customDir, 'root/boot/initrd_live')):
                     subprocess.getoutput('cp -f ' + os.path.join(self.customDir,"root/boot/initrd_live") + ' ' + os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
@@ -4427,14 +4427,13 @@ class Reconstructor:
                 subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver))
 
     def liveCDKernelOEM(self):
-        subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/boot/initrd.live"))
-        subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/boot/initrd_live"))
         kver=find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"),oem=True)
         casper_initrd_file="initrd-oem"
         casper_vmlinuz_file="vmlinuz-oem"
         if os.path.exists(os.path.join(self.customDir, 'remaster', 'casper', casper_initrd_file)) == False \
                 and os.path.exists(os.path.join(self.customDir, 'remaster', 'casper', casper_vmlinuz_file)) == False:
             return
+        subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/boot/initrd.live"))
         print('Updating init OEM Kernel ' + kver + ' for Live CD ...')
         subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
         subprocess.getoutput('chroot ' + os.path.join(self.customDir, 'root') \
@@ -4452,7 +4451,7 @@ class Reconstructor:
                 subprocess.getoutput('cp -dnR ' + os.path.join(self.customDir, "initrd-oem/main/scripts") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/conf/"))
                 subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
                 subprocess.getoutput('chroot ' + os.path.join(self.customDir, 'root') \
-                    + ' mkinitramfs -d boot/initrd.live/main/conf -o boot/initrd_live')
+                    + ' mkinitramfs -d boot/initrd.live/main/conf -o boot/initrd_live ' + kver)
                 subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
                 if os.path.exists(os.path.join(self.customDir, 'root/boot/initrd_live')):
                     subprocess.getoutput('cp -f ' + os.path.join(self.customDir,"root/boot/initrd_live") + ' ' + os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
