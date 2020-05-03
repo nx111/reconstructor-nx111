@@ -437,9 +437,14 @@ class Reconstructor:
         kernelFileReady = False
         kernelVersion = ''
         kernelFile = ''
-        casper_initrd_file=subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\(\w\+\).*/\\1/g\"")
-        casper_vmlinuz_file=subprocess.getoutput("grep \"\W*kernel\W\+/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*kernel\W\+\/casper\/\(\w\+\).*/\\1/g\"")
-        #print('casper_vmlinuz_file=' + casper_vmlinuz_file)
+        if os.path.exists(os.path.join(self.customDir,'remaster','isolinux')):
+            casper_initrd_file=subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+            casper_vmlinuz_file=subprocess.getoutput("grep \"\W*kernel\W\+/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*kernel\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+        elif os.path.exists(os.path.join(self.customDir,"remaster/boot/grub/grub.cfg")):
+            casper_initrd_file=subprocess.getoutput("grep \"initrd\s\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/\s*initrd\s\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+            casper_vmlinuz_file=subprocess.getoutput("grep \"\W*linux\W\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*linux\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+
+        #print('casper_initrd_file=' + casper_initrd_file)
         if os.path.lexists(os.path.join(self.customDir,"root/boot/vmlinuz")):
             kernelFile = subprocess.getoutput("readlink " + os.path.join(self.customDir,"root/boot/vmlinuz"))
         elif os.path.lexists(os.path.join(self.customDir,"root/vmlinuz")):
@@ -540,7 +545,7 @@ class Reconstructor:
             warnDlg.add_buttons(Gtk.STOCK_NO, Gtk.ResponseType.CANCEL, Gtk.STOCK_YES, Gtk.ResponseType.OK)
             warnDlg.set_icon_from_file(self.iconFile)
             warnDlg.vbox.set_spacing(10)
-            labelSpc = Gtk.Label(" ")
+            labelSpc = Gtk.Label(label=" ")
             warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
             labelSpc.show()
             lblText = _('  <b>Reconstructor may not work correctly.</b>\nThe following dependencies are not met: ')
@@ -606,7 +611,7 @@ class Reconstructor:
                 updateDlg.add_buttons(Gtk.STOCK_NO, Gtk.RESPONSE_NO, Gtk.STOCK_YES, Gtk.ResponseType.OK)
                 updateDlg.set_icon_from_file(self.iconFile)
                 updateDlg.vbox.set_spacing(10)
-                labelSpc = Gtk.Label(" ")
+                labelSpc = Gtk.Label(label=" ")
                 updateDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
                 labelSpc.show()
                 lblNewVersion = Gtk.Label('New version available...')
@@ -634,7 +639,7 @@ class Reconstructor:
                 updateDlg.add_buttons(Gtk.STOCK_OK, Gtk.ResponseType.OK)
                 updateDlg.set_icon_from_file(self.iconFile)
                 updateDlg.vbox.set_spacing(10)
-                labelSpc = Gtk.Label(" ")
+                labelSpc = Gtk.Label(label=" ")
                 updateDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
                 labelSpc.show()
                 lblNewVersion = Gtk.Label('Reconstructor is at the latest version.')
@@ -660,7 +665,7 @@ class Reconstructor:
         rebootDlg.add_buttons=(Gtk.STOCK_NO, Gtk.RESPONSE_NO, Gtk.STOCK_YES, Gtk.ResponseType.OK)
         rebootDlg.set_icon_from_file(self.iconFile)
         rebootDlg.vbox.set_spacing(10)
-        labelSpc = Gtk.Label(" ")
+        labelSpc = Gtk.Label(label=" ")
         rebootDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
         labelSpc.show()
         lblReason = Gtk.Label(reason)
@@ -1318,7 +1323,7 @@ class Reconstructor:
                 modDlg.set_default_size(512, 512)
                 modDlg.set_icon_from_file(self.iconFile)
                 modDlg.vbox.set_spacing(10)
-                labelSpc = Gtk.Label(" ")
+                labelSpc = Gtk.Label(label=" ")
                 modDlg.vbox.pack_start(labelSpc, expand=False, fill=False, padding=0)
                 labelSpc.show()
                 # scrolled window for module text
@@ -2422,7 +2427,7 @@ class Reconstructor:
         genericDlg.add_buttons(Gtk.STOCK_OK, Gtk.ResponseType.OK)
         genericDlg.set_icon_from_file(self.iconFile)
         genericDlg.vbox.set_spacing(10)
-        labelSpc = Gtk.Label(" ")
+        labelSpc = Gtk.Label(label=" ")
         genericDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
         labelSpc.show()
         lblgenericInfo = Gtk.Label(text)
@@ -2441,7 +2446,7 @@ class Reconstructor:
         resDlg.add_buttons(but1, BUT1, but2, BUT2, but3, BUT3, but4, BUT4, but5, BUT5, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
         resDlg.set_icon_from_file(self.iconFile)
         resDlg.vbox.set_spacing(10)
-        labelSpc = Gtk.Label(" ")
+        labelSpc = Gtk.Label(label=" ")
         resDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
         labelSpc.show()
         lblresInfo = Gtk.Label(text)
@@ -2498,7 +2503,7 @@ class Reconstructor:
         deskenvDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
         deskenvDlg.set_icon_from_file(self.iconFile)
         deskenvDlg.vbox.set_spacing(10)
-        labelSpc = Gtk.Label(" ")
+        labelSpc = Gtk.Label(label=" ")
         deskenvDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
         labelSpc.show()
         lbldeskenvInfo = Gtk.Label("Choose Environment to customize.")
@@ -3361,7 +3366,7 @@ class Reconstructor:
         keyDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK)
         keyDlg.set_icon_from_file('glade/app.png')
         keyDlg.vbox.set_spacing(10)
-        labelSpc = Gtk.Label(" ")
+        labelSpc = Gtk.Label(label=" ")
         keyDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
         labelSpc.show()
         infoText = _("<b>GPG Installation Key Information</b>")
@@ -3755,7 +3760,7 @@ class Reconstructor:
         warnDlg.add_buttons(Gtk.STOCK_NO, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK)
         warnDlg.set_icon_from_file(self.iconFile)
         warnDlg.vbox.set_spacing(10)
-        labelSpc = Gtk.Label(" ")
+        labelSpc = Gtk.Label(label=" ")
         warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
         labelSpc.show()
         lblContinueText = _("  <b>Delete?</b>  ")
@@ -3851,7 +3856,7 @@ class Reconstructor:
         warnDlg.add_buttons(Gtk.STOCK_NO, Gtk.ResponseType.CANCEL, Gtk.STOCK_YES, Gtk.ResponseType.OK)
         warnDlg.set_icon_from_file(self.iconFile)
         warnDlg.vbox.set_spacing(10)
-        labelSpc = Gtk.Label(" ")
+        labelSpc = Gtk.Label(label=" ")
         warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
         labelSpc.show()
         lblContinueText = _("  <b>Clear all run on boot modules?</b>  ")
@@ -3962,7 +3967,7 @@ class Reconstructor:
         warnDlg.add_buttons(Gtk.STOCK_NO, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK)
         warnDlg.set_icon_from_file(self.iconFile)
         warnDlg.vbox.set_spacing(10)
-        labelSpc = Gtk.Label(" ")
+        labelSpc = Gtk.Label(label=" ")
         warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
         labelSpc.show()
         lblContinueText = _("  <b>Continue?</b>  ")
@@ -4042,11 +4047,11 @@ class Reconstructor:
                 mntDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK)
                 mntDlg.set_icon_from_file(self.iconFile)
                 mntDlg.vbox.set_spacing(10)
-                labelSpc = Gtk.Label(" ")
+                labelSpc = Gtk.Label(label=" ")
                 mntDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
                 labelSpc.show()
                 lblText = _("  <b>Please insert Ubuntu Live CD and click OK</b>  ")
-                label = Gtk.Label(lblText)
+                label = Gtk.Label(label=lblText)
                 label.set_use_markup(True)
                 mntDlg.vbox.pack_start(label, expand=True, fill=True, padding=0)
                 label.show()
@@ -4099,7 +4104,7 @@ class Reconstructor:
                 mntDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK)
                 mntDlg.set_icon_from_file(self.iconFile)
                 mntDlg.vbox.set_spacing(10)
-                labelSpc = Gtk.Label(" ")
+                labelSpc = Gtk.Label(label=" ")
                 mntDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
                 labelSpc.show()
                 lblText = _("  <b>Please insert Ubuntu Live CD and click OK</b>  ")
@@ -4162,7 +4167,7 @@ class Reconstructor:
                 mntDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK)
                 mntDlg.set_icon_from_file(self.iconFile)
                 mntDlg.vbox.set_spacing(10)
-                labelSpc = Gtk.Label(" ")
+                labelSpc = Gtk.Label(label=" ")
                 mntDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
                 labelSpc.show()
                 lblText = _("  <b>Please insert Ubuntu Live CD and click OK</b>  ")
@@ -4190,9 +4195,10 @@ class Reconstructor:
             self.setBusyCursor()
             initramfile=""
             if (os.path.exists(os.path.join(self.customDir, "remaster/isolinux"))):
-                initramfile=subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,"remaster/isolinux") + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\(\w\+\).*/\\1/g\"")
+                initramfile=subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,"remaster/isolinux") + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
             elif (os.path.exists(os.path.join(self.customDir, "remaster/boot/grub/grub.cfg"))):
-                initramfile=subprocess.getoutput("grep \"initrd\s\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub/grub.cfg") + " | head -n 1 | sed -e \"s/\s*initrd\s\+\/casper\/\([a-zA-Z0-9\.\-]\+\).*/\\1/g\"")
+                initramfile=subprocess.getoutput("grep \"initrd\s\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub/grub.cfg") + " | head -n 1 | sed -e \"s/\s*initrd\s\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+            #print("initramfile=" + initramfile)
             if (os.path.exists(os.path.join(self.customDir ,'remaster/casper', initramfile))):
                 subprocess.getoutput('unmkinitramfs ' + os.path.join(self.customDir ,'remaster/casper', initramfile) + ' ' + os.path.join(self.customDir, "initrd"))
             if (os.path.exists(os.path.join(self.customDir ,'remaster/casper', 'initrd-oem'))):
@@ -4271,7 +4277,7 @@ class Reconstructor:
                 mntDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK)
                 mntDlg.set_icon_from_file(self.iconFile)
                 mntDlg.vbox.set_spacing(10)
-                labelSpc = Gtk.Label(" ")
+                labelSpc = Gtk.Label(label=" ")
                 mntDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
                 labelSpc.show()
                 lblText = _("  <b>Please insert Ubuntu Alternate CD and click OK</b>  ")
@@ -4338,7 +4344,7 @@ class Reconstructor:
                 mntDlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK)
                 mntDlg.set_icon_from_file(self.iconFile)
                 mntDlg.vbox.set_spacing(10)
-                labelSpc = Gtk.Label(" ")
+                labelSpc = Gtk.Label(label=" ")
                 mntDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
                 labelSpc.show()
                 lblText = _("  <b>Please insert Ubuntu Alternate CD and click OK</b>  ")
@@ -4392,10 +4398,12 @@ class Reconstructor:
         subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/boot/initrd_live"))
         kver=find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"))
         if os.path.exists(os.path.join(self.customDir,'remaster','isolinux')):
-            casper_initrd_file=subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\(\w\+\).*/\\1/g\"")
+            casper_initrd_file=subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+            casper_vmlinuz_file=subprocess.getoutput("grep \"\W*kernel\W\+/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*kernel\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
         elif os.path.exists(os.path.join(self.customDir,"remaster/boot/grub/grub.cfg")):
-            casper_initrd_file=subprocess.getoutput("grep \"initrd\s\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub/grub.cfg") + " | head -n 1 | sed -e \"s/\s*initrd\s\+\/casper\/\([a-zA-Z0-9\.\-]\+\).*/\\1/g\"")
-        casper_vmlinuz_file=subprocess.getoutput("grep \"\W*kernel\W\+/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*kernel\W\+\/casper\/\(\w\+\).*/\\1/g\"")
+            casper_initrd_file=subprocess.getoutput("grep \"initrd\s\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/\s*initrd\s\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+            casper_vmlinuz_file=subprocess.getoutput("grep \"\W*linux\W\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*linux\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+
         print('Updating init Kernel ' + kver + ' for Live CD ...')
         subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
         subprocess.getoutput('chroot ' + os.path.join(self.customDir, 'root') \
@@ -4411,16 +4419,16 @@ class Reconstructor:
                 subprocess.getoutput('cp -dR ' + os.path.join(self.customDir, "initrd/main/conf") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/"))
                 subprocess.getoutput('cp -dR ' + os.path.join(self.customDir, "initrd/main/etc") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/"))
                 subprocess.getoutput('cp -dnR ' + os.path.join(self.customDir, "initrd/main/scripts") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/conf/"))
-                subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
-                subprocess.getoutput('chroot ' + os.path.join(self.customDir, 'root') \
+            subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
+            subprocess.getoutput('chroot ' + os.path.join(self.customDir, 'root') \
                     + ' mkinitramfs -d boot/initrd.live/main/conf -o boot/initrd_live ' + kver)
-                subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
-                if os.path.exists(os.path.join(self.customDir, 'root/boot/initrd_live')):
+            subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
+            if os.path.exists(os.path.join(self.customDir, 'root/boot/initrd_live')):
                     subprocess.getoutput('cp -f ' + os.path.join(self.customDir,"root/boot/initrd_live") + ' ' + os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
                     subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver))
                     subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/initrd_live"))
 
-                subprocess.getoutput('rm -rf ' + os.path.join(self.customDir,"root/boot/initrd.live"))
+            subprocess.getoutput('rm -rf ' + os.path.join(self.customDir,"root/boot/initrd.live"))
         if kver != '' and os.path.exists(os.path.join(self.customDir,"root/boot/vmlinuz-" + kver)):
             if (os.path.exists(os.path.join(self.customDir,"remaster/casper", casper_vmlinuz_file))):
                 subprocess.getoutput('cp -f \"' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver) + '\" \"' + os.path.join(self.customDir, "remaster/casper", casper_vmlinuz_file) + '\"')
@@ -4449,16 +4457,16 @@ class Reconstructor:
                 subprocess.getoutput('cp -dR ' + os.path.join(self.customDir, "initrd-oem/main/conf") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/"))
                 subprocess.getoutput('cp -dR ' + os.path.join(self.customDir, "initrd-oem/main/etc") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/"))
                 subprocess.getoutput('cp -dnR ' + os.path.join(self.customDir, "initrd-oem/main/scripts") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/conf/"))
-                subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
-                subprocess.getoutput('chroot ' + os.path.join(self.customDir, 'root') \
+            subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
+            subprocess.getoutput('chroot ' + os.path.join(self.customDir, 'root') \
                     + ' mkinitramfs -d boot/initrd.live/main/conf -o boot/initrd_live ' + kver)
-                subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
-                if os.path.exists(os.path.join(self.customDir, 'root/boot/initrd_live')):
+            subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
+            if os.path.exists(os.path.join(self.customDir, 'root/boot/initrd_live')):
                     subprocess.getoutput('cp -f ' + os.path.join(self.customDir,"root/boot/initrd_live") + ' ' + os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
                     subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver))
                     subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/initrd_live"))
 
-                subprocess.getoutput('rm -rf ' + os.path.join(self.customDir,"root/boot/initrd.live"))
+            subprocess.getoutput('rm -rf ' + os.path.join(self.customDir,"root/boot/initrd.live"))
         if kver != '' and os.path.exists(os.path.join(self.customDir,"root/boot/vmlinuz-" + kver)):
             if (os.path.exists(os.path.join(self.customDir,"remaster/casper", casper_vmlinuz_file))):
                 subprocess.getoutput('cp -f \"' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver) + '\" \"' + os.path.join(self.customDir, "remaster/casper", casper_vmlinuz_file) + '\"')
@@ -4497,7 +4505,7 @@ class Reconstructor:
             warnDlg.add_buttons(Gtk.STOCK_OK, Gtk.ResponseType.OK)
             warnDlg.set_icon_from_file(self.iconFile)
             warnDlg.vbox.set_spacing(10)
-            labelSpc = Gtk.Label(" ")
+            labelSpc = Gtk.Label(label=" ")
             warnDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
             labelSpc.show()
             lblBuildText = _("  <b>Passwords do not match</b>  ")
