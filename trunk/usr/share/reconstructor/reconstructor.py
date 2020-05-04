@@ -4414,11 +4414,20 @@ class Reconstructor:
             if os.path.exists(os.path.join(self.customDir, 'remaster', 'casper', casper_initrd_file)):
                 subprocess.getoutput('cp -f ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "remaster/casper/", casper_initrd_file))
             subprocess.getoutput('unmkinitramfs ' + os.path.join(self.customDir, "root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "root/boot/initrd.live"))
-            if os.path.exists(os.path.join(self.customDir,"initrd/main")) \
-                    and os.path.exists(os.path.join(self.customDir,"root/boot/initrd.live/main")):
-                subprocess.getoutput('cp -dR ' + os.path.join(self.customDir, "initrd/main/conf") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/"))
-                subprocess.getoutput('cp -dR ' + os.path.join(self.customDir, "initrd/main/etc") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/"))
-                subprocess.getoutput('cp -dnR ' + os.path.join(self.customDir, "initrd/main/scripts") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/conf/"))
+            orig_initrd_main = ""
+            target_initrd_main = ""
+            if os.path.exists(os.path.join(self.customDir,"initrd/main")):
+                orig_initrd_main = os.path.join(self.customDir,"initrd/main")
+            elif os.path.exists(os.path.join(self.customDir, "initrd/init")):
+                orig_initrd_main = os.path.join(self.customDir, "initrd")
+            if os.path.exists(os.path.join(self.customDir,"root/boot/initrd.live/main")):
+                target_initrd_main = os.path.join(self.customDir,"root/boot/initrd.live/main")
+            elif os.path.exists(os.path.join(self.customDir,"root/boot/initrd.live/init")):
+                target_initrd_main = os.path.join(self.customDir,"root/boot/initrd.live")
+            if orig_initrd_main != "" and target_initrd_main != "":
+                subprocess.getoutput('cp -dR ' + os.path.join(orig_initrd_main, "conf") + ' ' + target_initrd_main)
+                subprocess.getoutput('cp -dR ' + os.path.join(orig_initrd_main, "etc") + ' ' + target_initrd_main)
+                subprocess.getoutput('cp -dnR ' + os.path.join(orig_initrd_main, "scripts") + ' ' + os.path.join(target_initrd_main, "conf"))
             subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
             subprocess.getoutput('chroot ' + os.path.join(self.customDir, 'root') \
                     + ' mkinitramfs -d boot/initrd.live/main/conf -o boot/initrd_live ' + kver)
@@ -4452,11 +4461,20 @@ class Reconstructor:
             if os.path.exists(os.path.join(self.customDir, 'remaster', 'casper', casper_initrd_file)):
                 subprocess.getoutput('cp -f ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "remaster/casper/", casper_initrd_file))
             subprocess.getoutput('unmkinitramfs ' + os.path.join(self.customDir, "root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "root/boot/initrd.live"))
-            if os.path.exists(os.path.join(self.customDir,"initrd-oem/main")) \
-                    and os.path.exists(os.path.join(self.customDir,"root/boot/initrd.live/main")):
-                subprocess.getoutput('cp -dR ' + os.path.join(self.customDir, "initrd-oem/main/conf") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/"))
-                subprocess.getoutput('cp -dR ' + os.path.join(self.customDir, "initrd-oem/main/etc") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/"))
-                subprocess.getoutput('cp -dnR ' + os.path.join(self.customDir, "initrd-oem/main/scripts") + ' ' + os.path.join(self.customDir, "root/boot/initrd.live/main/conf/"))
+            orig_initrd_main = ""
+            target_initrd_main = ""
+            if os.path.exists(os.path.join(self.customDir,"initrd-oem/main")):
+                orig_initrd_main = os.path.join(self.customDir,"initrd-oem/main")
+            elif os.path.exists(os.path.join(self.customDir, "initrd-oem/init")):
+                orig_initrd_main = os.path.join(self.customDir, "initrd-oem")
+            if os.path.exists(os.path.join(self.customDir,"root/boot/initrd.live/main")):
+                target_initrd_main = os.path.join(self.customDir,"root/boot/initrd.live/main")
+            elif os.path.exists(os.path.join(self.customDir,"root/boot/initrd.live/init")):
+                target_initrd_main = os.path.join(self.customDir,"root/boot/initrd.live")
+            if orig_initrd_main != "" and target_initrd_main != "":
+                subprocess.getoutput('cp -dR ' + os.path.join(orig_initrd_main, "conf") + ' ' + target_initrd_main)
+                subprocess.getoutput('cp -dR ' + os.path.join(orig_initrd_main, "etc") + ' ' + target_initrd_main)
+                subprocess.getoutput('cp -dnR ' + os.path.join(orig_initrd_main, "scripts") + ' ' + os.path.join(target_initrd_main, "conf"))
             subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
             subprocess.getoutput('chroot ' + os.path.join(self.customDir, 'root') \
                     + ' mkinitramfs -d boot/initrd.live/main/conf -o boot/initrd_live ' + kver)
