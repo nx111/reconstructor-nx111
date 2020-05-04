@@ -2318,10 +2318,10 @@ class Reconstructor:
                 print(_("Mounting /dev/pts filesystem..."))
                 subprocess.getoutput('mount none -t devpts \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
                 # copy apt.conf
-                print(_("Copying apt configuration..."))
                 if not os.path.exists(os.path.join(self.customDir, "root/etc/apt/apt.conf.d/")):
+                    print(_("Copying apt configuration..."))
                     os.makedirs(os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
-                subprocess.getoutput('cp -f /etc/apt/apt.conf.d/* ' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
+                    subprocess.getoutput('cp -f /etc/apt/apt.conf.d/* ' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
                 # copy wgetrc
                 print(_("Copying wgetrc configuration..."))
                 # backup
@@ -2614,10 +2614,10 @@ class Reconstructor:
             print(_("Mounting /sys filesystem..."))
             subprocess.getoutput('mount -t sysfs none \"' + os.path.join(self.customDir, "root/sys") + '\"')
             # copy apt.conf
-            print(_("Copying apt configuration..."))
             if not os.path.exists(os.path.join(self.customDir, "root/etc/apt/apt.conf.d/")):
+                print(_("Copying apt configuration..."))
                 os.makedirs(os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
-            subprocess.getoutput('cp -f /etc/apt/apt.conf.d/* ' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
+                subprocess.getoutput('cp -f /etc/apt/apt.conf.d/* ' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
             # copy wgetrc
             print(_("Copying wgetrc configuration..."))
             # backup
@@ -4788,10 +4788,10 @@ class Reconstructor:
             subprocess.getoutput('mount --bind /var/run/dbus \"' + os.path.join(self.customDir, "root/var/run/dbus") + '\"')
 	
             # copy apt.conf
-            print(_("Copying apt.conf configuration..."))
             if not os.path.exists(os.path.join(self.customDir, "root/etc/apt/apt.conf.d")):
+                print(_("Copying apt.conf configuration..."))
                 os.makedirs(os.path.join(self.customDir, "root/etc/apt/apt.conf.d"))
-            subprocess.getoutput('cp -f /etc/apt/apt.conf.d/* ' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d"))
+                subprocess.getoutput('cp -f /etc/apt/apt.conf.d/* ' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d"))
             # copy wgetrc
             print(_("Copying wgetrc configuration..."))
             # backup
@@ -4899,10 +4899,10 @@ class Reconstructor:
             print(_("Mounting /proc filesystem..."))
             subprocess.getoutput('mount -t proc none \"' + os.path.join(self.customDir, "root/proc") + '\"')
             # copy apt.conf
-            print(_("Copying apt.conf configuration..."))
             if not os.path.exists(os.path.join(self.customDir, "root/etc/apt/apt.conf.d/")):
+                print(_("Copying apt.conf configuration..."))
                 os.makedirs(os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
-            subprocess.getoutput('cp -f /etc/apt/apt.conf.d/* ' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
+                subprocess.getoutput('cp -f /etc/apt/apt.conf.d/* ' + os.path.join(self.customDir, "root/etc/apt/apt.conf.d/"))
             # copy wgetrc
             print(_("Copying wgetrc configuration..."))
             # backup
