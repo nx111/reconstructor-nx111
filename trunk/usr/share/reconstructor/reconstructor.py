@@ -4410,34 +4410,32 @@ class Reconstructor:
             + ' update-initramfs -c -k ' + kver)
         subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
         if kver != '' and os.path.exists(os.path.join(self.customDir,"root/boot/initrd.img-" + kver)):
-            os.makedirs(os.path.join(self.customDir, "root/boot/initrd.live"))
-            if os.path.exists(os.path.join(self.customDir, 'remaster', 'casper', casper_initrd_file)):
-                subprocess.getoutput('cp -f ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "remaster/casper/", casper_initrd_file))
-            subprocess.getoutput('unmkinitramfs ' + os.path.join(self.customDir, "root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "root/boot/initrd.live"))
             orig_initrd_main = ""
             target_initrd_main = ""
             if os.path.exists(os.path.join(self.customDir,"initrd/main")):
                 orig_initrd_main = os.path.join(self.customDir,"initrd/main")
             elif os.path.exists(os.path.join(self.customDir, "initrd/init")):
                 orig_initrd_main = os.path.join(self.customDir, "initrd")
-            if os.path.exists(os.path.join(self.customDir,"root/boot/initrd.live/main")):
-                target_initrd_main = os.path.join(self.customDir,"root/boot/initrd.live/main")
-            elif os.path.exists(os.path.join(self.customDir,"root/boot/initrd.live/init")):
-                target_initrd_main = os.path.join(self.customDir,"root/boot/initrd.live")
-            if orig_initrd_main != "" and target_initrd_main != "":
-                subprocess.getoutput('cp -dR ' + os.path.join(orig_initrd_main, "conf") + ' ' + target_initrd_main)
-                subprocess.getoutput('cp -dR ' + os.path.join(orig_initrd_main, "etc") + ' ' + target_initrd_main)
-                subprocess.getoutput('cp -dnR ' + os.path.join(orig_initrd_main, "scripts") + ' ' + os.path.join(target_initrd_main, "conf"))
-            subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
-            subprocess.getoutput('chroot ' + os.path.join(self.customDir, 'root') \
-                    + ' mkinitramfs -d boot/initrd.live/main/conf -o boot/initrd_live ' + kver)
-            subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
-            if os.path.exists(os.path.join(self.customDir, 'root/boot/initrd_live')):
-                    subprocess.getoutput('cp -f ' + os.path.join(self.customDir,"root/boot/initrd_live") + ' ' + os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
-                    subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver))
+            if orig_initrd_main != "" and os.path.exists(os.path.join(orig_initrd_main, "conf/conf.d/default-boot-to-casper.conf")) \
+                    and not os.path.exists(os.path.join(self.customDir, "root/usr/share/initramfs-tools/conf.d/default-boot-to-casper.conf")):
+                os.makedirs(os.path.join(self.customDir, "root/boot/initrd.live"))
+                subprocess.getoutput('unmkinitramfs ' + os.path.join(self.customDir, "root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "root/boot/initrd.live"))
+                if os.path.exists(os.path.join(self.customDir,"root/boot/initrd.live/main")):
+                    target_initrd_main = os.path.join(self.customDir,"root/boot/initrd.live/main")
+                elif os.path.exists(os.path.join(self.customDir,"root/boot/initrd.live/init")):
+                    target_initrd_main = os.path.join(self.customDir,"root/boot/initrd.live")
+                if target_initrd_main != "":
+                    subprocess.getoutput('cp -a ' + os.path.join(orig_initrd_main, "conf/conf.d/default-boot-to-casper.conf") + ' ' + os.path.join(target_initrd_main, "conf/conf.d"))
+                subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
+                subprocess.getoutput('chroot ' + os.path.join(self.customDir, 'root') \
+                        + ' mkinitramfs -d boot/initrd.live/main/conf -o boot/initrd_live ' + kver)
+                subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
+                if os.path.exists(os.path.join(self.customDir, 'root/boot/initrd_live')):
+                    subprocess.getoutput('cp -f ' + os.path.join(self.customDir,"root/boot/initrd_live") + ' ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver))
                     subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/initrd_live"))
-
-            subprocess.getoutput('rm -rf ' + os.path.join(self.customDir,"root/boot/initrd.live"))
+                subprocess.getoutput('rm -rf ' + os.path.join(self.customDir,"root/boot/initrd.live"))
+        if os.path.exists(os.path.join(self.customDir, 'remaster', 'casper', casper_initrd_file)):
+            subprocess.getoutput('cp -f ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver) + ' ' +                    os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
         if kver != '' and os.path.exists(os.path.join(self.customDir,"root/boot/vmlinuz-" + kver)):
             if (os.path.exists(os.path.join(self.customDir,"remaster/casper", casper_vmlinuz_file))):
                 subprocess.getoutput('cp -f \"' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver) + '\" \"' + os.path.join(self.customDir, "remaster/casper", casper_vmlinuz_file) + '\"')
@@ -4450,41 +4448,39 @@ class Reconstructor:
         if os.path.exists(os.path.join(self.customDir, 'remaster', 'casper', casper_initrd_file)) == False \
                 and os.path.exists(os.path.join(self.customDir, 'remaster', 'casper', casper_vmlinuz_file)) == False:
             return
-        subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/boot/initrd.live"))
+        subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/boot/initrd-oem.live"))
         print('Updating init OEM Kernel ' + kver + ' for Live CD ...')
         subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
         subprocess.getoutput('chroot ' + os.path.join(self.customDir, 'root') \
             + ' update-initramfs -c -k ' + kver)
         subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
         if kver != '' and os.path.exists(os.path.join(self.customDir,"root/boot/initrd.img-" + kver)):
-            os.makedirs(os.path.join(self.customDir, "root/boot/initrd.live"))
-            if os.path.exists(os.path.join(self.customDir, 'remaster', 'casper', casper_initrd_file)):
-                subprocess.getoutput('cp -f ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "remaster/casper/", casper_initrd_file))
-            subprocess.getoutput('unmkinitramfs ' + os.path.join(self.customDir, "root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "root/boot/initrd.live"))
             orig_initrd_main = ""
             target_initrd_main = ""
-            if os.path.exists(os.path.join(self.customDir,"initrd-oem/main")):
-                orig_initrd_main = os.path.join(self.customDir,"initrd-oem/main")
-            elif os.path.exists(os.path.join(self.customDir, "initrd-oem/init")):
-                orig_initrd_main = os.path.join(self.customDir, "initrd-oem")
-            if os.path.exists(os.path.join(self.customDir,"root/boot/initrd.live/main")):
-                target_initrd_main = os.path.join(self.customDir,"root/boot/initrd.live/main")
-            elif os.path.exists(os.path.join(self.customDir,"root/boot/initrd.live/init")):
-                target_initrd_main = os.path.join(self.customDir,"root/boot/initrd.live")
-            if orig_initrd_main != "" and target_initrd_main != "":
-                subprocess.getoutput('cp -dR ' + os.path.join(orig_initrd_main, "conf") + ' ' + target_initrd_main)
-                subprocess.getoutput('cp -dR ' + os.path.join(orig_initrd_main, "etc") + ' ' + target_initrd_main)
-                subprocess.getoutput('cp -dnR ' + os.path.join(orig_initrd_main, "scripts") + ' ' + os.path.join(target_initrd_main, "conf"))
-            subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
-            subprocess.getoutput('chroot ' + os.path.join(self.customDir, 'root') \
-                    + ' mkinitramfs -d boot/initrd.live/main/conf -o boot/initrd_live ' + kver)
-            subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
-            if os.path.exists(os.path.join(self.customDir, 'root/boot/initrd_live')):
-                    subprocess.getoutput('cp -f ' + os.path.join(self.customDir,"root/boot/initrd_live") + ' ' + os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
-                    subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver))
+            if os.path.exists(os.path.join(self.customDir,"initrd/main")):
+                orig_initrd_main = os.path.join(self.customDir,"initrd/main")
+            elif os.path.exists(os.path.join(self.customDir, "initrd/init")):
+                orig_initrd_main = os.path.join(self.customDir, "initrd")
+            if orig_initrd_main != "" and os.path.exists(os.path.join(orig_initrd_main, "conf/conf.d/default-boot-to-casper.conf")) \
+                    and not os.path.exists(os.path.join(self.customDir, "root/usr/share/initramfs-tools/conf.d/default-boot-to-casper.conf")):
+                os.makedirs(os.path.join(self.customDir, "root/boot/initrd-oem.live"))
+                subprocess.getoutput('unmkinitramfs ' + os.path.join(self.customDir, "root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "root/boot/initrd-oem.live"))
+                if os.path.exists(os.path.join(self.customDir,"root/boot/initrd-oem.live/main")):
+                    target_initrd_main = os.path.join(self.customDir,"root/boot/initrd-oem.live/main")
+                elif os.path.exists(os.path.join(self.customDir,"root/boot/initrd-oem.live/init")):
+                    target_initrd_main = os.path.join(self.customDir,"root/boot/initrd-oem.live")
+                if target_initrd_main != "":
+                    subprocess.getoutput('cp -a ' + os.path.join(orig_initrd_main, "conf/conf.d/default-boot-to-casper.conf") + ' ' + os.path.join(target_initrd_main, "conf/conf.d"))
+                subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
+                subprocess.getoutput('chroot ' + os.path.join(self.customDir, 'root') \
+                        + ' mkinitramfs -d boot/initrd-oem.live/main/conf -o boot/initrd_live ' + kver)
+                subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
+                if os.path.exists(os.path.join(self.customDir, 'root/boot/initrd_live')):
+                    subprocess.getoutput('cp -f ' + os.path.join(self.customDir,"root/boot/initrd_live") + ' ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver))
                     subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/initrd_live"))
-
-            subprocess.getoutput('rm -rf ' + os.path.join(self.customDir,"root/boot/initrd.live"))
+                subprocess.getoutput('rm -rf ' + os.path.join(self.customDir,"root/boot/initrd-oem.live"))
+        if os.path.exists(os.path.join(self.customDir, 'remaster', 'casper', casper_initrd_file)):
+            subprocess.getoutput('cp -f ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver) + ' ' +                    os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
         if kver != '' and os.path.exists(os.path.join(self.customDir,"root/boot/vmlinuz-" + kver)):
             if (os.path.exists(os.path.join(self.customDir,"remaster/casper", casper_vmlinuz_file))):
                 subprocess.getoutput('cp -f \"' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver) + '\" \"' + os.path.join(self.customDir, "remaster/casper", casper_vmlinuz_file) + '\"')
