@@ -485,10 +485,10 @@ class Reconstructor:
         if apt_pkg.version_compare(self.cdUbuntuVersion, '18.04') >= 0:
             mydir=os.path.split(os.path.realpath(__file__))[0]
             if subprocess.getoutput('grep gedit -r ' + os.path.join(self.customDir,"root/usr/share/polkit-1/actions") + ' | wc -l') == '0':
-               subprocess.getoutput('cp -f' + os.path.join(mydir, 'polkit-1/actions/org.gnome.gedit.policy') + ' ' \
+                subprocess.getoutput('cp -f ' + os.path.join(mydir, 'polkit-1/actions/org.gnome.gedit.policy') + ' ' \
                     +  os.path.join(self.customDir,"root/usr/share/polkit-1/actions"))
             if subprocess.getoutput('grep nautilus -r ' + os.path.join(self.customDir,"root/usr/share/polkit-1/actions") + ' | wc -l') == '0':
-                subprocess.getoutput('cp -f' + os.path.join(mydir, 'polkit-1/actions/org.gnome.nautilus.policy') + ' ' \
+                subprocess.getoutput('cp -f ' + os.path.join(mydir, 'polkit-1/actions/org.gnome.nautilus.policy') + ' ' \
                 +  os.path.join(self.customDir,"root/usr/share/polkit-1/actions"))
 
     # Check for Application Dependencies
