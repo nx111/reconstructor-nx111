@@ -1,0 +1,164 @@
+#!/bin/bash
+list_remove_files(){
+    cat <<EOF
+	firefox-locale-de
+	firefox-locale-es
+	firefox-locale-fr
+	firefox-locale-it
+	firefox-locale-pt
+	firefox-locale-ru
+	gnome-mahjongg
+	gnome-mines
+	gnome-sudoku
+	hunspell-en-za
+	hunspell-es
+	hunspell-it
+	hunspell-pt-br
+	hunspell-ru
+	ibus-chewing
+	ibus-hangul
+	ibus-table-cangjie
+	ibus-table-cangjie-big
+	ibus-table-cangjie3
+	ibus-table-cangjie5
+	thunderbird-gnome-support
+	libreoffice-l10n-en-za
+	rhythmbox
+	rhythmbox-data
+	transmission-gtk
+	thunderbird
+	thunderbird-locale-en
+	thunderbird-locale-en-us
+	thunderbird-locale-zh-hans
+	thunderbird-locale-de
+	thunderbird-locale-en-gb
+	thunderbird-locale-es-ar
+	thunderbird-locale-es-es
+	thunderbird-locale-es
+	thunderbird-locale-fr
+	thunderbird-locale-it
+	thunderbird-locale-pt-br
+	thunderbird-locale-pt-pt
+	thunderbird-locale-pt
+	thunderbird-locale-ru
+	thunderbird-locale-zh-cn
+	thunderbird-locale-zh-tw
+	thunderbird-locale-zh-hant
+	language-pack-de-base
+	language-pack-gnome-es-base
+	language-pack-es-base
+	language-pack-gnome-fr-base
+	language-pack-fr-base
+	language-pack-gnome-it-base
+	language-pack-gnome-pt-base
+	language-pack-gnome-ru-base
+	language-pack-it-base
+	language-pack-pt-base
+	language-pack-ru-base
+	language-pack-gnome-de-base
+	language-pack-gnome-es
+	language-pack-es
+	language-pack-gnome-fr
+	language-pack-fr
+	language-pack-gnome-it
+	language-pack-gnome-pt
+	language-pack-gnome-ru
+	language-pack-it
+	language-pack-pt
+	language-pack-ru
+	language-pack-gnome-de
+	language-pack-de
+	gnome-getting-started-docs-ru
+	gnome-getting-started-docs-pt
+	gnome-getting-started-docs-de
+	gnome-getting-started-docs-es
+	gnome-getting-started-docs-fr
+	gnome-getting-started-docs-it
+	gnome-user-docs-de
+	gnome-user-docs-es
+	gnome-user-docs-fr
+	gnome-user-docs-it
+	gnome-user-docs-pt
+	gnome-user-docs-ru
+	libreoffice-help-de
+	libreoffice-help-en-gb
+	libreoffice-help-en-us
+	libreoffice-help-es
+	libreoffice-help-fr
+	libreoffice-help-it
+	libreoffice-help-pt
+	libreoffice-help-pt-br
+	libreoffice-help-ru
+	libreoffice-help-zh-tw
+	gnome-getting-started-docs
+EOF
+}
+
+list_install_files(){
+cat << EOF
+	aptitude-common
+	aptitude
+	libcwidget4
+	libxapian30
+	unity-session
+	ubuntu-unity-desktop
+	lightdm
+	unity-tweak-tool
+	wine
+	winetricks
+	compizconfig-settings-manager
+	gstreamer1.0-libav
+	gstreamer1.0-nice
+	gstreamer1.0-plugins-bad
+	gstreamer1.0-plugins-ugly
+	indicator-common
+	indicator-datetime
+	indicator-keyboard
+	indicator-messages
+	indicator-notifications
+	indicator-power
+	indicator-sensors
+	indicator-session
+	openjdk-11-jdk
+	indicator-bluetooth
+	indicator-cpufreq
+	indicator-printers
+	indicator-sound
+	gawk
+	brasero
+	cmake
+	gimp
+	gucharmap
+	dconf-editor
+	gconf-editor
+	gettext
+	gnome-tweak-tool
+	xterm
+	refind
+	axel
+	p7zip
+	rar
+	gitk
+	git-gui
+	wimtools
+	exfat-fuse
+	exfat-utils
+	isomaster
+	android-tools-adb
+	android-tools-fastboot
+	android-tools-mkbootimg
+	apktool
+	grub-efi-amd64-signed
+	fbreader
+	fontforge
+	xserver-xorg-input-synaptics
+EOF
+}
+
+list_remove_files | while read package; do
+	apt purge $package
+done
+
+list_install_files | while read package; do
+	apt install $package
+done
