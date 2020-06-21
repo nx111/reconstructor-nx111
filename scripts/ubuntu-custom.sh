@@ -104,13 +104,16 @@ cat << EOF
 	ubuntu-unity-desktop
 	lightdm
 	unity-tweak-tool
+	at
 	wine
 	winetricks
+	mono-complete
 	compizconfig-settings-manager
 	gstreamer1.0-libav
 	gstreamer1.0-nice
 	gstreamer1.0-plugins-bad
 	gstreamer1.0-plugins-ugly
+	indicator-applet-complete
 	indicator-common
 	indicator-datetime
 	indicator-keyboard
@@ -119,11 +122,11 @@ cat << EOF
 	indicator-power
 	indicator-sensors
 	indicator-session
-	openjdk-11-jdk
 	indicator-bluetooth
 	indicator-cpufreq
 	indicator-printers
 	indicator-sound
+	openjdk-11-jdk
 	gawk
 	brasero
 	cmake
@@ -135,6 +138,7 @@ cat << EOF
 	gnome-tweak-tool
 	xterm
 	refind
+	curl
 	axel
 	p7zip
 	rar
@@ -143,6 +147,9 @@ cat << EOF
 	wimtools
 	exfat-fuse
 	exfat-utils
+	f2fs-tools
+	add-apt-key
+	checkinstall
 	isomaster
 	android-tools-adb
 	android-tools-fastboot
@@ -152,13 +159,35 @@ cat << EOF
 	fbreader
 	fontforge
 	xserver-xorg-input-synaptics
+	net-tools
+	apt-file
+	cpuid
+	fuse2fs
+	ldap-utils
+	nscd
+	nvidia-settings
+	pm-utils
+	policykit-1-gnome
+	samba
+	smbclient
+	winbind
+	wireshark
+	testdisk
 EOF
 }
 
-list_remove_files | while read package; do
-	apt purge $package
-done
+remove_files=""
+for package in $(list_remove_files); do
+    echo $package | grep -q "^[[:space:]]*#"  || remove_files="$remove_files $package"
+done 
 
-list_install_files | while read package; do
-	apt install $package
-done
+echo "apt purge $remove_files ..."
+apt purge -y $remove_files
+
+install_files=""
+for package in $(list_install_files); do
+       echo $package | grep -q "^[[:space:]]*#" || install_files="$install_files $package"
+done 
+echo "apt install $install_files ..."
+apt install -y $install_files
+
