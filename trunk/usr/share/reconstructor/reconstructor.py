@@ -4394,86 +4394,47 @@ class Reconstructor:
         print(" ")
         yield False
 
-    def liveCDKernel(self):
-        subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/boot/initrd.live"))
-        subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/boot/initrd_live"))
-        kver=find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"))
-        if os.path.exists(os.path.join(self.customDir,'remaster','isolinux')):
-            casper_initrd_file=subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
-            casper_vmlinuz_file=subprocess.getoutput("grep \"\W*kernel\W\+/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*kernel\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
-        elif os.path.exists(os.path.join(self.customDir,"remaster/boot/grub/grub.cfg")):
-            casper_initrd_file=subprocess.getoutput("grep \"initrd\s\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/\s*initrd\s\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
-            casper_vmlinuz_file=subprocess.getoutput("grep \"\W*linux\W\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*linux\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+    def liveCDKernel(self, oem = False):
+        postfix = ''
+        if oem:
+            postfix = '-oem'
+        subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/boot/initrd.live" + postfix))
+        subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/boot/initrd_live" + postfix))
+        kver=find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"), oem = oem)
+        casper_initrd_file="initrd" + postfix
+        casper_vmlinuz_file="vmlinuz" + postfix
+        if oem == False and os.path.exists(os.path.join(self.customDir,'remaster','isolinux')):
+            casper_initrd_file = subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+            casper_vmlinuz_file = subprocess.getoutput("grep \"\W*kernel\W\+/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*kernel\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+        elif oem == False and os.path.exists(os.path.join(self.customDir,"remaster/boot/grub/grub.cfg")):
+            casper_initrd_file = subprocess.getoutput("grep \"initrd\s\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/\s*initrd\s\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+            casper_vmlinuz_file = subprocess.getoutput("grep \"\W*linux\W\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*linux\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
 
         if kver != '':
             orig_initrd_main = ""
-            target_initrd_main = ""
-            if os.path.exists(os.path.join(self.customDir,"initrd/main")):
-                orig_initrd_main = os.path.join(self.customDir,"initrd/main")
-            elif os.path.exists(os.path.join(self.customDir, "initrd/init")):
-                orig_initrd_main = os.path.join(self.customDir, "initrd")
+            added_default_to_casper = False
+            if os.path.exists(os.path.join(self.customDir,"initrd" + postfix, "main")):
+                orig_initrd_main = os.path.join(self.customDir,"initrd" + postfix, "main")
+            elif os.path.exists(os.path.join(self.customDir,"initrd" + postfix, "init")):
+                orig_initrd_main = os.path.join(self.customDir,"initrd" + postfix, "init")
             if orig_initrd_main != "" and os.path.exists(os.path.join(orig_initrd_main, "conf/conf.d/default-boot-to-casper.conf")) \
                     and not os.path.exists(os.path.join(self.customDir, "root/usr/share/initramfs-tools/conf.d/default-boot-to-casper.conf")):
-                os.makedirs(os.path.join(self.customDir, "root/boot/initrd.live"))
-                subprocess.getoutput('unmkinitramfs ' + os.path.join(self.customDir, "root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "root/boot/initrd.live"))
-                target_base_initrd = ""
-                if os.path.exists(os.path.join(self.customDir,"root/boot/initrd.live/main")):
-                    target_base_initrd = "boot/initrd.live/main"
-                elif os.path.exists(os.path.join(self.customDir,"root/boot/initrd.live/init")):
-                    target_base_initrd = "boot/initrd.live"
-                target_initrd_main = os.path.join(self.customDir, "root", target_base_initrd)
-                if target_base_initrd != "":
-                    subprocess.getoutput('cp -a ' + os.path.join(orig_initrd_main, "conf/conf.d/default-boot-to-casper.conf") + ' ' + os.path.join(self.customDir, "root/usr/share/initramfs-tools/conf.d/"))
+                subprocess.getoutput('cp -a ' + os.path.join(orig_initrd_main, "conf/conf.d/default-boot-to-casper.conf") + ' ' + os.path.join(self.customDir, "root/usr/share/initramfs-tools/conf.d/"))
+                added_default_to_casper = True
             print('Updating init Kernel ' + kver + ' for Live CD ...')
             subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
+            subprocess.getoutput('mount --bind /dev ' + os.path.join(self.customDir, "root/dev"))
+            subprocess.getoutput('mount --bind /sys ' + os.path.join(self.customDir, "root/sys"))
             args = shlex.split('chroot ' + os.path.join(self.customDir, 'root') \
-                + ' update-initramfs -c -k ' + kver)
+                + ' mkinitramfs -o /boot/initrd.img-' + kver + ' ' + kver)
             subprocess.check_output(args, stderr=subprocess.STDOUT)
+            subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/sys") + '\"')
+            subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/dev") + '\"')
             subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
-
+            if added_default_to_casper == True:
+                os.remove(os.path.join(self.customDir, "root/usr/share/initramfs-tools/conf.d/default-boot-to-casper.conf"))
         if os.path.exists(os.path.join(self.customDir, 'remaster', 'casper', casper_initrd_file)):
-            subprocess.getoutput('cp -f ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
-        if kver != '' and os.path.exists(os.path.join(self.customDir,"root/boot/vmlinuz-" + kver)):
-            if (os.path.exists(os.path.join(self.customDir,"remaster/casper", casper_vmlinuz_file))):
-                subprocess.getoutput('cp -f \"' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver) + '\" \"' + os.path.join(self.customDir, "remaster/casper", casper_vmlinuz_file) + '\"')
-                subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver))
-
-    def liveCDKernelOEM(self):
-        kver=find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"),oem=True)
-        casper_initrd_file="initrd-oem"
-        casper_vmlinuz_file="vmlinuz-oem"
-        if os.path.exists(os.path.join(self.customDir, 'remaster', 'casper', casper_initrd_file)) == False \
-                and os.path.exists(os.path.join(self.customDir, 'remaster', 'casper', casper_vmlinuz_file)) == False:
-            return
-        if kver != '':
-            orig_initrd_main = ""
-            target_initrd_main = ""
-            if os.path.exists(os.path.join(self.customDir,"initrd/main")):
-                orig_initrd_main = os.path.join(self.customDir,"initrd/main")
-            elif os.path.exists(os.path.join(self.customDir, "initrd/init")):
-                orig_initrd_main = os.path.join(self.customDir, "initrd")
-            if orig_initrd_main != "" and os.path.exists(os.path.join(orig_initrd_main, "conf/conf.d/default-boot-to-casper.conf")) \
-                    and not os.path.exists(os.path.join(self.customDir, "root/usr/share/initramfs-tools/conf.d/default-boot-to-casper.conf")):
-                os.makedirs(os.path.join(self.customDir, "root/boot/initrd-oem.live"))
-                subprocess.getoutput('unmkinitramfs ' + os.path.join(self.customDir, "root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "root/boot/initrd-oem.live"))
-                target_base_initrd = ""
-                if os.path.exists(os.path.join(self.customDir,"root/boot/initrd-oem.live/main")):
-                    target_base_initrd = "boot/initrd-oem.live/main"
-                elif os.path.exists(os.path.join(self.customDir,"root/boot/initrd-oem.live/init")):
-                    target_base_initrd = "boot/initrd-oem.live"
-                target_initrd_main = os.path.join(self.customDir, "root", target_base_initrd)
-                if target_base_initrd != "":
-                    subprocess.getoutput('cp -a ' + os.path.join(orig_initrd_main, "conf/conf.d/default-boot-to-casper.conf") + ' ' + os.path.join(self.customDir, "root/usr/share/initramfs-tools/conf.d/"))
-            subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/boot/initrd-oem.live"))
-            print('Updating init OEM Kernel ' + kver + ' for Live CD ...')
-            subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
-            args = shlex.split('chroot ' + os.path.join(self.customDir, 'root') \
-                + ' update-initramfs -c -k ' + kver)
-            subprocess.check_output(args, stderr=subprocess.STDOUT)
-            subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
-
-        if os.path.exists(os.path.join(self.customDir, 'remaster', 'casper', casper_initrd_file)):
-            subprocess.getoutput('cp -f ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver) + ' ' +  os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
+                subprocess.getoutput('mv ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
         if kver != '' and os.path.exists(os.path.join(self.customDir,"root/boot/vmlinuz-" + kver)):
             if (os.path.exists(os.path.join(self.customDir,"remaster/casper", casper_vmlinuz_file))):
                 subprocess.getoutput('cp -f \"' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver) + '\" \"' + os.path.join(self.customDir, "remaster/casper", casper_vmlinuz_file) + '\"')
@@ -4564,6 +4525,7 @@ class Reconstructor:
         if  self.builder.get_object("checkbuttonLiveCdUpdateKernel").get_active() == True:
             print(_("Updating LiveCD Linux kernel..."))
             self.liveCDKernel()
+            self.liveCDKernel(oem = True)
             #Intentionally reset the GUI checkbutton in case the user clicks apply again.
             self.builder.get_object("checkbuttonLiveCdUpdateKernel").set_active(False)
         # LiveCD info must be set afterwards in case the user updates the kernel as the initrd folder is replaced
@@ -5409,7 +5371,7 @@ class Reconstructor:
                 self.showProgress(_("Creating Initrd..."))
                 #yield True
                 self.liveCDKernel()
-                self.liveCDKernelOEM()
+                self.liveCDKernel(oem = True)
             self.showProgress(False,0.65)
             yield True
 

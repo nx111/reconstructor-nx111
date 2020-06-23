@@ -104,6 +104,8 @@ cat << EOF
 	ubuntu-unity-desktop
 	lightdm
 	unity-tweak-tool
+	amd64-microcode
+	intel-microcode
 	at
 	wine
 	winetricks
