@@ -115,6 +115,7 @@ cat << EOF
 	gstreamer1.0-nice
 	gstreamer1.0-plugins-bad
 	gstreamer1.0-plugins-ugly
+	cpufreqd
 	indicator-applet-complete
 	indicator-common
 	indicator-datetime
