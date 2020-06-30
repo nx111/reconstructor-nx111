@@ -60,6 +60,8 @@ except Exception as detail:
 
 def find_newest_kernel_version(base, oem=False):
     ver = ''
+    oem_ver = ''
+    generic_ver = ''
     if not os.path.exists(base):
         return ver
     if re.search('/modules$', base) != None:
@@ -67,25 +69,40 @@ def find_newest_kernel_version(base, oem=False):
         for item in cur_list:
                 #print(item)
                 full_path = os.path.join(base, item)
-                if re.match(r'[0-9]+[0-9.-]+', item) and os.path.isdir(full_path) and \
-                   ((oem == True and re.search('-oem$',item) != None) or (oem == False and re.search('-oem$',item) == None)):
+                if re.match(r'[0-9]+[0-9.-]+', item) and os.path.isdir(full_path):
+                   if re.search('-oem$',item) != None:
+                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',item))<0:
+                             oem_ver=item
+                   elif re.search(r'[0-9]+[0-9.]+-[0-9]\{1,4\}-generic$', item) != None:
+                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',item))<0:
+                             generic_ver=item
+                   if re.search('-oem$',item) == None:
                         if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',item))<0:
                              ver=item
-                else:
-                        continue
     else:                  #if re.search('/boot$', base) != None:
         re_file = re.compile("initrd.img[-]")
         cur_list = os.listdir(base)
         for item in cur_list:
                 #print(item)
                 full_path = os.path.join(base, item)        
-                if re_file.match(item) and os.path.isfile(full_path) and \
-                   ((oem == True and re.search('-oem$',item) != None) or (oem == False and re.search('-oem$',item) == None)):
+                if re_file.match(item) and os.path.isfile(full_path):
+                   if re.search('-oem$',item) != None:
+                        ver1=re_file.sub('',item)
+                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver1))<0:
+                             oem_ver=ver1
+                   elif re.search(r'[0-9]+[0-9.]+-[0-9]\{1,4\}-generic$', item) != None:
+                        ver1=re_file.sub('',item)
+                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver1))<0:
+                             generic_ver=ver1
+                   if re.search('-oem$',item) == None:
                         ver1=re_file.sub('',item)
                         if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver1))<0:
                              ver=ver1
-                else:
-                        continue
+    if oem == True:
+        if oem_ver != '':
+            ver = oem_ver
+        elif generic_ver != '' and generic_ver != ver:
+            ver = generic_ver
     return ver
 
 class Reconstructor:
@@ -4433,12 +4450,10 @@ class Reconstructor:
             subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
             if added_default_to_casper == True:
                 os.remove(os.path.join(self.customDir, "root/usr/share/initramfs-tools/conf.d/default-boot-to-casper.conf"))
-        if os.path.exists(os.path.join(self.customDir, 'remaster', 'casper', casper_initrd_file)):
-                subprocess.getoutput('mv ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
+            subprocess.getoutput('mv ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
         if kver != '' and os.path.exists(os.path.join(self.customDir,"root/boot/vmlinuz-" + kver)):
-            if (os.path.exists(os.path.join(self.customDir,"remaster/casper", casper_vmlinuz_file))):
-                subprocess.getoutput('cp -f \"' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver) + '\" \"' + os.path.join(self.customDir, "remaster/casper", casper_vmlinuz_file) + '\"')
-                subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver))
+            subprocess.getoutput('cp -f \"' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver) + '\" \"' + os.path.join(self.customDir, "remaster/casper", casper_vmlinuz_file) + '\"')
+            subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver))
 
     def getTerminal(self):
         try:
