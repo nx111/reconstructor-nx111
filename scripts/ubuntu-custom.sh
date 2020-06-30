@@ -106,6 +106,7 @@ cat << EOF
 	unity-tweak-tool
 	amd64-microcode
 	intel-microcode
+	cryptsetup
 	at
 	wine
 	winetricks
@@ -176,6 +177,7 @@ cat << EOF
 	winbind
 	wireshark
 	testdisk
+	libstdc++6:i386
 EOF
 }
 
@@ -186,7 +188,8 @@ done
 
 echo "apt purge $remove_files ..."
 apt purge -y $remove_files
-
+dpkg --add-architecture i386
+apt update
 install_files=""
 for package in $(list_install_files); do
        echo $package | grep -q "^[[:space:]]*#" || install_files="$install_files $package"
