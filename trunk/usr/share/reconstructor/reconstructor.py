@@ -58,52 +58,6 @@ except Exception as detail:
     sys.exit(1)
 
 
-def find_newest_kernel_version(base, oem=False):
-    ver = ''
-    oem_ver = ''
-    generic_ver = ''
-    if not os.path.exists(base):
-        return ver
-    if re.search('/modules$', base) != None:
-        cur_list = os.listdir(base)
-        for item in cur_list:
-                #print(item)
-                full_path = os.path.join(base, item)
-                if re.match(r'[0-9]+[0-9.-]+', item) and os.path.isdir(full_path):
-                   if re.search('-oem$',item) != None:
-                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',item))<0:
-                             oem_ver=item
-                   elif re.search(r'[0-9]+[0-9.]+-[0-9]\{1,4\}-generic$', item) != None:
-                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',item))<0:
-                             generic_ver=item
-                   if re.search('-oem$',item) == None:
-                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',item))<0:
-                             ver=item
-    else:                  #if re.search('/boot$', base) != None:
-        re_file = re.compile("initrd.img[-]")
-        cur_list = os.listdir(base)
-        for item in cur_list:
-                #print(item)
-                full_path = os.path.join(base, item)        
-                if re_file.match(item) and os.path.isfile(full_path):
-                   if re.search('-oem$',item) != None:
-                        ver1=re_file.sub('',item)
-                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver1))<0:
-                             oem_ver=ver1
-                   elif re.search(r'[0-9]+[0-9.]+-[0-9]\{1,4\}-generic$', item) != None:
-                        ver1=re_file.sub('',item)
-                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver1))<0:
-                             generic_ver=ver1
-                   if re.search('-oem$',item) == None:
-                        ver1=re_file.sub('',item)
-                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver1))<0:
-                             ver=ver1
-    if oem == True:
-        if oem_ver != '':
-            ver = oem_ver
-        elif generic_ver != '' and generic_ver != ver:
-            ver = generic_ver
-    return ver
 
 class Reconstructor:
 
@@ -449,55 +403,54 @@ class Reconstructor:
         #print("DEBUG: showProgress  result: text=" + self.builder.get_object("labelStatus").get_text() + " [[fraction="+str(self.builder.get_object("progressbar").get_fraction()) + "]]")
 
 
-    def checkChroot(self):
-        # check vmlinuz and initrd
-        print('Check Chroot ...')
-        kernelFileReady = False
-        kernelVersion = ''
-        kernelFile = ''
-        if os.path.exists(os.path.join(self.customDir,'remaster','isolinux')):
-            casper_initrd_file=subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
-            casper_vmlinuz_file=subprocess.getoutput("grep \"\W*kernel\W\+/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*kernel\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
-        elif os.path.exists(os.path.join(self.customDir,"remaster/boot/grub/grub.cfg")):
-            casper_initrd_file=subprocess.getoutput("grep \"initrd\s\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/\s*initrd\s\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
-            casper_vmlinuz_file=subprocess.getoutput("grep \"\W*linux\W\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*linux\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+    def find_newest_kernel_version(self, base, oem=False):
+        ver = ''
+        oem_ver = ''
+        generic_ver = ''
+        if not os.path.exists(base):
+            return ver
+        if re.search('/modules$', base) != None:
+            cur_list = os.listdir(base)
+            for item in cur_list:
+                #print(item)
+                full_path = os.path.join(base, item)
+                if re.match(r'[0-9]+[0-9.-]+', item) and os.path.isdir(full_path):
+                   if re.search('-oem$',item) != None:
+                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',item))<0:
+                             oem_ver=item
+                   if re.search('-oem$',item) == None:
+                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',item))<0:
+                             ver=item
+        else:                  #if re.search('/boot$', base) != None:
+            re_file = re.compile("initrd.img[-]")
+            cur_list = os.listdir(base)
+            for item in cur_list:
+                #print(item)
+                full_path = os.path.join(base, item)
+                if re_file.match(item) and os.path.isfile(full_path):
+                   if re.search('-oem$',item) != None:
+                        ver1=re_file.sub('',item)
+                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver1))<0:
+                             oem_ver=ver1
+                   if re.search('-oem$',item) == None:
+                        ver1=re_file.sub('',item)
+                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver1))<0:
+                             ver=ver1
+        if oem == True:
+            if oem_ver != '':
+                ver = oem_ver
+            else:
+                oldKernelFile = ''
+                if os.path.lexists(os.path.join(self.customDir,"root/boot/vmlinuz.old")):
+                    oldKernelFile = subprocess.getoutput("readlink " + os.path.join(self.customDir,"root/boot/vmlinuz.old"))
+                elif os.path.lexists(os.path.join(self.customDir,"root/vmlinuz.old")):
+                    oldKernelFile = subprocess.getoutput("readlink " + os.path.join(self.customDir,"root/vmlinuz.old"))
+                if oldKernelFile != '':
+                    ver = subprocess.getoutput('basename ' + oldKernelFile + ' | sed -e \"s/vmlinuz-//\"')
+        return ver
 
-        #print('casper_initrd_file=' + casper_initrd_file)
-        if os.path.lexists(os.path.join(self.customDir,"root/boot/vmlinuz")):
-            kernelFile = subprocess.getoutput("readlink " + os.path.join(self.customDir,"root/boot/vmlinuz"))
-        elif os.path.lexists(os.path.join(self.customDir,"root/vmlinuz")):
-            kernelFile = subprocess.getoutput("readlink " + os.path.join(self.customDir,"root/boot/vmlinuz"))
-
-        if kernelFile != '':
-            kernelVersion = subprocess.getoutput("basename " + kernelFile +" | sed -e 's/vmlinuz-//'")
-        if kernelVersion == '':
-            kernelVersion = find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"))
-        #print('kernelVersion:'+kernelVersion + " kernelFile:" + kernelFile)
-        if kernelVersion != '':
-            if os.path.exists(os.path.join(self.customDir,"root/boot/vmlinuz-"+kernelVersion)) == False:
-                if os.path.exists(os.path.join(self.customDir,"remaster/casper", casper_vmlinuz_file)):
-                     subprocess.getoutput('cp '+ os.path.join(self.customDir,"remaster/casper", casper_vmlinuz_file) + ' ' +  os.path.join(self.customDir,"root/boot/vmlinuz-"+kernelVersion))
-            if os.path.exists(os.path.join(self.customDir,"root/boot/initrd.img-"+kernelVersion)) == False:
-                if os.path.exists(os.path.join(self.customDir,"remaster/casper", casper_initrd_file)):
-                    subprocess.getoutput('cp '+ os.path.join(self.customDir,"remaster/casper", casper_initrd_file) + ' ' +  os.path.join(self.customDir,"root/boot/initrd.img-"+kernelVersion))
-            if kernelFile:
-                if (os.path.exists(os.path.join(self.customDir,"root/boot/"+kernelFile))):
-                    kernelFileReady = True
-            if kernelFileReady == True:
-                #print('Recreate Kernel File Link....')
-                if os.path.exists(os.path.join(self.customDir,"root/boot/vmlinuz")):
-                    os.remove(os.path.join(self.customDir, "root/boot/vmlinuz"))
-                    os.symlink('vmlinuz-' + kernelVersion, os.path.join(self.customDir, "root/boot/vmlinuz"))
-                if os.path.exists(os.path.join(self.customDir,"root/vmlinuz")):
-                    os.remove(os.path.join(self.customDir, "root/vmlinuz"))
-                    os.symlink('boot/vmlinuz-' + kernelVersion, os.path.join(self.customDir, "root/vmlinuz"))
-
-                if os.path.exists(os.path.join(self.customDir,"root/boot/initrd.img")):
-                    os.remove(os.path.join(self.customDir, "root/boot/initrd.img"))
-                    os.symlink('initrd.img-' + kernelVersion, os.path.join(self.customDir, "root/boot/initrd.img"))
-                if os.path.exists(os.path.join(self.customDir,"root/initrd.img")):
-                    os.remove(os.path.join(self.customDir, "root/initrd.img"))
-                    os.symlink('boot/initrd.img-' + kernelVersion, os.path.join(self.customDir, "root/initrd.img"))
+    def checkChroot(self, oem = False):
+        print(_('Checking Chroot ...'))
 
         # check polkit rules for running pkexec gedit/nautilus
         if apt_pkg.version_compare(self.cdUbuntuVersion, '18.04') >= 0:
@@ -4417,7 +4370,7 @@ class Reconstructor:
             postfix = '-oem'
         subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/boot/initrd.live" + postfix))
         subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/boot/initrd_live" + postfix))
-        kver=find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"), oem = oem)
+        kver=self.find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"), oem = oem)
         casper_initrd_file="initrd" + postfix
         casper_vmlinuz_file="vmlinuz" + postfix
         if oem == False and os.path.exists(os.path.join(self.customDir,'remaster','isolinux')):
@@ -5380,7 +5333,7 @@ class Reconstructor:
         # build initrd
         if self.buildInitrd == True:
             # create initrd
-            kver = find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"))
+            kver = self.find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"))
             if kver != '' and os.path.exists(os.path.join(self.customDir, "initrd")):
                 print(_("Creating Initrd..."))
                 self.showProgress(_("Creating Initrd..."))
@@ -5546,7 +5499,7 @@ class Reconstructor:
         # build initrd
         if self.buildAltInitrd == True:
             # create initrd
-            kver=find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"))
+            kver=self.find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"))
             if kver != '' and os.path.exists(os.path.join(self.customDir, "initrd_alt")):
                 print(_("Creating Initrd..."))
                 self.showProgress(_("Creating Initrd..."),0.75)
