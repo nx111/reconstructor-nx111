@@ -4382,7 +4382,6 @@ class Reconstructor:
 
         if kver != '':
             orig_initrd_main = ""
-            added_default_to_casper = False
             if os.path.exists(os.path.join(self.customDir,"initrd" + postfix, "main")):
                 orig_initrd_main = os.path.join(self.customDir,"initrd" + postfix, "main")
             elif os.path.exists(os.path.join(self.customDir,"initrd" + postfix, "init")):
@@ -4390,7 +4389,6 @@ class Reconstructor:
             if orig_initrd_main != "" and os.path.exists(os.path.join(orig_initrd_main, "conf/conf.d/default-boot-to-casper.conf")) \
                     and not os.path.exists(os.path.join(self.customDir, "root/usr/share/initramfs-tools/conf.d/default-boot-to-casper.conf")):
                 subprocess.getoutput('cp -a ' + os.path.join(orig_initrd_main, "conf/conf.d/default-boot-to-casper.conf") + ' ' + os.path.join(self.customDir, "root/usr/share/initramfs-tools/conf.d/"))
-                added_default_to_casper = True
             print('Updating init Kernel ' + kver + ' for Live CD ...')
             subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
             subprocess.getoutput('mount --bind /dev ' + os.path.join(self.customDir, "root/dev"))
@@ -4401,7 +4399,7 @@ class Reconstructor:
             subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/sys") + '\"')
             subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/dev") + '\"')
             subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
-            if added_default_to_casper == True:
+            if os.path.exists(os.path.join(self.customDir, "root/usr/share/initramfs-tools/conf.d/default-boot-to-casper.conf")):
                 os.remove(os.path.join(self.customDir, "root/usr/share/initramfs-tools/conf.d/default-boot-to-casper.conf"))
             subprocess.getoutput('mv ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
         if kver != '' and os.path.exists(os.path.join(self.customDir,"root/boot/vmlinuz-" + kver)):

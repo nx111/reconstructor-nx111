@@ -146,6 +146,7 @@ cat << EOF
 	axel
 	p7zip
 	rar
+	unar
 	gitk
 	git-gui
 	wimtools
@@ -178,6 +179,7 @@ cat << EOF
 	wireshark
 	testdisk
 	libstdc++6:i386
+	libgtk3-nocsd:i386
 EOF
 }
 
