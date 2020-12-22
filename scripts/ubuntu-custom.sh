@@ -1,19 +1,31 @@
 #!/bin/bash
 list_remove_files(){
     cat <<EOF
+        aisleriot
 	firefox-locale-de
 	firefox-locale-es
 	firefox-locale-fr
 	firefox-locale-it
 	firefox-locale-pt
 	firefox-locale-ru
+	fonts-arphic-ukai
+	fonts-arphic-uming
 	gnome-mahjongg
 	gnome-mines
 	gnome-sudoku
+	gnome-user-docs
+	hunspell-de-at-frami
+	hunspell-de-ch-frami
+	hunspell-de-de-frami
+	hunspell-en-au
+	hunspell-en-ca
 	hunspell-en-za
 	hunspell-es
+	hunspell-fr
+	hunspell-fr-classical
 	hunspell-it
 	hunspell-pt-br
+	hunspell-pt-pt
 	hunspell-ru
 	ibus-chewing
 	ibus-hangul
@@ -98,6 +110,7 @@ list_install_files(){
 cat << EOF
 	aptitude-common
 	aptitude
+	apt-rdepends
 	libcwidget4
 	libxapian30
 	unity-session
@@ -165,6 +178,8 @@ cat << EOF
 	fontforge
 	xserver-xorg-input-synaptics
 	net-tools
+	ntpdate
+	npm
 	apt-file
 	cpuid
 	fuse2fs
@@ -176,10 +191,18 @@ cat << EOF
 	samba
 	smbclient
 	winbind
+	arping
+	iftop
+	iperf
+	iperf3
+	iptraf-ng
+	ssh
 	wireshark
 	testdisk
+	traceroute
 	libstdc++6:i386
 	libgtk3-nocsd:i386
+	libreoffice-base
 EOF
 }
 
