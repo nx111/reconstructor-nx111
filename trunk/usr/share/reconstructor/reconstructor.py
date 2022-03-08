@@ -407,6 +407,7 @@ class Reconstructor:
         ver = ''
         oem_ver = ''
         generic_ver = ''
+        #print("oem=" + str(oem))
         if not os.path.exists(base):
             return ver
         if re.search('/modules$', base) != None:
@@ -437,16 +438,7 @@ class Reconstructor:
                         if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver1))<0:
                              ver=ver1
         if oem == True:
-            if oem_ver != '':
-                ver = oem_ver
-            else:
-                oldKernelFile = ''
-                if os.path.lexists(os.path.join(self.customDir,"root/boot/vmlinuz.old")):
-                    oldKernelFile = subprocess.getoutput("readlink " + os.path.join(self.customDir,"root/boot/vmlinuz.old"))
-                elif os.path.lexists(os.path.join(self.customDir,"root/vmlinuz.old")):
-                    oldKernelFile = subprocess.getoutput("readlink " + os.path.join(self.customDir,"root/vmlinuz.old"))
-                if oldKernelFile != '':
-                    ver = subprocess.getoutput('basename ' + oldKernelFile + ' | sed -e \"s/vmlinuz-//\"')
+            ver = oem_ver
         return ver
 
     def checkChroot(self, oem = False):
@@ -4401,10 +4393,12 @@ class Reconstructor:
             subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
             if os.path.exists(os.path.join(self.customDir, "root/usr/share/initramfs-tools/conf.d/default-boot-to-casper.conf")):
                 os.remove(os.path.join(self.customDir, "root/usr/share/initramfs-tools/conf.d/default-boot-to-casper.conf"))
-            subprocess.getoutput('mv ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
-        if kver != '' and os.path.exists(os.path.join(self.customDir,"root/boot/vmlinuz-" + kver)):
-            subprocess.getoutput('cp -f \"' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver) + '\" \"' + os.path.join(self.customDir, "remaster/casper", casper_vmlinuz_file) + '\"')
-            subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver))
+            if os.path.exists(os.path.join(self.customDir,"root/boot/vmlinuz-" + kver)) or  os.path.exists(os.path.join(self.customDir,"root/boot/", casper_vmlinuz_file)):
+                subprocess.getoutput('mv ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
+                subprocess.getoutput('cp -f \"' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver) + '\" \"' + os.path.join(self.customDir, "remaster/casper", casper_vmlinuz_file) + '\"')
+                subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver))
+            else:
+                subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver))
 
     def getTerminal(self):
         try:
