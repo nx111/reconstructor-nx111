@@ -169,6 +169,9 @@ cat << EOF
 	add-apt-key
 	checkinstall
 	isomaster
+	k3b
+	udfclient
+	udftools
 	android-tools-adb
 	android-tools-fastboot
 	android-tools-mkbootimg
