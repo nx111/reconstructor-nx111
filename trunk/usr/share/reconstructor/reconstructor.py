@@ -4369,7 +4369,7 @@ class Reconstructor:
             casper_initrd_file = subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
             casper_vmlinuz_file = subprocess.getoutput("grep \"\W*kernel\W\+/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*kernel\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
         elif oem == False and os.path.exists(os.path.join(self.customDir,"remaster/boot/grub/grub.cfg")):
-            casper_initrd_file = subprocess.getoutput("grep \"initrd\s\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/\s*initrd\s\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+            casper_initrd_file = subprocess.getoutput("grep \"initrd\s\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*\s*initrd\s\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
             casper_vmlinuz_file = subprocess.getoutput("grep \"\W*linux\W\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*linux\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
 
         if kver != '':
@@ -4393,12 +4393,21 @@ class Reconstructor:
             subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
             if os.path.exists(os.path.join(self.customDir, "root/usr/share/initramfs-tools/conf.d/default-boot-to-casper.conf")):
                 os.remove(os.path.join(self.customDir, "root/usr/share/initramfs-tools/conf.d/default-boot-to-casper.conf"))
-            if os.path.exists(os.path.join(self.customDir,"root/boot/vmlinuz-" + kver)) or  os.path.exists(os.path.join(self.customDir,"root/boot/", casper_vmlinuz_file)):
+            if os.path.exists(os.path.join(self.customDir,"root/boot/initrd.img-" + kver)):
+                if os.path.islink(os.path.join(self.customDir, "root/boot", casper_initrd_file)):
+                    os.remove(os.path.join(self.customDir, "root/boot", casper_initrd_file))
+                    subprocess.getoutput('ln -s  initrd.img-' + kver + ' ' + casper_initrd_file)
                 subprocess.getoutput('mv ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
-                subprocess.getoutput('cp -f \"' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver) + '\" \"' + os.path.join(self.customDir, "remaster/casper", casper_vmlinuz_file) + '\"')
-                subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver))
+                print('mv ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
             else:
                 subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver))
+            if os.path.exists(os.path.join(self.customDir,"root/boot/vmlinuz-" + kver)):
+                if os.path.islink(os.path.join(self.customDir, "root/boot", casper_vmlinuz_file)):
+                    os.remove(os.path.join(self.customDir, "root/boot", casper_vmlinuz_file))
+                    subprocess.getoutput('ln -s  vmlinuz-' + kver + ' ' + casper_vmlinuz_file)
+                subprocess.getoutput('mv \"' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver) + '\" \"' + os.path.join(self.customDir, "remaster/casper", casper_vmlinuz_file) + '\"')
+            else:
+                subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/vmlinuz-" + kver))
 
     def getTerminal(self):
         try:
