@@ -113,10 +113,6 @@ cat << EOF
 	apt-rdepends
 	libcwidget4
 	libxapian30
-	unity-session
-	ubuntu-unity-desktop
-	lightdm
-	unity-tweak-tool
 	amd64-microcode
 	intel-microcode
 	cryptsetup
@@ -130,19 +126,6 @@ cat << EOF
 	gstreamer1.0-plugins-bad
 	gstreamer1.0-plugins-ugly
 	cpufreqd
-	indicator-applet-complete
-	indicator-common
-	indicator-datetime
-	indicator-keyboard
-	indicator-messages
-	indicator-notifications
-	indicator-power
-	indicator-sensors
-	indicator-session
-	indicator-bluetooth
-	indicator-cpufreq
-	indicator-printers
-	indicator-sound
 	openjdk-11-jdk
 	gawk
 	brasero
@@ -152,7 +135,6 @@ cat << EOF
 	dconf-editor
 	gconf-editor
 	gettext
-	gnome-tweak-tool
 	xterm
 	refind
 	curl
