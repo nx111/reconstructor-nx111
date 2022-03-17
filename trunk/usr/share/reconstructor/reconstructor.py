@@ -4398,7 +4398,6 @@ class Reconstructor:
                     os.remove(os.path.join(self.customDir, "root/boot", casper_initrd_file))
                     subprocess.getoutput('ln -s  initrd.img-' + kver + ' ' + casper_initrd_file)
                 subprocess.getoutput('mv ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
-                print('mv ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver) + ' ' + os.path.join(self.customDir, "remaster/casper", casper_initrd_file))
             else:
                 subprocess.getoutput('rm -f ' + os.path.join(self.customDir,"root/boot/initrd.img-" + kver))
             if os.path.exists(os.path.join(self.customDir,"root/boot/vmlinuz-" + kver)):
