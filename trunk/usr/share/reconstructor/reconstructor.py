@@ -3203,15 +3203,6 @@ class Reconstructor:
             print(errText, detail)
             pass
 
-    def FileSize(self,path):
-        size = 0
-        for root , dirs, files in os.walk(path, True):
-            for name in files:
-                if os.path.exists(os.path.join(root, name)) :
-                    if not os.path.islink(os.path.join(root, name)):
-                        size += int(round((os.path.getsize(os.path.join(root, name))+4093)/4096)*4)
-        return size
-
     def calculateIsoSize(self):
         try:
             self.setBusyCursor()
@@ -3228,14 +3219,28 @@ class Reconstructor:
             yield True
 
             self.setBusyCursor()
-            remasterSize = self.FileSize(os.path.join(self.customDir,"remaster/"))
+            remasterSize = 0
+            path = os.path.join(self.customDir,"remaster/")
+            for root , dirs, files in os.walk(path, True):
+                for name in files:
+                    if os.path.exists(os.path.join(root, name)) :
+                        if not os.path.islink(os.path.join(root, name)):
+                            remasterSize += int(round((os.path.getsize(os.path.join(root, name))+4093)/4096)*4)
+                    yield True
             # subtract squashfs root
             if os.path.exists(os.path.join(self.customDir, "remaster/casper/filesystem.squashfs")):
                 squashSize = int(round(os.path.getsize(os.path.join(self.customDir, "remaster/casper/filesystem.squashfs"))/1024))
 
             remasterSize -= squashSize
             # get size of root dir
-            rootSize = self.FileSize(os.path.join(self.customDir, "root/"))
+            rootSize = 0
+            path = os.path.join(self.customDir,"root/")
+            for root , dirs, files in os.walk(path, True):
+                for name in files:
+                    if os.path.exists(os.path.join(root, name)) :
+                        if not os.path.islink(os.path.join(root, name)):
+                            rootSize += int(round((os.path.getsize(os.path.join(root, name))+4093)/4096)*4)
+                    yield True
             # divide root size to simulate squash compression
             SoftwareIsoSize = int(round((remasterSize + (rootSize/3.55))/1024))
             self.builder.get_object("labelSoftwareIsoSize").set_text( '~ ' + str(SoftwareIsoSize) + ' MB')
@@ -3261,7 +3266,14 @@ class Reconstructor:
             self.showProgress(_('Calculating Alternate ISO Size...'))
             yield True
             self.setBusyCursor()
-            remasterSize = self.FileSize(os.path.join(self.customDir, self.altRemasterDir))
+
+            path = os.path.join(self.customDir, self.altRemasterDir)
+            for root , dirs, files in os.walk(path, True):
+                for name in files:
+                    if os.path.exists(os.path.join(root, name)) :
+                        if not os.path.islink(os.path.join(root, name)):
+                            remasterSize += int(round((os.path.getsize(os.path.join(root, name))+4093)/4096)*4)
+                    yield True
 
             self.builder.get_object("labelAltIsoSize").set_text( '~ ' + str(int(round(remasterSize/1024))) + ' MB')
             self.setDefaultCursor()
@@ -5427,7 +5439,15 @@ class Reconstructor:
                 # exclude isolinux directory or else when checking disc integrity it will say there are errors
                 subprocess.getoutput('(cd \"' + os.path.join(self.customDir, "remaster/") + '\"')
                 subprocess.getoutput('find . -type f -not -name md5sum.txt -not -path \'*/isolinux/*\' -print0 | xargs -0 md5sum > md5sum.txt)')
-                rootSize = self.FileSize(os.path.join(self.customDir, "root/"))
+                rootSize = 0
+                path = os.path.join(self.customDir, "root/")
+                for root , dirs, files in os.walk(path, True):
+                    for name in files:
+                        if os.path.exists(os.path.join(root, name)) :
+                            if not os.path.islink(os.path.join(root, name)):
+                                rootSize += int(round((os.path.getsize(os.path.join(root, name))+4093)/4096)*4)
+                        yield True
+
                 print('%lu'%(rootSize), file=open(os.path.join(self.customDir, "remaster/casper/filesystem.size"),"w"))
                 self.showProgress(False,0.88)
                 yield True
@@ -5543,7 +5563,14 @@ class Reconstructor:
                 # exclude isolinux directory or else when checking disc integrity it will say there are errors
                 subprocess.getoutput('(cd \"' + os.path.join(self.customDir, "remaster_alt/") + '\"')
                 subprocess.getoutput('find . -type f -not -name md5sum.txt -not -path \'*/isolinux/*\' -print0 | xargs -0 md5sum > md5sum.txt)')
-                rootSize = self.FileSize(os.path.join(self.customDir, "root/"))
+                rootSize = 0
+                path = os.path.join(self.customDir,"root/")
+                for root , dirs, files in os.walk(path, True):
+                    for name in files:
+                        if os.path.exists(os.path.join(root, name)) :
+                            if not os.path.islink(os.path.join(root, name)):
+                                rootSize += int(round((os.path.getsize(os.path.join(root, name))+4093)/4096)*4)
+                        yield True
                 print('%lu'%(rootSize),file=open(os.path.join(self.customDir, "remaster/casper/filesystem.size"),"w"))
 
                 # remove existing iso
