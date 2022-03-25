@@ -122,6 +122,9 @@ class Reconstructor:
         self.buildAltCdFilename = ""
         self.buildLiveCdFilename = ""
         self.cdArchIndex = 0
+        self.compressRatio = 0.3416
+        self.rootSize = 0
+        self.squashSize = 0
         self.setupComplete = False
         self.manualInstall = False
         self.watch = Gdk.Cursor(Gdk.CursorType.WATCH)
@@ -1668,7 +1671,12 @@ class Reconstructor:
             except:
                 self.cdArchIndex = 0
 
-    def saveConfig(self):
+            try:
+                self.compressRatio = float(config.get('ISO','CompressRatio'))
+            except:
+                self.compressRatio = 0.3416
+
+    def save_workConfig(self):
         config = configparser.ConfigParser()
         config.optionxform = str
         if not config.has_section('global'):
@@ -1677,6 +1685,9 @@ class Reconstructor:
         config.write(open(os.path.join(os.environ['HOME'], ".reconstructor"),'wt'))
         config.remove_section('global')
 
+    def save_isoConfig(self):
+        config = configparser.ConfigParser()
+        config.optionxform = str
         if not config.has_section('ISO'):
             config.add_section('ISO')
         config.set('ISO','discType',self.discType)
@@ -1688,8 +1699,8 @@ class Reconstructor:
             config.set('ISO','isofilename',self.builder.get_object("entryAltIsoFilename").get_text())
             config.set('ISO','cddesc',self.builder.get_object("entryAltCdDescription").get_text())
             config.set('ISO','cdarchidx',str(self.builder.get_object("comboboxAltCdArch").get_active()))
+        config.set('ISO','compressRatio',str(self.compressRatio))
         config.write(open(os.path.join(self.customDir, ".reconstructor.conf"),'wt'))
-
 
     def checkPage(self, pageNum):
         if self.runningDebug == True:
@@ -1864,7 +1875,7 @@ class Reconstructor:
 
         elif pageNum == self.pageLiveBuild:
             #write config 
-            self.saveConfig()
+            self.save_workConfig()
 
             # build
             warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
@@ -2022,7 +2033,7 @@ class Reconstructor:
         elif pageNum == self.pageAltBuild:
             #write config 
             #write config 
-            self.saveConfig()
+            self.save_workConfig()
             # build
             warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
             warnDlg.add_buttons(Gtk.STOCK_NO, Gtk.ResponseType.CANCEL, Gtk.STOCK_YES, Gtk.ResponseType.OK)
@@ -3242,7 +3253,7 @@ class Reconstructor:
                             rootSize += int(round((os.path.getsize(os.path.join(root, name))+4093)/4096)*4)
                     yield True
             # divide root size to simulate squash compression
-            SoftwareIsoSize = int(round((remasterSize + (rootSize/3.55))/1024))
+            SoftwareIsoSize = int(round((remasterSize + (rootSize * self.compressRatio))/1024))
             self.builder.get_object("labelSoftwareIsoSize").set_text( '~ ' + str(SoftwareIsoSize) + ' MB')
             self.showProgress(_("Finished Calculating Live ISO Size."),0.25)
             #self.setDefaultCursor()
@@ -5406,6 +5417,9 @@ class Reconstructor:
                 else:
                     subprocess.getoutput(self.timeCmd + ' ' + mksquashfs + ' \"' + os.path.join(self.customDir, "root/") + '\"' + ' \"' + os.path.join(self.customDir, "remaster/casper/filesystem.squashfs") + '\" '+ compStr)
                 self.showProgress(_("Finished Building SquashFS root"),0.85)
+                if os.path.exists(os.path.join(self.customDir, "remaster/casper/filesystem.squashfs")):
+                    self.squashSize = int(round(os.path.getsize(os.path.join(self.customDir, "remaster/casper/filesystem.squashfs"))/1024))
+
                 yield True
 
         # remove windows programs
@@ -5449,6 +5463,9 @@ class Reconstructor:
                         yield True
 
                 print('%lu'%(rootSize), file=open(os.path.join(self.customDir, "remaster/casper/filesystem.size"),"w"))
+                self.rootSize = rootSize
+                self.compressRatio = (self.squashSize / rootSize)
+                self.save_isoConfig()
                 self.showProgress(False,0.88)
                 yield True
 
@@ -5572,6 +5589,9 @@ class Reconstructor:
                                 rootSize += int(round((os.path.getsize(os.path.join(root, name))+4093)/4096)*4)
                         yield True
                 print('%lu'%(rootSize),file=open(os.path.join(self.customDir, "remaster/casper/filesystem.size"),"w"))
+                self.rootSize = rootSize
+                self.compressRatio = (self.squashSize / rootSize)
+                self.save_isoConfig()
 
                 # remove existing iso
                 if os.path.exists(self.buildAltCdFilename):
