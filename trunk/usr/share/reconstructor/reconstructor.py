@@ -4379,21 +4379,15 @@ class Reconstructor:
         print(" ")
         yield False
 
-    def liveCDKernel(self, oem = False):
+    def preLiveCDKernel(self, kernel_version="", oem = False):
         postfix = ''
         if oem:
             postfix = '-oem'
         subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/boot/initrd.live" + postfix))
         subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/boot/initrd_live" + postfix))
-        kver=self.find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"), oem = oem)
-        casper_initrd_file="initrd" + postfix
-        casper_vmlinuz_file="vmlinuz" + postfix
-        if oem == False and os.path.exists(os.path.join(self.customDir,'remaster','isolinux')):
-            casper_initrd_file = subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
-            casper_vmlinuz_file = subprocess.getoutput("grep \"\W*kernel\W\+/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*kernel\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
-        elif oem == False and os.path.exists(os.path.join(self.customDir,"remaster/boot/grub/grub.cfg")):
-            casper_initrd_file = subprocess.getoutput("grep \"initrd\s\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*\s*initrd\s\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
-            casper_vmlinuz_file = subprocess.getoutput("grep \"\W*linux\W\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*linux\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+        kver = kernel_version
+        if kver == "":
+            kver = self.find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"), oem = oem)
 
         if kver != '':
             orig_initrd_main = ""
@@ -4408,9 +4402,26 @@ class Reconstructor:
             subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
             subprocess.getoutput('mount --bind /dev ' + os.path.join(self.customDir, "root/dev"))
             subprocess.getoutput('mount --bind /sys ' + os.path.join(self.customDir, "root/sys"))
-            args = shlex.split('chroot ' + os.path.join(self.customDir, 'root') \
-                + ' mkinitramfs -o /boot/initrd.img-' + kver + ' ' + kver)
-            subprocess.check_output(args, stderr=subprocess.STDOUT)
+
+    def postLiveCDKernel(self, kernel_version="", oem = False):
+        postfix = ''
+        if oem:
+            postfix = '-oem'
+        casper_initrd_file="initrd" + postfix
+        casper_vmlinuz_file="vmlinuz" + postfix
+        kver = kernel_version
+        if kver == "":
+            kver = self.find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"), oem = oem)
+        if oem == False and os.path.exists(os.path.join(self.customDir,'remaster','isolinux')):
+            casper_initrd_file = subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+            casper_vmlinuz_file = subprocess.getoutput("grep \"\W*kernel\W\+/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*kernel\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+        elif oem == False and os.path.exists(os.path.join(self.customDir,"remaster/boot/grub/grub.cfg")):
+            casper_initrd_file = subprocess.getoutput("grep \"initrd\s\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*\s*initrd\s\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+            casper_vmlinuz_file = subprocess.getoutput("grep \"\W*linux\W\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*linux\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+
+        kver=self.find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"), oem = oem)
+
+        if kver != '':
             subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/sys") + '\"')
             subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/dev") + '\"')
             subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
@@ -4515,8 +4526,28 @@ class Reconstructor:
         # LiveCD kernel
         if  self.builder.get_object("checkbuttonLiveCdUpdateKernel").get_active() == True:
             print(_("Updating LiveCD Linux kernel..."))
-            self.liveCDKernel()
-            self.liveCDKernel(oem = True)
+            kver = self.find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"))
+            if kver != '' and os.path.exists(os.path.join(self.customDir, "initrd")):
+                print(_("Creating Initrd..."))
+                self.showProgress(_("Creating Initrd..."))
+                #yield True
+                self.preLiveCDKernel(kver)
+                p = subprocess.Popen('chroot ' + os.path.join(self.customDir, 'root') + ' mkinitramfs -o /boot/initrd.img-' + kver + ' ' + kver, shell = True)
+                while p is not None and p.poll() is None:
+                    time.sleep(2)
+                    yield True
+                self.postLiveCDKernel(kver)
+
+            kver = self.find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"), oem = True)
+            if kver != '' and os.path.exists(os.path.join(self.customDir, "initrd-oem")):
+                self.preLiveCDKernel(kver, oem = True)
+                p = subprocess.Popen('chroot ' + os.path.join(self.customDir, 'root') + ' mkinitramfs -o /boot/initrd.img-' + kver + ' ' + kver, shell = True)
+                while p is not None and p.poll() is None:
+                    time.sleep(2)
+                    yield True
+                self.postLiveCDKernel(kver, oem = True)
+            self.showProgress(False,0.65)
+            yield True
             #Intentionally reset the GUI checkbutton in case the user clicks apply again.
             self.builder.get_object("checkbuttonLiveCdUpdateKernel").set_active(False)
         # LiveCD info must be set afterwards in case the user updates the kernel as the initrd folder is replaced
@@ -5361,8 +5392,21 @@ class Reconstructor:
                 print(_("Creating Initrd..."))
                 self.showProgress(_("Creating Initrd..."))
                 #yield True
-                self.liveCDKernel()
-                self.liveCDKernel(oem = True)
+                self.preLiveCDKernel(kver)
+                p = subprocess.Popen('chroot ' + os.path.join(self.customDir, 'root') + ' mkinitramfs -o /boot/initrd.img-' + kver + ' ' + kver, shell = True)
+                while p is not None and p.poll() is None:
+                    time.sleep(2)
+                    yield True
+                self.postLiveCDKernel(kver)
+
+            kver = self.find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"), oem = True)
+            if kver != '' and os.path.exists(os.path.join(self.customDir, "initrd-oem")):
+                self.preLiveCDKernel(kver, oem = True)
+                p = subprocess.Popen('chroot ' + os.path.join(self.customDir, 'root') + ' mkinitramfs -o /boot/initrd.img-' + kver + ' ' + kver, shell = True)
+                while p is not None and p.poll() is None:
+                    time.sleep(2)
+                    yield True
+                self.postLiveCDKernel(kver, oem = True)
             self.showProgress(False,0.65)
             yield True
 
@@ -5409,13 +5453,17 @@ class Reconstructor:
                 yield True
                 # check for alternate mksquashfs
                 self.setBusyCursor()
+                proc = None
                 compStr=''
                 if apt_pkg.version_compare(self.cdUbuntuVersion,'10.04')>0:
                         compStr="-comp xz"
                 if mksquashfs == '':
-                    subprocess.getoutput(self.timeCmd + ' mksquashfs \"' + os.path.join(self.customDir, "root/") + '\"' + ' \"' + os.path.join(self.customDir, "remaster/casper/filesystem.squashfs") + '\" ' + compStr)
+                    proc = subprocess.Popen(self.timeCmd + ' mksquashfs \"' + os.path.join(self.customDir, "root/") + '\"' + ' \"' + os.path.join(self.customDir, "remaster/casper/filesystem.squashfs") + '\" ' + compStr, shell = True, stdout = None)
                 else:
-                    subprocess.getoutput(self.timeCmd + ' ' + mksquashfs + ' \"' + os.path.join(self.customDir, "root/") + '\"' + ' \"' + os.path.join(self.customDir, "remaster/casper/filesystem.squashfs") + '\" '+ compStr)
+                    proc = subprocess.Popen(self.timeCmd + ' ' + mksquashfs + ' \"' + os.path.join(self.customDir, "root/") + '\"' + ' \"' + os.path.join(self.customDir, "remaster/casper/filesystem.squashfs") + '\" '+ compStr, shell = True, stdout = None)
+                while proc is not None and proc.poll() is None:
+                    time.sleep(2)
+                    yield True
                 self.showProgress(_("Finished Building SquashFS root"),0.85)
                 if os.path.exists(os.path.join(self.customDir, "remaster/casper/filesystem.squashfs")):
                     self.squashSize = int(round(os.path.getsize(os.path.join(self.customDir, "remaster/casper/filesystem.squashfs"))/1024))
@@ -5484,22 +5532,26 @@ class Reconstructor:
                 yield True
 
                 self.setBusyCursor()
+                proc = None
                 # build iso according to architecture
                 if self.LiveCdArch == "x86":
                     print(_("Building x86 ISO..."))
                     if os.path.exists(os.path.join(self.customDir, "remaster", "isolinux/isolinux.bin")): 
-                        subprocess.getoutput(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"')
+                        proce = subprocess.Popen(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"', shell = True)
                     elif os.path.exists(os.path.join(self.customDir, "remaster", "boot.catalog")) and os.path.exists(os.path.join(self.customDir, "remaster", "boot/grub/i386-pc/eltorito.img")):
-                        subprocess.getoutput(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"boot/grub/i386-pc/eltorito.img\" -c \"boot.catalog\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"')
+                        proc = subprocess.Popen(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"boot/grub/i386-pc/eltorito.img\" -c \"boot.catalog\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"', shell = True)
                 elif self.LiveCdArch == "PowerPC":
                     print(_("Building PowerPC ISO..."))
-                    subprocess.getoutput(self.timeCmd + ' mkisofs  -r -V \"' + self.LiveCdDescription + '\" --netatalk -hfs -probe -map \"' + self.hfsMap + '\" -chrp-boot -iso-level 2 -part -no-desktop -hfs-bless ' + '\"' + os.path.join(self.customDir, "remaster/install") + '\" -o \"' + self.buildLiveCdFilename + '\" \"' + os.path.join(self.customDir, "remaster") + '\"')
+                    proce = subprocess.Popen(self.timeCmd + ' mkisofs  -r -V \"' + self.LiveCdDescription + '\" --netatalk -hfs -probe -map \"' + self.hfsMap + '\" -chrp-boot -iso-level 2 -part -no-desktop -hfs-bless ' + '\"' + os.path.join(self.customDir, "remaster/install") + '\" -o \"' + self.buildLiveCdFilename + '\" \"' + os.path.join(self.customDir, "remaster") + '\"', shell = True)
                 elif self.LiveCdArch == "x86_64":
                     print(_("Building x86_64 ISO..."))
                     if os.path.exists(os.path.join(self.customDir, "remaster", "isolinux/isolinux.bin")): 
-                        subprocess.getoutput(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"')
+                        proc = subprocess.Popen(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"', shell = True)
                     elif os.path.exists(os.path.join(self.customDir, "remaster", "boot.catalog")) and os.path.exists(os.path.join(self.customDir, "remaster", "boot/grub/i386-pc/eltorito.img")):
-                        subprocess.getoutput(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"boot/grub/i386-pc/eltorito.img\" -c \"boot.catalog\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"')
+                        proc = subprocess.Popen(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"boot/grub/i386-pc/eltorito.img\" -c \"boot.catalog\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"', shell = True)
+                while proc is not None and proc.poll() is None:
+                     time.sleep(2)
+                     yield True
                 self.showProgress(False,0.98)
                 yield True
 
