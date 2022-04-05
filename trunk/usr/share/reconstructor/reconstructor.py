@@ -5537,18 +5537,18 @@ class Reconstructor:
                 if self.LiveCdArch == "x86":
                     print(_("Building x86 ISO..."))
                     if os.path.exists(os.path.join(self.customDir, "remaster", "isolinux/isolinux.bin")): 
-                        proce = subprocess.Popen(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"', shell = True)
+                        proce = subprocess.Popen(self.timeCmd + ' mkisofs -quiet -o \"' + self.buildLiveCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"', shell = True)
                     elif os.path.exists(os.path.join(self.customDir, "remaster", "boot.catalog")) and os.path.exists(os.path.join(self.customDir, "remaster", "boot/grub/i386-pc/eltorito.img")):
-                        proc = subprocess.Popen(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"boot/grub/i386-pc/eltorito.img\" -c \"boot.catalog\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"', shell = True)
+                        proc = subprocess.Popen(self.timeCmd + ' mkisofs -quiet -o \"' + self.buildLiveCdFilename + '\" -b \"boot/grub/i386-pc/eltorito.img\" -c \"boot.catalog\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"', shell = True)
                 elif self.LiveCdArch == "PowerPC":
                     print(_("Building PowerPC ISO..."))
-                    proce = subprocess.Popen(self.timeCmd + ' mkisofs  -r -V \"' + self.LiveCdDescription + '\" --netatalk -hfs -probe -map \"' + self.hfsMap + '\" -chrp-boot -iso-level 2 -part -no-desktop -hfs-bless ' + '\"' + os.path.join(self.customDir, "remaster/install") + '\" -o \"' + self.buildLiveCdFilename + '\" \"' + os.path.join(self.customDir, "remaster") + '\"', shell = True)
+                    proce = subprocess.Popen(self.timeCmd + ' mkisofs  -quiet -r -V \"' + self.LiveCdDescription + '\" --netatalk -hfs -probe -map \"' + self.hfsMap + '\" -chrp-boot -iso-level 2 -part -no-desktop -hfs-bless ' + '\"' + os.path.join(self.customDir, "remaster/install") + '\" -o \"' + self.buildLiveCdFilename + '\" \"' + os.path.join(self.customDir, "remaster") + '\"', shell = True)
                 elif self.LiveCdArch == "x86_64":
                     print(_("Building x86_64 ISO..."))
                     if os.path.exists(os.path.join(self.customDir, "remaster", "isolinux/isolinux.bin")): 
-                        proc = subprocess.Popen(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"', shell = True)
+                        proc = subprocess.Popen(self.timeCmd + ' mkisofs -quiet -o \"' + self.buildLiveCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"', shell = True)
                     elif os.path.exists(os.path.join(self.customDir, "remaster", "boot.catalog")) and os.path.exists(os.path.join(self.customDir, "remaster", "boot/grub/i386-pc/eltorito.img")):
-                        proc = subprocess.Popen(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"boot/grub/i386-pc/eltorito.img\" -c \"boot.catalog\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"', shell = True)
+                        proc = subprocess.Popen(self.timeCmd + ' mkisofs -quiet -o \"' + self.buildLiveCdFilename + '\" -b \"boot/grub/i386-pc/eltorito.img\" -c \"boot.catalog\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster") + '\"', shell = True)
                 while proc is not None and proc.poll() is None:
                      time.sleep(2)
                      yield True
@@ -5660,13 +5660,13 @@ class Reconstructor:
                 if self.altCdArch == "x86":
                     print(_("Building x86 ISO..."))
                     self.setBusyCursor()
-                    subprocess.getoutput(self.timeCmd + ' mkisofs -o \"' + self.buildAltCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.altCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster_alt") + '\"')
+                    subprocess.getoutput(self.timeCmd + ' mkisofs -quiet -o \"' + self.buildAltCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.altCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster_alt") + '\"')
                 elif self.altCdArch == "PowerPC":
                     print(_("Building PowerPC ISO..."))
-                    subprocess.getoutput(self.timeCmd + ' mkisofs  -r -V \"' + self.altCdDescription + '\" --netatalk -hfs -probe -map \"' + self.hfsMap + '\" -chrp-boot -iso-level 2 -part -no-desktop -hfs-bless ' + '\"' + os.path.join(self.customDir, "remaster_alt/install") + '\" -o \"' + self.buildAltCdFilename + '\" \"' + os.path.join(self.customDir, "remaster_alt") + '\"')
+                    subprocess.getoutput(self.timeCmd + ' mkisofs  -quiet -r -V \"' + self.altCdDescription + '\" --netatalk -hfs -probe -map \"' + self.hfsMap + '\" -chrp-boot -iso-level 2 -part -no-desktop -hfs-bless ' + '\"' + os.path.join(self.customDir, "remaster_alt/install") + '\" -o \"' + self.buildAltCdFilename + '\" \"' + os.path.join(self.customDir, "remaster_alt") + '\"')
                 elif self.altCdArch == "x86_64":
                     print(_("Building x86_64 ISO..."))
-                    subprocess.getoutput(self.timeCmd + ' mkisofs -o \"' + self.buildLiveCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster_alt") + '\"')
+                    subprocess.getoutput(self.timeCmd + ' mkisofs -quiet -o \"' + self.buildLiveCdFilename + '\" -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"' + self.LiveCdDescription + '\" -cache-inodes -r -J -l \"' + os.path.join(self.customDir, "remaster_alt") + '\"')
                 self.showProgress(False,0.95)
                 yield True
 
