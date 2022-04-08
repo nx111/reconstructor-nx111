@@ -4060,7 +4060,10 @@ class Reconstructor:
             yield True
             # copy remaster files
             self.setBusyCursor()
-            subprocess.getoutput('rsync -at --del ' + self.mountDir + '/ \"' + os.path.join(self.customDir, "remaster") + '\"')
+            proc = subprocess.Popen('rsync --quiet -at --del ' + self.mountDir + '/ \"' + os.path.join(self.customDir, "remaster") + '\"',shell = True)
+            while proc is not None and proc.poll() is None:
+                time.sleep(2)
+                yield True
             print(_("Finished copying files..."))
             self.showProgress(_("Finished copying files..."),0.10)
             yield True
@@ -4121,7 +4124,10 @@ class Reconstructor:
             yield True
             # copy squashfs root
             self.setBusyCursor()
-            subprocess.getoutput('rsync -at --del \"' + os.path.join(self.customDir, "tmpsquash") + '\"/ \"' + os.path.join(self.customDir, "root/") + '\"')
+            proc = subprocess.Popen('rsync -at --del --quiet \"' + os.path.join(self.customDir, "tmpsquash") + '\"/ \"' + os.path.join(self.customDir, "root/") + '\"', shell = True)
+            while proc is not None and proc.poll() is None:
+                time.sleep(2)
+                yield True
             # umount tmpsquashfs
             print(_("Unmounting tmpsquash..."))
             subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "tmpsquash") + '\"')
