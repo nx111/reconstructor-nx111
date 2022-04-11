@@ -2391,7 +2391,12 @@ class Reconstructor:
                     #clean /run
                     if silentMode == False:
                         print(_("Clean /run ..."))
-                    subprocess.getoutput('rm -rf  \"' + os.path.join(self.customDir, "root/run/*") + '\"')   
+                    subprocess.getoutput('find  \"' + os.path.join(self.customDir, "root/run") + '\" -mindepth 1 -maxdepth 1 -delete')
+
+                    #clean /var/log
+                    if silentMode == False:
+                        print(_("Clean /var/log ..."))
+                    subprocess.getoutput('find \"' + os.path.join(self.customDir, "root/var/log/*") + '\" -mindepth 1 -maxdepth 1 -delete')
                 # remove temp script
                 subprocess.getoutput('rm -Rf /tmp/reconstructor-terminal.sh')
                 self.TerminalInitialized = False
