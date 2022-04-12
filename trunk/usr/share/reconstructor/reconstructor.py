@@ -200,6 +200,9 @@ class Reconstructor:
         self.execModulesEnabled = False
         self.bootModulesEnabled = False
         self.TerminalInitialized = False
+
+        self.varRunDir = "/var/run"
+
         # time command for timing operations
         self.timeCmd = subprocess.getoutput('which time') + ' -f \"\nBuild Time: %E  CPU: %P\n\"'
 
@@ -447,6 +450,8 @@ class Reconstructor:
     def checkChroot(self, oem = False):
         print(_('Checking Chroot ...'))
 
+        self.varRunDir = os.path.join(self.customDir, "root", os.path.realpath(os.path.join(self.customDir,"root","var/run")))
+
         # check polkit rules for running pkexec gedit/nautilus
         if apt_pkg.version_compare(self.cdUbuntuVersion, '18.04') >= 0:
             mydir=os.path.split(os.path.realpath(__file__))[0]
@@ -574,7 +579,7 @@ class Reconstructor:
             fUpdate = int(updateVersion)
             if fUpdate > fApp:
                 updateDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
-                updateDlg.add_buttons(Gtk.STOCK_NO, Gtk.RESPONSE_NO, Gtk.STOCK_YES, Gtk.ResponseType.OK)
+                updateDlg.add_buttons(Gtk.STOCK_NO, Gtk.ResponseType.NO, Gtk.STOCK_YES, Gtk.ResponseType.OK)
                 updateDlg.set_icon_from_file(self.iconFile)
                 updateDlg.vbox.set_spacing(10)
                 labelSpc = Gtk.Label(label=" ")
@@ -628,16 +633,18 @@ class Reconstructor:
     # Gives the user the choice to reboot their computer
     def suggestReboot(self, reason):
         rebootDlg = Gtk.Dialog(title='Warning!', parent=None, flags=0)
-        rebootDlg.add_buttons=(Gtk.STOCK_NO, Gtk.RESPONSE_NO, Gtk.STOCK_YES, Gtk.ResponseType.OK)
+        rebootDlg.add_buttons=(Gtk.STOCK_NO, Gtk.ResponseType.NO, Gtk.STOCK_YES, Gtk.ResponseType.OK)
         rebootDlg.set_icon_from_file(self.iconFile)
         rebootDlg.vbox.set_spacing(10)
-        labelSpc = Gtk.Label(label=" ")
+        labelSpc = Gtk.Label()
         rebootDlg.vbox.pack_start(labelSpc, expand=True, fill=True, padding=0)
         labelSpc.show()
-        lblReason = Gtk.Label(reason)
+        lblReason = Gtk.Label()
+        lblReason.set_text(reason)
         rebootDlg.vbox.pack_start(lblReason, expand=True, fill=True, padding=0)
         lblReason.show()
-        lblConfirm = Gtk.Label('<b>Reboot Now?</b>')
+        lblConfirm = Gtk.Label()
+        lblConfirm.set_text('<b>Reboot Now?</b>')
         lblConfirm.set_use_markup(True)
         rebootDlg.vbox.pack_start(lblConfirm, expand=True, fill=True, padding=0)
         lblConfirm.show()
@@ -1062,7 +1069,7 @@ class Reconstructor:
                             verTxt = _('Found new version: ')
                             # prompt for installation
                             updateDlg = Gtk.Dialog(title="Module Update", parent=None, flags=0)
-                            updateDlg.add_buttons(Gtk.STOCK_NO, Gtk.RESPONSE_NO, Gtk.STOCK_YES, Gtk.ResponseType.OK)
+                            updateDlg.add_buttons(Gtk.STOCK_NO, Gtk.ResponseType.NO, Gtk.STOCK_YES, Gtk.ResponseType.OK)
                             updateDlg.set_icon_from_file(self.iconFile)
                             updateDlg.vbox.set_spacing(10)
                             labelSpc = Gtk.Label()
@@ -1856,7 +1863,7 @@ class Reconstructor:
             response = warnDlg.run()
             if response == Gtk.ResponseType.OK:
                 warnDlg.destroy()
-                self.doneTerminal(forceMode=False,silentMode=False,justUmount=False)
+                self.doneTerminal(forceMode=False,silentMode=True,justUmount=False)
                 self.showProgress('Customized Live CD.',0.50)
 
                 self.setPage(self.pageLiveBuild)
@@ -2275,10 +2282,10 @@ class Reconstructor:
                     print(_("Copying DNS info..."))
                     subprocess.getoutput('cp -L --remove-destination /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
                 #mount /run/dbus
-                print(_("Mounting /run/dbus filesystem..."))
-                if not os.path.exists(os.path.join(self.customDir, "root/run/dbus")):
-                    subprocess.getoutput("mkdir " + (os.path.join(self.customDir, "root/run/dbus")))
-                subprocess.getoutput('mount --bind /run/dbus \"' + os.path.join(self.customDir, "root/run/dbus") + '\"')
+                print(_("Mounting /var/run/dbus filesystem..."))
+                if not os.path.exists(os.path.join(self.customDir, "root" + self.varRunDir + "/dbus")):
+                    subprocess.getoutput("mkdir " + (os.path.join(self.customDir, "root" + self.varRunDir + "/dbus")))
+                subprocess.getoutput('mount --bind /var/run/dbus \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/dbus") + '\"')
                 #mount /dev
                 print(_("Mounting /dev filesystem..."))
                 subprocess.getoutput('mount --bind /dev \"' + os.path.join(self.customDir, "root/dev") + '\"')
@@ -2367,15 +2374,15 @@ class Reconstructor:
                     if(error != ''):
                         print("error=\""+error+"\"")
                         self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
-                # umount /run/dbus
-                if self.isMounted(os.path.join(self.customDir, "root/run/dbus")):
+                # umount /var/run/dbus
+                if self.isMounted(os.path.join(self.customDir, "root", self.varRunDir,"dbus")):
                     if silentMode == False:
-                        print(_("Umounting /run/dbus..."))
-                    error = subprocess.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/run/dbus") + '\"')
+                        print(_("Umounting " + self.varRunDir + "/dbus..."))
+                    error = subprocess.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/dbus") + '\"')
                     if(error != ''):
                         print("error=\""+error+"\"")
-                        self.suggestReboot('/run/dbus could not be unmounted. It must be unmounted before you can build an ISO.')
-                if justUmount == False:
+                        self.suggestReboot(self.varRunDir + '/dbus could not be unmounted. It must be unmounted before you can build an ISO.')
+            elif self.customDir != "" and justUmount == False:
                     # restore wgetrc
                     if silentMode == False:
                         print(_("Restoring wgetrc configuration..."))
@@ -2390,16 +2397,30 @@ class Reconstructor:
 
                     #clean /run
                     if silentMode == False:
-                        print(_("Clean /run ..."))
-                    subprocess.getoutput('find  \"' + os.path.join(self.customDir, "root/run") + '\" -mindepth 1 -maxdepth 1 -delete')
+                        print(_("Clean /var/run ..."))
+                    subprocess.getoutput('find  \"' + os.path.join(self.customDir, "root" + self.varRunDir) + '\" -mindepth 1  -delete')
+
+                    #clean /var/lock
+                    if silentMode == False:
+                        print(_("Clean /var/lock ..."))
+                    subprocess.getoutput('find \"' + os.path.join(self.customDir, "root/var/lock") + '\" -mindepth 1 -delete')
+
+                    #clean /var/cache/apt/archives
+                    if silentMode == False:
+                        print(_("Clean /var/cache/apt/archives ..."))
+                    subprocess.getoutput('find \"' + os.path.join(self.customDir, "root/var/apt/archives") + '\" -type f -delete')
 
                     #clean /var/log
                     if silentMode == False:
                         print(_("Clean /var/log ..."))
-                    subprocess.getoutput('find \"' + os.path.join(self.customDir, "root/var/log/*") + '\" -mindepth 1 -maxdepth 1 -delete')
-                # remove temp script
-                subprocess.getoutput('rm -Rf /tmp/reconstructor-terminal.sh')
-                self.TerminalInitialized = False
+                    subprocess.getoutput('find \"' + os.path.join(self.customDir, "root/var/log") + '\" -mindepth 1 -delete')
+
+                    #clean other ...
+                    subprocess.getoutput('find \"' + os.path.join(self.customDir, "root/var/crash") +'\" -type f -delete')
+
+            # remove temp script
+            subprocess.getoutput('rm -Rf /tmp/reconstructor-terminal.sh')
+            self.TerminalInitialized = False
 
     def genericDialog(self,text):
         genericDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
@@ -4786,8 +4807,8 @@ class Reconstructor:
             print(_("Mounting /proc filesystem..."))
             subprocess.getoutput('mount -t proc none \"' + os.path.join(self.customDir, "root/proc") + '\"')
             #mount /var/run/dbus
-            print(_("Mounting /var/run/dubs filesystem..."))
-            subprocess.getoutput('mount --bind /var/run/dbus \"' + os.path.join(self.customDir, "root/var/run/dbus") + '\"')
+            print(_("Mounting " + self.varRunDir + "/dubs filesystem..."))
+            subprocess.getoutput('mount --bind /var/run/dbus \"' + os.path.join(self.customDir, "root",self.varRunDir,"dbus") + '\"')
 	
             # copy apt.conf
             if not os.path.exists(os.path.join(self.customDir, "root/etc/apt/apt.conf.d")):
@@ -4827,8 +4848,8 @@ class Reconstructor:
             print(_("Clean apt cache..."))
             subprocess.getoutput('chroot ' + os.path.join(self.customDir, "root/") + ' apt-get clean')
             # umount /var/run/dbus
-            print(_("Umounting -lf /var/run/dubs..."))
-            error = subprocess.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/var/run/dbus/") + '\"')
+            print(_("Umounting " + self.varRunDir + "/dubs..."))
+            error = subprocess.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root",self.varRunDir,"dbus") + '\"')
             if(error != ''):
                 self.suggestReboot('/var/run/dbus could not be unmounted. It must be unmounted before you can build an ISO.')
             # umount /proc
