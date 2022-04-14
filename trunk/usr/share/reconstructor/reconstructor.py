@@ -450,7 +450,7 @@ class Reconstructor:
     def checkChroot(self, oem = False):
         print(_('Checking Chroot ...'))
 
-        self.varRunDir = os.path.join(self.customDir, "root", os.path.realpath(os.path.join(self.customDir,"root","var/run")))
+        self.varRunDir = os.path.join(self.customDir, "root" + os.path.realpath(os.path.join(self.customDir,"root","var/run")))
 
         # check polkit rules for running pkexec gedit/nautilus
         if apt_pkg.version_compare(self.cdUbuntuVersion, '18.04') >= 0:
@@ -1745,7 +1745,7 @@ class Reconstructor:
             # check for custom dir
             if self.checkCustomDir() == True:
                 self.readConfig()
-                self.doneTerminal(forceMode=True,silentMode=False,justUmount=True)
+                self.doneTerminal(forceMode=True,silentMode=True,justUmount=True)
                 if self.checkSetup() == True:
                     if self.checkWorkingDir() == True:
                         warnDlg = Gtk.Dialog(title=self.appName, parent=None, flags=0)
@@ -1866,7 +1866,7 @@ class Reconstructor:
             response = warnDlg.run()
             if response == Gtk.ResponseType.OK:
                 warnDlg.destroy()
-                self.doneTerminal(forceMode=False,silentMode=True,justUmount=False)
+                #self.doneTerminal(forceMode=False,silentMode=False,justUmount=False)
                 self.showProgress('Customized Live CD.',0.50)
 
                 self.setPage(self.pageLiveBuild)
@@ -2108,7 +2108,7 @@ class Reconstructor:
             self.builder.get_object("buttonBurnIso").hide()
 
     def exitApp(self,widget, data=None):
-        self.doneTerminal(forceMode=True,silentMode=False,justUmount=True)
+        self.doneTerminal(forceMode=True,silentMode=True,justUmount=True)
         Gtk.main_quit()
         sys.exit(0)
 
@@ -2284,11 +2284,11 @@ class Reconstructor:
                 elif os.path.exists("/run/resolvconf/resolv.conf"):
                     print(_("Copying DNS info..."))
                     subprocess.getoutput('cp -L --remove-destination /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
-                #mount /run/dbus
+                #mount /var/run/dbus
                 print(_("Mounting /var/run/dbus filesystem..."))
                 if not os.path.exists(os.path.join(self.customDir, "root" + self.varRunDir + "/dbus")):
-                    subprocess.getoutput("mkdir " + (os.path.join(self.customDir, "root" + self.varRunDir + "/dbus")))
-                subprocess.getoutput('mount --bind /var/run/dbus \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/dbus") + '\"')
+                    subprocess.getoutput("mkdir " + os.path.join(self.customDir, "root" + self.varRunDir + "/dbus"))
+                subprocess.getoutput('mount --bind ' + os.path.realpath("/var/run") + '/dbus \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/dbus") + '\"')
                 #mount /dev
                 print(_("Mounting /dev filesystem..."))
                 subprocess.getoutput('mount --bind /dev \"' + os.path.join(self.customDir, "root/dev") + '\"')
@@ -2342,50 +2342,52 @@ class Reconstructor:
         return
 
     def doneTerminal(self,forceMode=False,silentMode=False,justUmount=False):
+            error = ''
             if self.customDir != '' and ( self.TerminalInitialized == True or forceMode == True ):
                 subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/var/lib/dpkg/lock"))   
-                subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/var/lib/apt/lists/lock"))   
-                # umount /proc
-                if self.isMounted(os.path.join(self.customDir, "root/proc")):
-                    if silentMode == False:
-                        print(_("Umounting /proc..."))
-                    error = subprocess.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/proc") + '\"')
-                    if(error != ''):
-                        print("error=\""+error+"\"")
-                        self.suggestReboot('/proc could not be unmounted. It must be unmounted before you can build an ISO.')
-                # umount /sys
-                if self.isMounted(os.path.join(self.customDir, "root/sys")):
-                    if silentMode == False:
-                        print(_("Umounting /sys..."))
-                    error = subprocess.getoutput('umount   -lf \"' + os.path.join(self.customDir, "root/sys") + '\"')
-                    if(error != ''):
-                        print("error=\""+error+"\"")
-                        self.suggestReboot('/sys could not be unmounted. It must be unmounted before you can build an ISO.')
+                subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/var/lib/apt/lists/lock"))
                 # umount /dev/pts
                 if self.isMounted(os.path.join(self.customDir, "root/dev/pts")):
                     if silentMode == False:
                         print(_("Umounting /dev/pts..."))
-                    error = subprocess.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
+                    error = subprocess.getoutput('umount  \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
                     if(error != ''):
                         print("error=\""+error+"\"")
                         self.suggestReboot('/dev/pts could not be unmounted. It must be unmounted before you can build an ISO.')
+                # umount /sys
+                if self.isMounted(os.path.join(self.customDir, "root/sys")):
+                    if silentMode == False:
+                        print(_("Umounting /sys..."))
+                    error = subprocess.getoutput('umount  \"' + os.path.join(self.customDir, "root/sys") + '\"')
+                    if(error != ''):
+                        print("error=\""+error+"\"")
+                        self.suggestReboot('/sys could not be unmounted. It must be unmounted before you can build an ISO.')
+                # umount /proc
+                if self.isMounted(os.path.join(self.customDir, "root/proc")):
+                    if silentMode == False:
+                        print(_("Umounting /proc..."))
+                    error = subprocess.getoutput('umount  \"' + os.path.join(self.customDir, "root/proc") + '\"')
+                    if(error != ''):
+                        print("error=\""+error+"\"")
+                        unmount_error = True
+                        self.suggestReboot('/proc could not be unmounted. It must be unmounted before you can build an ISO.')
                 # umount /dev
                 if self.isMounted(os.path.join(self.customDir, "root/dev")):
                     if silentMode == False:
                         print(_("Umounting /dev..."))
-                    error = subprocess.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root/dev") + '\"')
+                    error = subprocess.getoutput('umount  \"' + os.path.join(self.customDir, "root/dev") + '\"')
                     if(error != ''):
                         print("error=\""+error+"\"")
                         self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
                 # umount /var/run/dbus
-                if self.isMounted(os.path.join(self.customDir, "root", self.varRunDir,"dbus")):
+                if self.isMounted(os.path.join(self.customDir, "root" + self.varRunDir + "/dbus")):
                     if silentMode == False:
                         print(_("Umounting " + self.varRunDir + "/dbus..."))
-                    error = subprocess.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/dbus") + '\"')
+                    error = subprocess.getoutput('umount  \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/dbus") + '\"')
                     if(error != ''):
                         print("error=\""+error+"\"")
                         self.suggestReboot(self.varRunDir + '/dbus could not be unmounted. It must be unmounted before you can build an ISO.')
-            elif self.customDir != "" and justUmount == False:
+            if self.customDir != "" and error == '' and justUmount == False:
                     # restore wgetrc
                     if silentMode == False:
                         print(_("Restoring wgetrc configuration..."))
@@ -2398,28 +2400,28 @@ class Reconstructor:
                             print(_("Restore DNS config..."))
                         subprocess.getoutput('mv ' + os.path.join(self.customDir, "root/etc/resolv.conf.bak") + ' ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
 
-                    #clean /run
+                    #clean /var/run
                     if silentMode == False:
                         print(_("Clean /var/run ..."))
-                    subprocess.getoutput('find  \"' + os.path.join(self.customDir, "root" + self.varRunDir) + '\" -mindepth 1  -delete')
+                    subprocess.getoutput('find  \"' + os.path.join(self.customDir, "root" + self.varRunDir) + '/\" -mindepth 1 -not -path ' + os.path.join(self.customDir, "root" + self.varRunDir + '/dbus') + ' -delete')
 
                     #clean /var/lock
                     if silentMode == False:
                         print(_("Clean /var/lock ..."))
-                    subprocess.getoutput('find \"' + os.path.join(self.customDir, "root/var/lock") + '\" -mindepth 1 -delete')
+                    subprocess.getoutput('find \"' + os.path.join(self.customDir, "root/var/lock/") + '\" -mindepth 1 -delete')
 
                     #clean /var/cache/apt/archives
                     if silentMode == False:
                         print(_("Clean /var/cache/apt/archives ..."))
-                    subprocess.getoutput('find \"' + os.path.join(self.customDir, "root/var/apt/archives") + '\" -type f -delete')
+                    subprocess.getoutput('find \"' + os.path.join(self.customDir, "root/var/apt/archives/") + '\" -type f -delete')
 
                     #clean /var/log
                     if silentMode == False:
                         print(_("Clean /var/log ..."))
-                    subprocess.getoutput('find \"' + os.path.join(self.customDir, "root/var/log") + '\" -mindepth 1 -delete')
+                    subprocess.getoutput('find \"' + os.path.join(self.customDir, "root/var/log/") + '\" -mindepth 1  -not -path ' + os.path.join(self.customDir, "root/var/log/apt") + ' -not -path \"' + os.path.join(self.customDir, "root/var/log/apt/*\"") + ' -not -path ' + os.path.join(self.customDir, "root/var/log/aptitude") + ' -delete')
 
                     #clean other ...
-                    subprocess.getoutput('find \"' + os.path.join(self.customDir, "root/var/crash") +'\" -type f -delete')
+                    subprocess.getoutput('find \"' + os.path.join(self.customDir, "root/var/crash/") +'\" -type f -delete')
 
             # remove temp script
             subprocess.getoutput('rm -Rf /tmp/reconstructor-terminal.sh')
@@ -2541,6 +2543,7 @@ class Reconstructor:
 
     # Launches a chrooted xserver in Xephyr
     def launchChrootXephyr(self):
+        error = ""
         try:
             if (subprocess.getoutput('which Xephyr') == ''):
                 self.genericDialog("You must have Xephyr installed. Install Xephyr and try again." )
@@ -2589,7 +2592,11 @@ class Reconstructor:
             print('Launching Xephyr...')
             subprocess.getoutput('Xephyr -ac -screen ' + res + ' 2> /dev/null :2 &')  #+extension GLX, -extension GLX,
             subprocess.getoutput('export DISPLAY=:2')
-
+        except Exception as detail:
+            print(_("/etc/skel was not customized!"))
+            errText = _('Error launching chrooted Xephyr: ')
+            print(errText, detail)
+        finally:
             #Mount /tmp
             print(_("Mounting /tmp..."))
             subprocess.getoutput('mount --bind /tmp \"' + os.path.join(self.customDir, "root/tmp") + '\"')
@@ -2600,11 +2607,11 @@ class Reconstructor:
             elif os.path.exists("/run/resolvconf/resolv.conf"):
                 print(_("Copying DNS info..."))
                 subprocess.getoutput('cp -L --remove-destination /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
-            #mount /run/dbus
+            #mount /var/run/dbus
             print(_("Mounting /run/dbus filesystem..."))
-            if not os.path.exists(os.path.join(self.customDir, "root/run/dbus")):
-                subprocess.getoutput("mkdir " + (os.path.join(self.customDir, "root/run/dbus")))
-            subprocess.getoutput('mount --bind /run/dbus \"' + os.path.join(self.customDir, "root/run/dbus") + '\"')
+            if not os.path.exists(os.path.join(self.customDir, "root" + self.varRunDir + "/dbus")):
+                subprocess.getoutput("mkdir " + (os.path.join(self.customDir, "root" + self.varRunDir + "/dbus")))
+            subprocess.getoutput('mount --bind /var/run/dbus \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/dbus") + '\"')
             # mount /dev
             print(_("Mounting /dev filesystem..."))
             subprocess.getoutput('mount --bind /dev \"' + os.path.join(self.customDir, "root/dev") + '\"')
@@ -2644,37 +2651,43 @@ class Reconstructor:
 
             # umount /tmp
             print(_("Umounting /tmp..."))
-            error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/tmp") + '\"')
+            if self.isMounted(os.path.join(self.customDir, "root/tmp")):
+                error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/tmp") + '\"')
             if(error != ''):
                 self.suggestReboot('/tmp could not be unmounted. It must be unmounted before you can build an ISO.')
             print(_("Restore DNS config..."))
             if os.path.exists(os.path.join(self.customDir, "root/etc/resolv.conf.bak")):
                 subprocess.getoutput('mv ' + os.path.join(self.customDir, "root/etc/resolv.conf.bak") + ' ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
-            # umount /proc
-            print(_("Umounting /proc..."))
-            error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/proc/") + '\"')
-            if(error != ''):
-                self.suggestReboot('/proc could not be unmounted. It must be unmounted before you can build an ISO.')
             # umount /sys
             print(_("Umounting /sys..."))
-            error = subprocess.getoutput('umount -fR \"' + os.path.join(self.customDir, "root/sys/") + '\"')
+            if self.isMounted(os.path.join(self.customDir, "root/sys")):
+                error = subprocess.getoutput('umount -fR \"' + os.path.join(self.customDir, "root/sys") + '\"')
             if(error != ''):
                 self.suggestReboot('/sys could not be unmounted. It must be unmounted before you can build an ISO.')
+            # umount /proc
+            print(_("Umounting /proc..."))
+            if self.isMounted(os.path.join(self.customDir, "root/proc")):
+                error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/proc") + '\"')
+            if(error != ''):
+                self.suggestReboot('/proc could not be unmounted. It must be unmounted before you can build an ISO.')
             # umount devpts
             print(_("Umounting devpts..."))
-            error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
+            if self.isMounted(os.path.join(self.customDir, "root/dev/pts")):
+                error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
             if(error != ''):
                 self.suggestReboot('/dev/pts could not be unmounted. It must be unmounted before you can build an ISO.')
             # umount /dev
             print(_("Umounting /dev..."))
-            error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/dev/") + '\"')
+            if self.isMounted(os.path.join(self.customDir, "root/dev")):
+                error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/dev") + '\"')
             if(error != ''):
                 self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
-            # umount /run/dbus
-            print(_("Umounting /run/dbus..."))
-            error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/run/dbus") + '\"')
+            # umount /var/run/dbus
+            print(_("Umounting /var/run/dbus..."))
+            if self.isMounted(os.path.join(self.customDir, "root" + self.varRunDir + "/dbus")):
+                error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/dbus") + '\"')
             if(error != ''):
-                self.suggestReboot('/run/dbus could not be unmounted. It must be unmounted before you can build an ISO.')
+                self.suggestReboot(self.varRunDir + '/dbus could not be unmounted. It must be unmounted before you can build an ISO.')
             # remove temp script
             subprocess.getoutput('rm -Rf /tmp/xephyr-chroot.sh')
             # startx complains about suspicious activity sometimes:P
@@ -2695,62 +2708,6 @@ class Reconstructor:
             subprocess.getoutput('mv -f ' + os.path.join(self.customDir, ".profile") + ' ' + os.path.join(self.customDir, "root/etc/skel/.profile"))
             # close the Xephyr window if it is still open
             subprocess.getoutput('pkill Xephyr')
-
-        except Exception as detail:
-            # restore settings
-            # restore wgetrc
-            print(_("Restoring wgetrc configuration..."))
-            subprocess.getoutput('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\"')
-            # remove apt.conf
-            #print(_("Removing apt.conf configuration..."))
-            #subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf") + '\"')
-            # remove Xauthority
-            subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/root/.Xauthority"))
-            # remove hosts
-            subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/etc/hosts"))
-            # umount /tmp
-            print(_("Umounting /tmp..."))
-            error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/tmp") + '\"')
-            if(error != ''):
-                self.suggestReboot('/tmp could not be unmounted. It must be unmounted before you can build an ISO.')
-            # resotre dns config
-            print(_("Restore DNS config..."))
-            if os.path.exists(os.path.join(self.customDir, "root/etc/resolv.conf.bak")):
-                subprocess.getoutput('mv ' + os.path.join(self.customDir, "root/etc/resolv.conf.bak") + ' ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
-            # umount /proc
-            print(_("Umounting /proc..."))
-            error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/proc/") + '\"')
-            if(error != ''):
-                self.suggestReboot('/proc could not be unmounted. It must be unmounted before you can build an ISO.')
-            # umount /sys
-            print(_("Umounting /sys..."))
-            error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/sys/") + '\"')
-            if(error != ''):
-                self.suggestReboot('/sys could not be unmounted. It must be unmounted before you can build an ISO.')
-            # umount devpts
-            print(_("Umounting devpts..."))
-            error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
-            if(error != ''):
-                self.suggestReboot('/dev/pts could not be unmounted. It must be unmounted before you can build an ISO.')
-            # umount /dev
-            print(_("Umounting /dev..."))
-            error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/dev/") + '\"')
-            if(error != ''):
-                self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
-            # remove temp script
-            subprocess.getoutput('rm -Rf /tmp/xephyr-chroot.sh')
-            # startx complains about suspicious activity sometimes:P
-            subprocess.getoutput('rm -Rf ' + os.path.join(self.customDir, "root/tmp/.X11-unix") )
-            # return the display to :0
-            subprocess.getoutput('export DISPLAY=:0')
-            # close the Xephyr window if it is still open
-            subprocess.getoutput('pkill Xephyr')
-
-            print(_("/etc/skel was not customized!"))
-            errText = _('Error launching chrooted Xephyr: ')
-            print(errText, detail)
-            pass
-
         return
 
     # Sets live cd information (username, full name, hostname) for live cd
@@ -4812,7 +4769,7 @@ class Reconstructor:
             subprocess.getoutput('mount -t proc none \"' + os.path.join(self.customDir, "root/proc") + '\"')
             #mount /var/run/dbus
             print(_("Mounting " + self.varRunDir + "/dubs filesystem..."))
-            subprocess.getoutput('mount --bind /var/run/dbus \"' + os.path.join(self.customDir, "root",self.varRunDir,"dbus") + '\"')
+            subprocess.getoutput('mount --bind /var/run/dbus \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/dbus") + '\"')
 	
             # copy apt.conf
             if not os.path.exists(os.path.join(self.customDir, "root/etc/apt/apt.conf.d")):
@@ -4853,7 +4810,7 @@ class Reconstructor:
             subprocess.getoutput('chroot ' + os.path.join(self.customDir, "root/") + ' apt-get clean')
             # umount /var/run/dbus
             print(_("Umounting " + self.varRunDir + "/dubs..."))
-            error = subprocess.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root",self.varRunDir,"dbus") + '\"')
+            error = subprocess.getoutput('umount  -lf \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/dbus") + '\"')
             if(error != ''):
                 self.suggestReboot('/var/run/dbus could not be unmounted. It must be unmounted before you can build an ISO.')
             # umount /proc
@@ -5465,7 +5422,7 @@ class Reconstructor:
 
                 # remove aptitude lock and crash logs
                 subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/var/lib/apt/lists/lock"))
-                subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/var/crash/*"))
+                subprocess.getoutput('find ' + os.path.join(self.customDir, "root/var/crash/") + " -mindepth 1 -delete ")
 
                 # remove some history files
                 print(_("Cleaning bash history..."))
