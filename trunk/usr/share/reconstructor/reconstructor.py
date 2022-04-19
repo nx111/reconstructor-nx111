@@ -450,7 +450,7 @@ class Reconstructor:
     def checkChroot(self, oem = False):
         print(_('Checking Chroot ...'))
 
-        self.varRunDir = os.path.join(self.customDir, "root" + os.path.realpath(os.path.join(self.customDir,"root","var/run")))
+        self.varRunDir = os.path.join(os.path.realpath(os.path.join(self.customDir,"root" + "/var/run")))
 
         # check polkit rules for running pkexec gedit/nautilus
         if apt_pkg.version_compare(self.cdUbuntuVersion, '18.04') >= 0:
@@ -2287,7 +2287,7 @@ class Reconstructor:
                 #mount /var/run/dbus
                 print(_("Mounting /var/run/dbus filesystem..."))
                 if not os.path.exists(os.path.join(self.customDir, "root" + self.varRunDir + "/dbus")):
-                    subprocess.getoutput("mkdir " + os.path.join(self.customDir, "root" + self.varRunDir + "/dbus"))
+                    subprocess.getoutput("mkdir -p " + os.path.join(self.customDir, "root" + self.varRunDir + "/dbus"))
                 subprocess.getoutput('mount --bind ' + os.path.realpath("/var/run") + '/dbus \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/dbus") + '\"')
                 #mount /dev
                 print(_("Mounting /dev filesystem..."))
@@ -2610,7 +2610,7 @@ class Reconstructor:
             #mount /var/run/dbus
             print(_("Mounting /run/dbus filesystem..."))
             if not os.path.exists(os.path.join(self.customDir, "root" + self.varRunDir + "/dbus")):
-                subprocess.getoutput("mkdir " + (os.path.join(self.customDir, "root" + self.varRunDir + "/dbus")))
+                subprocess.getoutput("mkdir -p " + (os.path.join(self.customDir, "root" + self.varRunDir + "/dbus")))
             subprocess.getoutput('mount --bind /var/run/dbus \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/dbus") + '\"')
             # mount /dev
             print(_("Mounting /dev filesystem..."))
