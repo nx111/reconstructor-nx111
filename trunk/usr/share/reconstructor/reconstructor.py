@@ -2301,6 +2301,11 @@ class Reconstructor:
                 #mount /dev/pts
                 print(_("Mounting /dev/pts filesystem..."))
                 subprocess.getoutput('mount none -t devpts \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
+                #mkdir /var/lock
+                if not os.path.exists(os.path.join(self.customDir, "root/var/lock")) or not os.path.isdir(os.path.join(self.customDir, "root/var/lock")):
+                    if os.path.exists(os.path.join(self.customDir, "root/var/lock")):
+                        os.remove(os.path.join(self.customDir, "root/var/lock"))
+                    os.mkdir(os.path.join(self.customDir, "root/var/lock"))
                 # copy apt.conf
                 if not os.path.exists(os.path.join(self.customDir, "root/etc/apt/apt.conf.d/")):
                     print(_("Copying apt configuration..."))
