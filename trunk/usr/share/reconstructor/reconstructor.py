@@ -210,6 +210,7 @@ class Reconstructor:
         #self.startupDaemons = ('ppp', 'hplip', 'cupsys', 'festival', 'laptop-mode', 'nvidia-kernel', 'rsync', 'bluez-utils', 'mdadm')
         # shutdown scripts - without the 'K' for looping -- see  https://wiki.ubuntu.com/Teardown  for explanation
         self.shutdownScripts = ('11anacron', '11atd', '19cupsys', '20acpi-support', '20apmd', '20bittorrent', '20dbus', '20festival', '20hotkey-setup', '20makedev', '20nvidia-kernel', '20powernowd', '20rsync', '20ssh', '21acpid', '21hplip', '74bluez-utils', '88pcmcia', '88pcmciautils', '89klogd', '90syslogd')
+        self.keepPackages = ('dbus-x11','cryptsetup', 'cryptsetup-bin', 'cryptsetup-initramfs', 'dpkg-repack', 'efibootmgr', 'gparted', 'gparted-common', 'ibus-libpinyin', 'ibus-table-wubi', 'libpinyin-data', 'libpinyin13', 'rdate')
 
         APPDOMAIN='reconstructor'
         LANGDIR='lang'
@@ -5420,6 +5421,10 @@ class Reconstructor:
                 subprocess.check_output('chroot \"' + os.path.join(self.customDir, "root/") + '\"' + q + ' > \"' + os.path.join(self.customDir, "remaster/casper/filesystem.manifest") + '\"', shell=True )
                 subprocess.getoutput('cp -f \"' + os.path.join(self.customDir, "remaster/casper/filesystem.manifest") + '\" \"' + os.path.join(self.customDir, "remaster/casper/filesystem.manifest-desktop") + '\"')
 
+                print(_("Updating filesystem.manifest-remove..."))
+                for p in self.keepPackages:
+                    if os.path.exists(os.path.join(self.customDir, "remaster/casper/filesystem.manifest-remove")):
+                        subprocess.getoutput("sed -e \"/" + p + ":\\{0,1\\}/d\" -i " +  os.path.join(self.customDir, "remaster/casper/filesystem.manifest-remove"))
                 # check for existing squashfs root
                 if os.path.exists(os.path.join(self.customDir, "remaster/casper/filesystem.squashfs")):
                     print(_("Removing existing SquashFS root..."))
