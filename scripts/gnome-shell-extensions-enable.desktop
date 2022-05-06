@@ -1,4 +1,0 @@
-[Desktop Entry]
-Name=enable gnome-shell extension lunar_calendar/unredirect
-Exec=/usr/local/bin/gnome-shell-extensions-enable.sh
-Type=Application
