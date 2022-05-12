@@ -210,7 +210,7 @@ class Reconstructor:
         #self.startupDaemons = ('ppp', 'hplip', 'cupsys', 'festival', 'laptop-mode', 'nvidia-kernel', 'rsync', 'bluez-utils', 'mdadm')
         # shutdown scripts - without the 'K' for looping -- see  https://wiki.ubuntu.com/Teardown  for explanation
         self.shutdownScripts = ('11anacron', '11atd', '19cupsys', '20acpi-support', '20apmd', '20bittorrent', '20dbus', '20festival', '20hotkey-setup', '20makedev', '20nvidia-kernel', '20powernowd', '20rsync', '20ssh', '21acpid', '21hplip', '74bluez-utils', '88pcmcia', '88pcmciautils', '89klogd', '90syslogd')
-        self.keepPackages = ('dbus-x11','cryptsetup', 'cryptsetup-bin', 'cryptsetup-initramfs', 'dpkg-repack', 'efibootmgr', 'gparted', 'gparted-common', 'ibus-libpinyin', 'ibus-table-wubi', 'libpinyin-data', 'libpinyin13', 'rdate')
+        self.keepPackages = ('dbus-x11','cifs-utils', 'cryptsetup', 'cryptsetup-bin', 'cryptsetup-initramfs', 'dpkg-repack', 'efibootmgr', 'gparted', 'gparted-common', 'ibus-libpinyin', 'ibus-table-wubi', 'keyutils', 'libpinyin-data', 'libpinyin13', 'lvm2', 'rdate')
 
         APPDOMAIN='reconstructor'
         LANGDIR='lang'
