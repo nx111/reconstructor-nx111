@@ -453,6 +453,55 @@ class Reconstructor:
 
         self.varRunDir = os.path.join(os.path.realpath(os.path.join(self.customDir,"root" + "/var/run")))
 
+        # check vmlinuz and initrd
+        print('Check Chroot ...')
+        kernelFileReady = False
+        kernelVersion = ''
+        kernelFile = ''
+        if os.path.exists(os.path.join(self.customDir,'remaster','isolinux')):
+            casper_initrd_file=subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+            casper_vmlinuz_file=subprocess.getoutput("grep \"\W*kernel\W\+/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*kernel\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+        elif os.path.exists(os.path.join(self.customDir,"remaster/boot/grub/grub.cfg")):
+            casper_initrd_file=subprocess.getoutput("grep \"\W*initrd\s\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*initrd\s\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+            casper_vmlinuz_file=subprocess.getoutput("grep \"\W*linux\W\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*linux\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+
+        #print('casper_initrd_file=' + casper_initrd_file)
+        if os.path.lexists(os.path.join(self.customDir,"root/boot/vmlinuz")):
+            kernelFile = subprocess.getoutput("readlink " + os.path.join(self.customDir,"root/boot/vmlinuz"))
+        elif os.path.lexists(os.path.join(self.customDir,"root/vmlinuz")):
+            kernelFile = subprocess.getoutput("readlink " + os.path.join(self.customDir,"root/boot/vmlinuz"))
+
+        if kernelFile != '':
+            kernelVersion = subprocess.getoutput("basename " + kernelFile +" | sed -e 's/vmlinuz-//'")
+        if kernelVersion == '':
+            kernelVersion = self.find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"), oem)
+        #print('kernelVersion:'+kernelVersion + " kernelFile:" + kernelFile)
+        if kernelVersion != '':
+            if not os.path.exists(os.path.join(self.customDir,"root/boot/vmlinuz-"+kernelVersion)):
+                if os.path.exists(os.path.join(self.customDir,"remaster/casper", casper_vmlinuz_file)):
+                     subprocess.getoutput('cp '+ os.path.join(self.customDir,"remaster/casper", casper_vmlinuz_file) + ' ' +  os.path.join(self.customDir,"root/boot/vmlinuz-"+kernelVersion))
+            if not os.path.exists(os.path.join(self.customDir,"root/boot/initrd.img-"+kernelVersion)):
+                if os.path.exists(os.path.join(self.customDir,"remaster/casper", casper_initrd_file)):
+                    subprocess.getoutput('cp '+ os.path.join(self.customDir,"remaster/casper", casper_initrd_file) + ' ' +  os.path.join(self.customDir,"root/boot/initrd.img-"+kernelVersion))
+            if kernelFile:
+                if os.path.exists(os.path.join(self.customDir,"root/boot/"+kernelFile)):
+                    kernelFileReady = True
+            if kernelFileReady == True:
+                #print('Recreate Kernel File Link....')
+                if os.path.exists(os.path.join(self.customDir,"root/boot/vmlinuz")):
+                    os.remove(os.path.join(self.customDir, "root/boot/vmlinuz"))
+                    os.symlink('vmlinuz-' + kernelVersion, os.path.join(self.customDir, "root/boot/vmlinuz"))
+                if os.path.exists(os.path.join(self.customDir,"root/vmlinuz")):
+                    os.remove(os.path.join(self.customDir, "root/vmlinuz"))
+                    os.symlink('boot/vmlinuz-' + kernelVersion, os.path.join(self.customDir, "root/vmlinuz"))
+
+                if os.path.exists(os.path.join(self.customDir,"root/boot/initrd.img")):
+                    os.remove(os.path.join(self.customDir, "root/boot/initrd.img"))
+                    os.symlink('initrd.img-' + kernelVersion, os.path.join(self.customDir, "root/boot/initrd.img"))
+                if os.path.exists(os.path.join(self.customDir,"root/initrd.img")):
+                    os.remove(os.path.join(self.customDir, "root/initrd.img"))
+                    os.symlink('boot/initrd.img-' + kernelVersion, os.path.join(self.customDir, "root/initrd.img"))
+
         # check polkit rules for running pkexec gedit/nautilus
         if apt_pkg.version_compare(self.cdUbuntuVersion, '18.04') >= 0:
             mydir=os.path.split(os.path.realpath(__file__))[0]
@@ -2424,7 +2473,7 @@ class Reconstructor:
                     #clean /var/log
                     if silentMode == False:
                         print(_("Clean /var/log ..."))
-                    subprocess.getoutput('find \"' + os.path.join(self.customDir, "root/var/log/") + '\" -mindepth 1  -not -path ' + os.path.join(self.customDir, "root/var/log/apt") + ' -not -path \"' + os.path.join(self.customDir, "root/var/log/apt/*\"") + ' -not -path ' + os.path.join(self.customDir, "root/var/log/aptitude") + ' -delete')
+                    subprocess.getoutput('find \"' + os.path.join(self.customDir, "root/var/log/") + '\" -mindepth 1  -not -path ' + os.path.join(self.customDir, "root/var/log/apt") + ' -not -path \"' + os.path.join(self.customDir, "root/var/log/apt/*\"") + ' -not -path ' + os.path.join(self.customDir, "root/var/log/aptitude") + os.path.join(self.customDir, "root/var/log/samba") + ' -delete')
 
                     #clean other ...
                     subprocess.getoutput('find \"' + os.path.join(self.customDir, "root/var/crash/") +'\" -type f -delete')
@@ -4467,6 +4516,7 @@ class Reconstructor:
     def customize(self):
         print(_("INFO: Customizing..."))
         # check user entered password first, so user doesn't have to wait
+        chroot_kernel_cleaned = False
         if self.checkUserPassword() == False:
             print(_('User passwords do not match.'))
             # show warning dlg
@@ -4545,6 +4595,7 @@ class Reconstructor:
                     time.sleep(2)
                     yield True
                 self.postLiveCDKernel(kver, oem = True)
+                chroot_kernel_cleaned = True
             self.showProgress(False,0.65)
             yield True
             #Intentionally reset the GUI checkbutton in case the user clicks apply again.
@@ -4942,8 +4993,12 @@ class Reconstructor:
                 self.suggestReboot('/proc could not be unmounted. It must be unmounted before you can build an ISO.')
             self.setDefaultCursor()
             self.setPage(self.pageLiveBuild)
-
-
+            
+            # clean kernel in chroot
+            if chroot_kernel_cleaned == False:
+                postLiveCdKernel()
+                postLiveCdKernel(oem = True)
+                chroot_kernel_cleaned = True
 
 
 # ---------- Customize Alternate ----- #
