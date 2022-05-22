@@ -454,7 +454,6 @@ class Reconstructor:
         self.varRunDir = os.path.join(os.path.realpath(os.path.join(self.customDir,"root" + "/var/run")))
 
         # check vmlinuz and initrd
-        print('Check Chroot ...')
         kernelFileReady = False
         kernelVersion = ''
         kernelFile = ''
@@ -4446,6 +4445,9 @@ class Reconstructor:
             if orig_initrd_main != "" and os.path.exists(os.path.join(orig_initrd_main, "conf/conf.d/default-boot-to-casper.conf")) \
                     and not os.path.exists(os.path.join(self.customDir, "root/usr/share/initramfs-tools/conf.d/default-boot-to-casper.conf")):
                 subprocess.getoutput('cp -a ' + os.path.join(orig_initrd_main, "conf/conf.d/default-boot-to-casper.conf") + ' ' + os.path.join(self.customDir, "root/usr/share/initramfs-tools/conf.d/"))
+            if os.path.exists(os.path.join(self.customDir, "root/usr/lib/modules/" + kver + "/kernel/fs/exfat/exfat.ko")) \
+                    and '0' == subprocess.getoutput('grep -c exfat ' + os.path.join(self.customDir, "root/etc/initramfs-tools/modules")):
+                subprocess.getoutput('echo exfat >> ' + os.path.join(self.customDir, "root/etc/initramfs-tools/modules"))
             print('Updating init Kernel ' + kver + ' for Live CD ...')
             subprocess.getoutput('mount -t proc none ' + os.path.join(self.customDir, "root/proc"))
             subprocess.getoutput('mount --bind /dev ' + os.path.join(self.customDir, "root/dev"))
