@@ -56,6 +56,7 @@ list_remove_files(){
 	thunderbird-locale-zh-cn
 	thunderbird-locale-zh-tw
 	thunderbird-locale-zh-hant
+	totem
 	language-pack-de-base
 	language-pack-gnome-es-base
 	language-pack-es-base
@@ -80,12 +81,6 @@ list_remove_files(){
 	language-pack-ru
 	language-pack-gnome-de
 	language-pack-de
-	gnome-getting-started-docs-ru
-	gnome-getting-started-docs-pt
-	gnome-getting-started-docs-de
-	gnome-getting-started-docs-es
-	gnome-getting-started-docs-fr
-	gnome-getting-started-docs-it
 	gnome-user-docs-de
 	gnome-user-docs-es
 	gnome-user-docs-fr
@@ -102,7 +97,6 @@ list_remove_files(){
 	libreoffice-help-pt-br
 	libreoffice-help-ru
 	libreoffice-help-zh-tw
-	gnome-getting-started-docs
 EOF
 }
 
@@ -121,19 +115,15 @@ cat << EOF
 	winetricks
 	mono-complete
 	compizconfig-settings-manager
-	gstreamer1.0-libav
-	gstreamer1.0-nice
-	gstreamer1.0-plugins-bad
-	gstreamer1.0-plugins-ugly
 	cpufreqd
 	openjdk-11-jdk
 	gawk
+	gnome-mpv
 	brasero
 	cmake
 	gimp
 	gucharmap
 	dconf-editor
-	gconf-editor
 	gettext
 	xterm
 	refind
@@ -146,7 +136,7 @@ cat << EOF
 	git-gui
 	wimtools
 	exfat-fuse
-	exfat-utils
+	exfatprogs
 	f2fs-tools
 	add-apt-key
 	checkinstall
@@ -154,9 +144,9 @@ cat << EOF
 	k3b
 	udfclient
 	udftools
-	android-tools-adb
-	android-tools-fastboot
-	android-tools-mkbootimg
+	adb
+	fastboot
+	mkbootimg
 	apktool
 	grub-efi-amd64-signed
 	fbreader
@@ -186,7 +176,7 @@ cat << EOF
 	testdisk
 	traceroute
 	libstdc++6:i386
-	libgtk3-nocsd:i386
+	libgtk3-nocsd0
 	libreoffice-base
 EOF
 }
@@ -198,6 +188,7 @@ done
 
 echo "apt purge $remove_files ..."
 apt purge -y $remove_files
+add-apt-repository ppa:mozillateam/ppa
 dpkg --add-architecture i386
 apt update
 install_files=""
