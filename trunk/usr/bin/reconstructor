@@ -1,8 +1,11 @@
 #!/bin/sh
 if [ `id -u` -eq 0 ]; then
-   /usr/share/reconstructor/reconstructor.py
+   ROOTPREFIX=
 elif [ _`which gksu` != _ ]; then
-   gksu /usr/share/reconstructor/reconstructor.py
+   ROOTPREFIX=gksu
+elif [ _`which pkexec` != _ ]; then
+   ROOTPREFIX=pkexec
 else
-   pkexec /usr/share/reconstructor/reconstructor.py
+   ROOTPREFIX=sudo
 fi
+$ROOTPREFIX /usr/share/reconstructor/reconstructor.py
