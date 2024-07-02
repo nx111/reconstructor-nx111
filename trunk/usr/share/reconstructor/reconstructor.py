@@ -162,19 +162,19 @@ class Reconstructor:
         self.modUpdateUrlKey = 'RMOD_UPDATE_URL'
         self.modules =  {}
 
-        self.regexUbuntuVersion = '^DISTRIB_RELEASE=([0-9.]+)\n'
-        self.regexModEngine = '^RMOD_ENGINE=([A-Za-z0-9.\s\w]+)\n'
-        self.regexModCategory = '^RMOD_CATEGORY=([A-Za-z0-9\'\"\w]+)\s'
-        self.regexModSubCategory = '^RMOD_SUBCATEGORY=([A-Za-z0-9\'\"\w]+)\s'
-        self.regexModName = '^RMOD_NAME=([A-Za-z0-9.\-\&\,\*\/\(\)\'\"\s\w]+)\n'
-        self.regexModAuthor = '^RMOD_AUTHOR=([A-Za-z0-9.\(\)\'\":\s\w]+)\n'
-        self.regexModDescription = '^RMOD_DESCRIPTION=([A-Za-z0-9.\-\&\*\_\,\/\\(\)\'\"\s\w]+)\n'
-        self.regexModVersion = '^RMOD_VERSION=([A-Za-z0-9.\s\w]+)\s'
-        self.regexModRunInChroot = '^RMOD_RUN_IN_CHROOT=([A-Za-z0-9\w]+)\s'
-        self.regexModUpdateUrl = '^RMOD_UPDATE_URL=([A-Za-z0-9:.\-\&\*\_\,\/\\(\)\'\"\s\w]+)\n'
-        self.regexUbuntuAltCdVersion = '^[a-zA-Z0-9-.]*\s+([0-9.]+)\s+'
-        self.regexUbuntuAltCdInfo = '([\w-]+)\s+(\d+.\d+)\s+\D+Release\s(\w+)\s+'
-        self.regexUbuntuAltPackages = '^Package:\s+(\S*)\n'
+        self.regexUbuntuVersion = r'^DISTRIB_RELEASE=([0-9.]+)\n'
+        self.regexModEngine = r'^RMOD_ENGINE=([A-Za-z0-9.\s\w]+)\n'
+        self.regexModCategory = r'^RMOD_CATEGORY=([A-Za-z0-9\'\"\w]+)\s'
+        self.regexModSubCategory = r'^RMOD_SUBCATEGORY=([A-Za-z0-9\'\"\w]+)\s'
+        self.regexModName = r'^RMOD_NAME=([A-Za-z0-9.\-\&\,\*\/\(\)\'\"\s\w]+)\n'
+        self.regexModAuthor = r'^RMOD_AUTHOR=([A-Za-z0-9.\(\)\'\":\s\w]+)\n'
+        self.regexModDescription = r'^RMOD_DESCRIPTION=([A-Za-z0-9.\-\&\*\_\,\/\\(\)\'\"\s\w]+)\n'
+        self.regexModVersion = r'^RMOD_VERSION=([A-Za-z0-9.\s\w]+)\s'
+        self.regexModRunInChroot = r'^RMOD_RUN_IN_CHROOT=([A-Za-z0-9\w]+)\s'
+        self.regexModUpdateUrl = r'^RMOD_UPDATE_URL=([A-Za-z0-9:.\-\&\*\_\,\/\\(\)\'\"\s\w]+)\n'
+        self.regexUbuntuAltCdVersion = r'^[a-zA-Z0-9-.]*\s+([0-9.]+)\s+'
+        self.regexUbuntuAltCdInfo = r'([\w-]+)\s+(\d+.\d+)\s+\D+Release\s(\w+)\s+'
+        self.regexUbuntuAltPackages = r'^Package:\s+(\S*)\n'
 
         self.iterCategoryAdministration = None
         self.iterCategoryEducation = None
@@ -424,10 +424,10 @@ class Reconstructor:
                 full_path = os.path.join(base, item)
                 if re.match(r'[0-9]+[0-9.-]+', item) and os.path.isdir(full_path):
                    if re.search('-oem$',item) != None:
-                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',item))<0:
+                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*',r'\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*',r'\g<1>',item))<0:
                              oem_ver=item
                    if re.search('-oem$',item) == None:
-                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',item))<0:
+                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*',r'\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*',r'\g<1>',item))<0:
                              ver=item
         else:                  #if re.search('/boot$', base) != None:
             re_file = re.compile("initrd.img[-]")
@@ -438,11 +438,11 @@ class Reconstructor:
                 if re_file.match(item) and os.path.isfile(full_path):
                    if re.search('-oem$',item) != None:
                         ver1=re_file.sub('',item)
-                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver1))<0:
+                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*',r'\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*',r'\g<1>',ver1))<0:
                              oem_ver=ver1
                    if re.search('-oem$',item) == None:
                         ver1=re_file.sub('',item)
-                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*','\g<1>',ver1))<0:
+                        if apt_pkg.version_compare(re.sub(r'([0-9\.]+-\d{2}).*',r'\g<1>',ver),re.sub(r'([0-9\.]+-\d{2}).*',r'\g<1>',ver1))<0:
                              ver=ver1
         if oem == True:
             ver = oem_ver
@@ -458,11 +458,11 @@ class Reconstructor:
         kernelVersion = ''
         kernelFile = ''
         if os.path.exists(os.path.join(self.customDir,'remaster','isolinux')):
-            casper_initrd_file=subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
-            casper_vmlinuz_file=subprocess.getoutput("grep \"\W*kernel\W\+/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*kernel\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+            casper_initrd_file=subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*initrd=\\/casper\\/\\([[:alnum:].]\\{1,\\}\\).*/\\1/g\"")
+            casper_vmlinuz_file=subprocess.getoutput("grep \"\\W*kernel\\W\\+/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*kernel\\W\\+\\/casper\\/\\([[:alnum:].]\\{1,\\}\\).*/\\1/g\"")
         elif os.path.exists(os.path.join(self.customDir,"remaster/boot/grub/grub.cfg")):
-            casper_initrd_file=subprocess.getoutput("grep \"\W*initrd\s\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*initrd\s\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
-            casper_vmlinuz_file=subprocess.getoutput("grep \"\W*linux\W\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*linux\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+            casper_initrd_file=subprocess.getoutput("grep \"\\W*initrd\\s\\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*initrd\\s\\+\\/casper\\/\\([[:alnum:].]\\{1,\\}\\).*/\\1/g\"")
+            casper_vmlinuz_file=subprocess.getoutput("grep \"\\W*linux\\W\\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*linux\\W\\+\\/casper\\/\\([[:alnum:].]\\{1,\\}\\).*/\\1/g\"")
 
         #print('casper_initrd_file=' + casper_initrd_file)
         if os.path.lexists(os.path.join(self.customDir,"root/boot/vmlinuz")):
@@ -614,7 +614,7 @@ class Reconstructor:
             f.close()
 
             print('Ubuntu Version: ' + self.cdUbuntuVersion)
-            self.cdUbuntuVersionNum = float(re.sub(r'^(\d+\.\d+)\D*.*','\g<1>',self.cdUbuntuVersion))
+            self.cdUbuntuVersionNum = float(re.sub(r'^(\d+\.\d+)\D*.*',r'\g<1>',self.cdUbuntuVersion))
             # BUGFIX - fixes string from getting longer and longer and longer...
             self.builder.get_object("labelCustomizeUbuntuLiveVersion").set_text("Ubuntu Live CD Version: " + self.cdUbuntuVersion)
         return
@@ -2355,6 +2355,10 @@ class Reconstructor:
                     if os.path.exists(os.path.join(self.customDir, "root/var/lock")):
                         os.remove(os.path.join(self.customDir, "root/var/lock"))
                     os.mkdir(os.path.join(self.customDir, "root/var/lock"))
+                else:
+                    if not os.path.exists(os.path.join(self.customDir, "root/run/lock")):
+                        os.mkdir(os.path.join(self.customDir,"root/run/lock"))
+                    subprocess.getoutput('mount none -t tmpfs \"' + os.path.join(self.customDir, "root/run/lock") + '\"')
                 # copy apt.conf
                 if not os.path.exists(os.path.join(self.customDir, "root/etc/apt/apt.conf.d/")):
                     print(_("Copying apt configuration..."))
@@ -2400,6 +2404,15 @@ class Reconstructor:
             if self.customDir != '' and ( self.TerminalInitialized == True or forceMode == True ):
                 subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/var/lib/dpkg/lock"))   
                 subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/var/lib/apt/lists/lock"))
+
+                # umount /run/lock
+                if self.isMounted(os.path.join(self.customDir, "root/run/lock")):
+                    if silentMode == False:
+                        print(_("Umounting /run/lock..."))
+                    error = subprocess.getoutput('umount  \"' + os.path.join(self.customDir, "root/run/lock") + '\"')
+                    if(error != ''):
+                        print("error=\""+error+"\"")
+                        self.suggestReboot('/run/lock could not be unmounted. It must be unmounted before you can build an ISO.')
                 # umount /dev/pts
                 if self.isMounted(os.path.join(self.customDir, "root/dev/pts")):
                     if silentMode == False:
@@ -2776,11 +2789,11 @@ class Reconstructor:
                 # set live cd info
                 f = open(os.path.join(self.customDir, "initrd/scripts/casper"), 'r')
                 # regex for username
-                reUsername = re.compile('USERNAME=\S+', re.IGNORECASE)
+                reUsername = re.compile(r'USERNAME=\S+', re.IGNORECASE)
                 # regex for user full name
-                reFullname = re.compile('USERFULLNAME=\S+', re.IGNORECASE)
+                reFullname = re.compile(r'USERFULLNAME=\S+', re.IGNORECASE)
                 # regex for hostname
-                reHost = re.compile('HOST=\S+', re.IGNORECASE)
+                reHost = re.compile(r'HOST=\S+', re.IGNORECASE)
                 # search
                 for l in f:
                     if reUsername.search(l) != None:
@@ -2808,11 +2821,11 @@ class Reconstructor:
                 # set live cd info
                 f = open(os.path.join(self.customDir, "initrd/etc/casper.conf"), 'r')
                 # regex for username
-                reUsername = re.compile('export\sUSERNAME=\S+', re.IGNORECASE)
+                reUsername = re.compile(r'export\sUSERNAME=\S+', re.IGNORECASE)
                 # regex for user full name
-                reFullname = re.compile('export\sUSERFULLNAME=\S+', re.IGNORECASE)
+                reFullname = re.compile(r'export\sUSERFULLNAME=\S+', re.IGNORECASE)
                 # regex for hostname
-                reHost = re.compile('export\sHOST=\S+', re.IGNORECASE)
+                reHost = re.compile(r'export\sHOST=\S+', re.IGNORECASE)
                 # search
                 for l in f:
                     if reUsername.search(l) != None:
@@ -2865,7 +2878,7 @@ class Reconstructor:
             if adduser_script != "":
                 fp = open(adduser_script, 'r')
                 # regex for username
-                rePassword = re.compile('set passwd/user-password-crypted\s\w+', re.IGNORECASE)
+                rePassword = re.compile(r'set passwd/user-password-crypted\s\w+', re.IGNORECASE)
                 conf = ''
                 # search
                 for l in fp:
@@ -2940,7 +2953,7 @@ class Reconstructor:
 
                 f.close()
                 # color regex
-                r = re.compile('\w+-\w+\s\d\w(\w+)', re.IGNORECASE)
+                r = re.compile(r'\w+-\w+\s\d\w(\w+)', re.IGNORECASE)
                 m = r.match(line)
                 if m != None:
                     color = m.group(1)
@@ -2984,7 +2997,7 @@ class Reconstructor:
 
                     f.close()
                 # color regex
-                r = re.compile('\w+=#(\w+)', re.IGNORECASE)
+                r = re.compile(r'\w+=#(\w+)', re.IGNORECASE)
                 m = r.match(line)
                 if m != None:
                     color = m.group(1)
@@ -4228,9 +4241,9 @@ class Reconstructor:
             self.setBusyCursor()
             initramfile=""
             if (os.path.exists(os.path.join(self.customDir, "remaster/isolinux"))):
-                initramfile=subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,"remaster/isolinux") + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+                initramfile=subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,"remaster/isolinux") + " | head -n 1 | sed -e \"s/.*initrd=\\/casper\\/\\([[:alnum:].]\\{1,\\}\\).*/\\1/g\"")
             elif (os.path.exists(os.path.join(self.customDir, "remaster/boot/grub/grub.cfg"))):
-                initramfile=subprocess.getoutput("grep \"initrd\s\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub/grub.cfg") + " | head -n 1 | sed -e \"s/\s*initrd\s\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+                initramfile=subprocess.getoutput("grep \"initrd\\s\\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub/grub.cfg") + " | head -n 1 | sed -e \"s/\\s*initrd\\s\\+\\/casper\\/\\([[:alnum:].]\\{1,\\}\\).*/\\1/g\"")
             #print("initramfile=" + initramfile)
             if (os.path.exists(os.path.join(self.customDir ,'remaster/casper', initramfile))):
                 subprocess.getoutput('unmkinitramfs ' + os.path.join(self.customDir ,'remaster/casper', initramfile) + ' ' + os.path.join(self.customDir, "initrd"))
@@ -4463,11 +4476,11 @@ class Reconstructor:
         if kver == "":
             kver = self.find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"), oem = oem)
         if oem == False and os.path.exists(os.path.join(self.customDir,'remaster','isolinux')):
-            casper_initrd_file = subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*initrd=\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
-            casper_vmlinuz_file = subprocess.getoutput("grep \"\W*kernel\W\+/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*kernel\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+            casper_initrd_file = subprocess.getoutput("grep \"initrd=/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*initrd=\\/casper\\/\\([[:alnum:].]\\{1,\\}\\).*/\\1/g\"")
+            casper_vmlinuz_file = subprocess.getoutput("grep \"\\W*kernel\\W\\+/casper/\" -Ir " + os.path.join(self.customDir,'remaster','isolinux') + " | head -n 1 | sed -e \"s/.*kernel\\W\\+\\/casper\\/\\([[:alnum:].]\\{1,\\}\\).*/\\1/g\"")
         elif oem == False and os.path.exists(os.path.join(self.customDir,"remaster/boot/grub/grub.cfg")):
-            casper_initrd_file = subprocess.getoutput("grep \"initrd\s\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*\s*initrd\s\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
-            casper_vmlinuz_file = subprocess.getoutput("grep \"\W*linux\W\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*linux\W\+\/casper\/\([[:alnum:].]\\{1,\\}\).*/\\1/g\"")
+            casper_initrd_file = subprocess.getoutput("grep \"initrd\\s\\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*\\s*initrd\\s\\+\\/casper\\/\\([[:alnum:].]\\{1,\\}\\).*/\\1/g\"")
+            casper_vmlinuz_file = subprocess.getoutput("grep \"\\W*linux\\W\\+/casper/\" -Ir " + os.path.join(self.customDir,"remaster/boot/grub") + " | head -n 1 | sed -e \"s/.*linux\\W\\+\\/casper\\/\\([[:alnum:].]\\{1,\\}\\).*/\\1/g\"")
 
         kver=self.find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"), oem = oem)
 
@@ -5282,7 +5295,7 @@ class Reconstructor:
                     subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.tmpDir) + '\"')
                     subprocess.getoutput('cat override.'+ self.ubuntuCodename + '.extra.main | egrep -v \' Task \' > override.' + self.ubuntuCodename + '.extra2.main')
                     subprocess.getoutput('cd \"' + os.path.join(self.customDir, self.altRemasterDir) + '\"')
-                    subprocess.getoutput('cat dists/' + self.ubuntuCodename + '/main/binary-' + self.altCdUbuntuArch + '/Packages | perl -e \'while (<>) { chomp; if(/^Package\:\s*(.+)$/) { $pkg=$1; } elsif(/^Task\:\s(.+)$/) { print(\"$pkg\tTask\t$1\n\"); } }\' >> ' + os.path.join(self.customDir, self.tmpDir) + '/override.' + self.ubuntuCodename + '.extra2.main')
+                    subprocess.getoutput('cat dists/' + self.ubuntuCodename + '/main/binary-' + self.altCdUbuntuArch + '/Packages | perl -e \'while (<>) { chomp; if(/^Package\\:\\s*(.+)$/) { $pkg=$1; } elsif(/^Task\\:\\s(.+)$/) { print(\"$pkg\tTask\t$1\n\"); } }\' >> ' + os.path.join(self.customDir, self.tmpDir) + '/override.' + self.ubuntuCodename + '.extra2.main')
 
                 # download ubuntu keyring
                 # move old sources.list apt file
