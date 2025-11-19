@@ -163,6 +163,7 @@ class Reconstructor:
         self.modules =  {}
 
         self.regexUbuntuVersion = r'^DISTRIB_RELEASE=([0-9.]+)\n'
+        self.regexUbuntuVersion2 = r'.*\s([0-9.]+)\s.*'
         self.regexModEngine = r'^RMOD_ENGINE=([A-Za-z0-9.\s\w]+)\n'
         self.regexModCategory = r'^RMOD_CATEGORY=([A-Za-z0-9\'\"\w]+)\s'
         self.regexModSubCategory = r'^RMOD_SUBCATEGORY=([A-Za-z0-9\'\"\w]+)\s'
@@ -202,6 +203,7 @@ class Reconstructor:
         self.TerminalInitialized = False
 
         self.varRunDir = "/var/run"
+        self.fileSystemSquashfs = "filesystem.squashfs"
 
         # time command for timing operations
         self.timeCmd = subprocess.getoutput('which time') + ' -f \"\nBuild Time: %E  CPU: %P\n\"'
@@ -606,13 +608,20 @@ class Reconstructor:
             # reset version
             self.cdUbuntuVersion = 'unknown'
             # build regex
-            r = re.compile(self.regexUbuntuVersion, re.IGNORECASE)
-            f = open(os.path.join(self.customDir, "root/etc/lsb-release"), 'r')
-            for l in f:
-                if r.match(l) != None:
-                    self.cdUbuntuVersion = r.match(l).group(1)
-            f.close()
-
+            if os.path.exists(os.path.join(self.customDir, "root/etc/lsb-release")):
+                r = re.compile(self.regexUbuntuVersion, re.IGNORECASE)
+                f = open(os.path.join(self.customDir, "root/etc/lsb-release"), 'r')
+                for l in f:
+                    if r.match(l) != None:
+                        self.cdUbuntuVersion = r.match(l).group(1)
+                f.close()
+            elif os.path.exists(os.path.join(self.customDir, "remaster/.disk/info")):
+                r = re.compile(self.regexUbuntuVersion2, re.IGNORECASE)
+                f = open(os.path.join(self.customDir, "remaster/.disk/info"), 'r')
+                for l in f:
+                    if r.match(l) != None:
+                        self.cdUbuntuVersion = r.match(l).group(1)
+                f.close
             print('Ubuntu Version: ' + self.cdUbuntuVersion)
             self.cdUbuntuVersionNum = float(re.sub(r'^(\d+\.\d+)\D*.*',r'\g<1>',self.cdUbuntuVersion))
             # BUGFIX - fixes string from getting longer and longer and longer...
@@ -2351,12 +2360,17 @@ class Reconstructor:
                 print(_("Mounting /dev/pts filesystem..."))
                 subprocess.getoutput('mount none -t devpts \"' + os.path.join(self.customDir, "root/dev/pts") + '\"')
                 #mkdir /var/lock
+                if not os.path.exists(os.path.join(self.customDir, "root/var")):
+                    os.mkdir(os.path.join(self.customDir, "root/var"));
+
                 if not os.path.exists(os.path.join(self.customDir, "root/var/lock")) or not os.path.isdir(os.path.join(self.customDir, "root/var/lock")):
                     if os.path.exists(os.path.join(self.customDir, "root/var/lock")):
                         os.remove(os.path.join(self.customDir, "root/var/lock"))
                     os.mkdir(os.path.join(self.customDir, "root/var/lock"))
                 else:
                     if not os.path.exists(os.path.join(self.customDir, "root/run/lock")):
+                        if not os.path.exists(os.path.join(self.customDir, "root/run")):
+                            os.mkdir(os.path.join(self.customDir, "root/run"));
                         os.mkdir(os.path.join(self.customDir,"root/run/lock"))
                     subprocess.getoutput('mount none -t tmpfs \"' + os.path.join(self.customDir, "root/run/lock") + '\"')
                 # copy apt.conf
@@ -2367,8 +2381,9 @@ class Reconstructor:
                 # copy wgetrc
                 print(_("Copying wgetrc configuration..."))
                 # backup
-                subprocess.getoutput('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\"')
-                subprocess.getoutput('cp -f /etc/wgetrc ' + os.path.join(self.customDir, "root/etc/wgetrc"))
+                if os.path.exists(os.path.join(self.customDir, "root/etc")):
+                    subprocess.getoutput('mv -f \"' + os.path.join(self.customDir, "root/etc/wgetrc") + '\" \"' + os.path.join(self.customDir, "root/etc/wgetrc.orig") + '\"')
+                    subprocess.getoutput('cp -f /etc/wgetrc ' + os.path.join(self.customDir, "root/etc/wgetrc"))
                 # HACK: create temporary script for chrooting
                 scr = '#!/bin/bash\n#\n#\t(c) reconstructor, 2006\n#\nchroot ' + os.path.join(self.customDir, "root/") + '\n'
                 f=open('/tmp/reconstructor-terminal.sh', 'w')
@@ -2425,7 +2440,7 @@ class Reconstructor:
                 if self.isMounted(os.path.join(self.customDir, "root/sys")):
                     if silentMode == False:
                         print(_("Umounting /sys..."))
-                    error = subprocess.getoutput('umount  \"' + os.path.join(self.customDir, "root/sys") + '\"')
+                    error = subprocess.getoutput('umount --lazy  \"' + os.path.join(self.customDir, "root/sys") + '\"')
                     if(error != ''):
                         print("error=\""+error+"\"")
                         self.suggestReboot('/sys could not be unmounted. It must be unmounted before you can build an ISO.')
@@ -2728,7 +2743,7 @@ class Reconstructor:
             # umount /sys
             print(_("Umounting /sys..."))
             if self.isMounted(os.path.join(self.customDir, "root/sys")):
-                error = subprocess.getoutput('umount -fR \"' + os.path.join(self.customDir, "root/sys") + '\"')
+                error = subprocess.getoutput('umount --lazy -fR \"' + os.path.join(self.customDir, "root/sys") + '\"')
             if(error != ''):
                 self.suggestReboot('/sys could not be unmounted. It must be unmounted before you can build an ISO.')
             # umount /proc
@@ -3295,7 +3310,12 @@ class Reconstructor:
             # subtract squashfs root
             if os.path.exists(os.path.join(self.customDir, "remaster/casper/filesystem.squashfs")):
                 squashSize = int(round(os.path.getsize(os.path.join(self.customDir, "remaster/casper/filesystem.squashfs"))/1024))
-
+            elif os.path.exists(os.path.join(self.customDir, "remaster/casper/minimal.squashfs")):
+                squashSize = int(round(os.path.getsize(os.path.join(self.customDir, "remaster/casper/minimal.squashfs"))/1024))
+                self.fileSystemSquashfs = "minimal.squashfs"
+            elif os.path.exists(os.path.join(self.customDir, "remaster/casper/base.squashfs")):
+                squashSize = int(round(os.path.getsize(os.path.join(self.customDir, "remaster/casper/base.squashfs"))/1024))
+                self.fileSystemSquashfs = "base.squashfs"
             remasterSize -= squashSize
             # get size of root dir
             rootSize = 0
@@ -4171,20 +4191,23 @@ class Reconstructor:
             # copy remaster files
             os.mkdir(os.path.join(self.customDir, "tmpsquash"))
             # mount squashfs root
-            print(_("Mounting squashfs..."))
-            subprocess.getoutput('mount -t squashfs -o loop ' + self.mountDir + '/casper/filesystem.squashfs \"' + os.path.join(self.customDir, "tmpsquash") + '\"')
-            print(_("Extracting squashfs root..."))
-            self.showProgress(_("Extracting squashfs root..."),0.10)
-            yield True
-            # copy squashfs root
-            self.setBusyCursor()
-            proc = subprocess.Popen('rsync -at --del --quiet \"' + os.path.join(self.customDir, "tmpsquash") + '\"/ \"' + os.path.join(self.customDir, "root/") + '\"', shell = True)
-            while proc is not None and proc.poll() is None:
-                time.sleep(2)
+            if not os.path.exists(self.mountDir + '/casper/filesystem.squashfs') and os.path.exists(self.mountDir + '/casper/minimal.squashfs'):
+                self.fileSystemSquashfs = 'minimal.squashfs'
+            if os.path.exists(os.path.join(self.mountDir,'casper', self.fileSystemSquashfs)):
+                print(_("Mounting squashfs..."))
+                subprocess.getoutput('mount -t squashfs -o loop ' + self.mountDir + '/casper/' + self.fileSystemSquashfs + ' \"' + os.path.join(self.customDir, "tmpsquash") + '\"')
+                print(_("Extracting squashfs root..."))
+                self.showProgress(_("Extracting squashfs root..."),0.10)
                 yield True
-            # umount tmpsquashfs
-            print(_("Unmounting tmpsquash..."))
-            subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "tmpsquash") + '\"')
+                # copy squashfs root
+                self.setBusyCursor()
+                proc = subprocess.Popen('rsync -at --del --quiet \"' + os.path.join(self.customDir, "tmpsquash") + '\"/ \"' + os.path.join(self.customDir, "root/") + '\"', shell = True)
+                while proc is not None and proc.poll() is None:
+                    time.sleep(2)
+                    yield True
+                # umount tmpsquashfs
+                print(_("Unmounting tmpsquash..."))
+                subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "tmpsquash") + '\"')
             # umount cdrom
             print(_("Unmounting cdrom..."))
             subprocess.getoutput("umount -lf " + self.mountDir)
@@ -4485,7 +4508,7 @@ class Reconstructor:
         kver=self.find_newest_kernel_version(os.path.join(self.customDir, "root/lib/modules"), oem = oem)
 
         if kver != '':
-            subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/sys") + '\"')
+            subprocess.getoutput('umount --lazy \"' + os.path.join(self.customDir, "root/sys") + '\"')
             subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/dev") + '\"')
             subprocess.getoutput('umount \"' + os.path.join(self.customDir, "root/proc") + '\"')
             if os.path.exists(os.path.join(self.customDir, "root/usr/share/initramfs-tools/conf.d/default-boot-to-casper.conf")):
@@ -5496,9 +5519,9 @@ class Reconstructor:
                     if os.path.exists(os.path.join(self.customDir, "remaster/casper/filesystem.manifest-remove")):
                         subprocess.getoutput("sed -e \"/" + p + ":\\{0,1\\}/d\" -i " +  os.path.join(self.customDir, "remaster/casper/filesystem.manifest-remove"))
                 # check for existing squashfs root
-                if os.path.exists(os.path.join(self.customDir, "remaster/casper/filesystem.squashfs")):
+                if os.path.exists(os.path.join(self.customDir, "remaster/casper", self.fileSystemSquashfs)):
                     print(_("Removing existing SquashFS root..."))
-                    subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "remaster/casper/filesystem.squashfs") + '\"')
+                    subprocess.getoutput('rm -Rf \"' + os.path.join(self.customDir, "remaster/casper", self.fileSystemSquashfs) + '\"')
 
                 # remove aptitude lock and crash logs
                 subprocess.getoutput('rm -f ' + os.path.join(self.customDir, "root/var/lib/apt/lists/lock"))
@@ -5531,15 +5554,15 @@ class Reconstructor:
                 if apt_pkg.version_compare(self.cdUbuntuVersion,'10.04')>0:
                         compStr="-comp xz"
                 if mksquashfs == '':
-                    proc = subprocess.Popen(self.timeCmd + ' mksquashfs \"' + os.path.join(self.customDir, "root/") + '\"' + ' \"' + os.path.join(self.customDir, "remaster/casper/filesystem.squashfs") + '\" ' + compStr, shell = True, stdout = None)
+                    proc = subprocess.Popen(self.timeCmd + ' mksquashfs \"' + os.path.join(self.customDir, "root/") + '\"' + ' \"' + os.path.join(self.customDir, "remaster/casper", self.fileSystemSquashfs) + '\" ' + compStr, shell = True, stdout = None)
                 else:
-                    proc = subprocess.Popen(self.timeCmd + ' ' + mksquashfs + ' \"' + os.path.join(self.customDir, "root/") + '\"' + ' \"' + os.path.join(self.customDir, "remaster/casper/filesystem.squashfs") + '\" '+ compStr, shell = True, stdout = None)
+                    proc = subprocess.Popen(self.timeCmd + ' ' + mksquashfs + ' \"' + os.path.join(self.customDir, "root/") + '\"' + ' \"' + os.path.join(self.customDir, "remaster/casper",self.fileSystemSquashfs) + '\" '+ compStr, shell = True, stdout = None)
                 while proc is not None and proc.poll() is None:
                     time.sleep(2)
                     yield True
                 self.showProgress(_("Finished Building SquashFS root"),0.85)
-                if os.path.exists(os.path.join(self.customDir, "remaster/casper/filesystem.squashfs")):
-                    self.squashSize = int(round(os.path.getsize(os.path.join(self.customDir, "remaster/casper/filesystem.squashfs"))/1024))
+                if os.path.exists(os.path.join(self.customDir, "remaster/casper",self.fileSystemSquashfs)):
+                    self.squashSize = int(round(os.path.getsize(os.path.join(self.customDir, "remaster/casper",self.fileSystemSquashfs))/1024))
 
                 yield True
 
