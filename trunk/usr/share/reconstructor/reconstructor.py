@@ -202,7 +202,7 @@ class Reconstructor:
         self.bootModulesEnabled = False
         self.TerminalInitialized = False
 
-        self.varRunDir = "/var/run"
+        self.varRunDir = os.path.realpath("/var/run")
         self.fileSystemSquashfs = "filesystem.squashfs"
 
         # time command for timing operations
@@ -453,7 +453,7 @@ class Reconstructor:
     def checkChroot(self, oem = False):
         print(_('Checking Chroot ...'))
 
-        self.varRunDir = os.path.join(os.path.realpath(os.path.join(self.customDir,"root" + "/var/run")))
+        #self.varRunDir = os.path.join(os.path.realpath(os.path.join(self.customDir,"root" + "/var/run")))
 
         # check vmlinuz and initrd
         kernelFileReady = False
@@ -2342,11 +2342,24 @@ class Reconstructor:
                 elif os.path.exists("/run/resolvconf/resolv.conf"):
                     print(_("Copying DNS info..."))
                     subprocess.getoutput('cp -L --remove-destination /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+                #mount /var/run/snapd.socket
+                '''
+                print(_("Mounting /var/run/snapd ..."))
+                if not os.path.exists(os.path.join(self.customDir, "root" + self.varRunDir, "snapd")):
+                    subprocess.getoutput("mkdir -p " + os.path.join(self.customDir, "root" + self.varRunDir, "snapd"))
+                subprocess.getoutput('touch ' + os.path.join(self.customDir, "root" + self.varRunDir, "snapd.socket"))
+                subprocess.getoutput('touch ' + os.path.join(self.customDir, "root" + self.varRunDir, "snapd-snap.socket"))
+                subprocess.getoutput('mount --bind ' + os.path.realpath("/var/run/snapd.socket") + ' \"' + os.path.join(self.customDir, "root" + self.varRunDir , "snapd.socket"))
+                subprocess.getoutput('mount --bind ' + os.path.realpath("/var/run/snapd-snap.socket") + ' \"' + os.path.join(self.customDir, "root" + self.varRunDir, "snapd-snap.socket"))
+                subprocess.getoutput('mount --bind ' + os.path.realpath("/var/run/snapd") + ' \"' + os.path.join(self.customDir, "root" + self.varRunDir, "snapd"))
+                '''
+
                 #mount /var/run/dbus
-                print(_("Mounting /var/run/dbus filesystem..."))
-                if not os.path.exists(os.path.join(self.customDir, "root" + self.varRunDir + "/dbus")):
-                    subprocess.getoutput("mkdir -p " + os.path.join(self.customDir, "root" + self.varRunDir + "/dbus"))
+                print(_("Mounting /var/run/dbus ..."))
+                if not os.path.exists(os.path.join(self.customDir, "root" + self.varRunDir, "dbus")):
+                    subprocess.getoutput("mkdir -p " + os.path.join(self.customDir, "root" + self.varRunDir, "dbus"))
                 subprocess.getoutput('mount --bind ' + os.path.realpath("/var/run") + '/dbus \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/dbus") + '\"')
+
                 #mount /dev
                 print(_("Mounting /dev filesystem..."))
                 subprocess.getoutput('mount --bind /dev \"' + os.path.join(self.customDir, "root/dev") + '\"')
@@ -2461,14 +2474,35 @@ class Reconstructor:
                     if(error != ''):
                         print("error=\""+error+"\"")
                         self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
+                # umount /var/run/snapd
+                '''
+                if self.isMounted(os.path.join(self.customDir, "root" + self.varRunDir + "/snapd")):
+                    if silentMode == False:
+                        print(_("Umounting " + self.varRunDir + "/snapd..."))
+                    error = subprocess.getoutput('umount  \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/snapd") + '\"')
+                    if(error != ''):
+                        print("error=\""+error+"\"")
+                        self.suggestReboot(self.varRunDir + '/snapd could not be unmounted. It must be unmounted before you can build an ISO.')
+                    error = subprocess.getoutput('rm  \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/snapd.socket") + '\"')
+                    if(error != ''):
+                        print("error=\""+error+"\"")
+                        self.suggestReboot(self.varRunDir + '/snapd.socket could not be unmounted. It must be unmounted before you can build an ISO.')
+                    error = subprocess.getoutput('rm  \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/snapd-snap.socket") + '\"')
+                    if(error != ''):
+                        print("error=\""+error+"\"")
+                        self.suggestReboot(self.varRunDir + '/snapd-snap.socket could not be unmounted. It must be unmounted before you can build an ISO.')
+                '''
+
                 # umount /var/run/dbus
-                if self.isMounted(os.path.join(self.customDir, "root" + self.varRunDir + "/dbus")):
+                if self.isMounted(self.customDir + "/root" + self.varRunDir + "/dbus"):
                     if silentMode == False:
                         print(_("Umounting " + self.varRunDir + "/dbus..."))
-                    error = subprocess.getoutput('umount  \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/dbus") + '\"')
+                    error = subprocess.getoutput('umount  \"' + self.customDir + "/root" + self.varRunDir + "/dbus" + '\"')
                     if(error != ''):
                         print("error=\""+error+"\"")
                         self.suggestReboot(self.varRunDir + '/dbus could not be unmounted. It must be unmounted before you can build an ISO.')
+
+
             if self.customDir != "" and error == '' and justUmount == False:
                     # restore wgetrc
                     if silentMode == False:
@@ -2689,6 +2723,18 @@ class Reconstructor:
             elif os.path.exists("/run/resolvconf/resolv.conf"):
                 print(_("Copying DNS info..."))
                 subprocess.getoutput('cp -L --remove-destination /run/resolvconf/resolv.conf ' + os.path.join(self.customDir, "root/etc/resolv.conf"))
+            #mount /var/run/snapd.socket
+            '''
+            print(_("Mounting /var/run/snapd.socket ..."))
+            if os.path.exists("/var/run/snapd.socket"):
+                if not os.path.exists(os.path.join(self.customDir, "root" + self.varRunDir + "/snapd")):
+                    subprocess.getoutput("mkdir -p " + os.path.join(self.customDir, "root" + self.varRunDir + "/snapd"))
+                subprocess.getoutput('touch ' + os.path.join(self.customDir, "root" + self.varRunDir + "/snapd.socket"))
+                subprocess.getoutput('touch ' + os.path.join(self.customDir, "root" + self.varRunDir + "/snapd-snap.socket"))
+                subprocess.getoutput('mount --bind ' + os.path.realpath("/var/run/snapd.socket") + ' \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/snapd.socket"))
+                subprocess.getoutput('mount --bind ' + os.path.realpath("/var/run/snapd-snap.socket") + ' \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/snapd-snap.socket"))
+                subprocess.getoutput('mount --bind ' + os.path.realpath("/var/run/snapd") + ' \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/snapd"))
+            '''
             #mount /var/run/dbus
             print(_("Mounting /run/dbus filesystem..."))
             if not os.path.exists(os.path.join(self.customDir, "root" + self.varRunDir + "/dbus")):
@@ -2764,12 +2810,36 @@ class Reconstructor:
                 error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root/dev") + '\"')
             if(error != ''):
                 self.suggestReboot('/dev could not be unmounted. It must be unmounted before you can build an ISO.')
+            # umount /var/run/snapd
+            '''
+            if self.isMounted(os.path.join(self.customDir, "root" + self.varRunDir + "/snapd")):
+                if silentMode == False:
+                    print(_("Umounting " + self.varRunDir + "/snapd..."))
+                error = subprocess.getoutput('umount  \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/snapd") + '\"')
+                if(error != ''):
+                    print("error=\""+error+"\"")
+                    self.suggestReboot(self.varRunDir + '/snapd could not be unmounted. It must be unmounted before you can build an ISO.')
+                error = subprocess.getoutput('umount  \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/snapd.socket") + '\"')
+                if(error != ''):
+                    print("error=\""+error+"\"")
+                    self.suggestReboot(self.varRunDir + '/snapd.socket could not be unmounted. It must be unmounted before you can build an ISO.')
+                error = subprocess.getoutput('umount  \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/snapd-snap.socket") + '\"')
+                if(error != ''):
+                    print("error=\""+error+"\"")
+                    self.suggestReboot(self.varRunDir + '/snapd-snap.socket could not be unmounted. It must be unmounted before you can build an ISO.')
+            '''
             # umount /var/run/dbus
             print(_("Umounting /var/run/dbus..."))
             if self.isMounted(os.path.join(self.customDir, "root" + self.varRunDir + "/dbus")):
                 error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root" + self.varRunDir + "/dbus") + '\"')
             if(error != ''):
                 self.suggestReboot(self.varRunDir + '/dbus could not be unmounted. It must be unmounted before you can build an ISO.')
+
+            print(_("Umounting /var/run..."))
+            if self.isMounted(os.path.join(self.customDir, "root" + self.varRunDir)):
+                error = subprocess.getoutput('umount -lf \"' + os.path.join(self.customDir, "root" + self.varRunDir) + '\"')
+            if(error != ''):
+                self.suggestReboot(self.varRunDir + ' could not be unmounted. It must be unmounted before you can build an ISO.')
             # remove temp script
             subprocess.getoutput('rm -Rf /tmp/xephyr-chroot.sh')
             # startx complains about suspicious activity sometimes:P
